@@ -1,29 +1,28 @@
 defmodule Logoot.Structures do
-  @min_int 0
+  @min_int 130
   @max_int 32767
   def lower_bound(site_id), do: [[@min_int, site_id]]
   def upper_bound(site_id), do: [[@max_int, site_id]]
 
-  def show_document_str(document), do: Enum.reduce(document, "", fn [_,value], acc -> acc <> value end)
-  def show_document_map(document) do 
-    document 
-    |> Enum.reduce([%{},0], fn [_,value],[map,count] -> [Map.put(map,count,value) ,count+1] end)
-  end
-
-  def add_atom_to_document(document = [head | tail = [next, _]], atom = [[position, _], _]) do
+  def add_sequence_to_document( atom = [[position, _], _], document = [head | tail = [next| _]]) do
     [[previous_position, _], _] = head
     [[next_position, _], _] = next
-
     case {compare_positions(position, next_position),
           compare_positions(position, previous_position)} do
-      {1, -1} -> [head | [atom | tail]]
-      {1, 1} -> [head | add_atom_to_document(tail, atom)]
-      {-1, 1} -> IO.puts("Sequence Error")
+      {-1, 1} -> [head | [atom | tail]]
+      {1, 1} -> [head | add_sequence_to_document(atom, tail)]
+      {1, -1} -> IO.puts("Sequence Error")
       {0, 0} -> document
     end
   end
 
-  def create_atom_identifier_between_two(site_id, current_clock, previous_atom, next_atom) do
+  def create_sequence_atom(atom_id,value), do: [atom_id,value]
+  def create_atom_identifier_between_two_sequence(site_id,current_clock,previous_seq,next_seq) do
+    [previous_atom,_] = previous_seq
+    [next_atom,_] = next_seq
+    create_atom_identifier_between_two_atoms(site_id,current_clock,previous_atom,next_atom) 
+  end
+  defp create_atom_identifier_between_two_atoms(site_id, current_clock, previous_atom, next_atom) do
     [previous_position, _] = previous_atom
     [next_position, _] = next_atom
     position = new_position_between_two(site_id, previous_position, next_position)
@@ -47,7 +46,7 @@ defmodule Logoot.Structures do
           pos_p > pos_q or (pos_p == pos_q and site_p > site_q)} do
       {true, _} -> -1
       {_, true} -> 1
-      {_, _} -> 0
+      {_, _}    -> 0
     end
   end
 
@@ -70,15 +69,19 @@ defmodule Logoot.Structures do
        ]) do
     head_0 = [head_pos0, head_site0]
     head_1 = [head_pos1, head_site1]
-
     case compare_identifiers(head_0, head_1) do
       -1 ->
         distance = head_pos1 - head_pos0
-
         case {distance > 1, distance == 1 and site_id > head_site0} do
-          {true, _} -> site_id |> random_position(head_pos0, head_pos1)
-          {_, true} -> [[head_pos0, site_id]]
-          {_, _} -> [head_0] ++ new_position_between_two(site_id, tail_pos0, tail_pos1)
+          {true, _} -> 
+            site_id |> random_position(head_pos0, head_pos1)
+          {_, true} -> 
+            [[head_pos0, site_id]]
+          {_, _}    -> 
+            case {tail_pos0,tail_pos1} do
+              {[],[]} -> [head_0] ++ random_position(site_id,@min_int,@max_int)
+              {_,_} -> [head_0] ++ new_position_between_two(site_id, tail_pos0, tail_pos1)
+            end
         end
 
       0 ->
@@ -91,6 +94,13 @@ defmodule Logoot.Structures do
     end
   end
 
-  defp random_position(site_id, range0, range1),
-    do: [[Enum.random((range0 + 1)..(range1 - 1)), site_id]]
+  defp random_position(site_id, range0, range1) do 
+    random = :rand.uniform(range1 - range0 - 1) + range0
+    [[random,site_id]]
+  end
 end
+
+# [[[ [0, 9]], 0], ""],
+# [[[ 'p\t' ], 8], "h"],
+
+# Logoot.Structures.new_position_between_two(9,[[0,9]],[[446,9]])

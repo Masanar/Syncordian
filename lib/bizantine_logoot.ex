@@ -1,6 +1,6 @@
 defmodule Logoot do
   @moduledoc """
-  Documentation for `BizantineCrdt`.
+  Documentation for `BizantineLogoot`.
   """
 
   @doc """

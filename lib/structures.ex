@@ -9,10 +9,12 @@ defmodule Logoot.Structures do
     [[next_position, _], _] = next
     case {compare_positions(position, next_position),
           compare_positions(position, previous_position)} do
-      {-1, 1} -> [head | [atom | tail]]
       {1, 1} -> [head | add_sequence_to_document(atom, tail)]
       {1, -1} -> IO.puts("Sequence Error")
       {0, 0} -> document
+      {_, 1} -> [head | [atom | tail]]
+      {-1, -1} -> [head | [atom | tail]]
+      # {0, 1} -> [head | [atom | tail]]
     end
   end
 
@@ -99,8 +101,3 @@ defmodule Logoot.Structures do
     [[random,site_id]]
   end
 end
-
-# [[[ [0, 9]], 0], ""],
-# [[[ 'p\t' ], 8], "h"],
-
-# Logoot.Structures.new_position_between_two(9,[[0,9]],[[446,9]])

@@ -1,4 +1,24 @@
 defmodule Logoot.Info do
+    @moduledoc """
+    ...
+    """
+
+    @doc """
+    Prints the actual content of the document
+
+    ## Parameters
+
+      - name: String that represents the name of the person.
+
+    ## Examples
+
+        iex> Greeter.hello("Sean")
+        "Hello, Sean"
+
+        iex> Greeter.hello("pete")
+        "Hello, pete"
+
+    """
     def print_document_info(document) do
         [document_str, document_len] = document |> show_document_str 
         IO.puts "\n ------------------"

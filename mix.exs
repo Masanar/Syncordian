@@ -1,4 +1,6 @@
 defmodule BizantineLogoot.MixProject do
+  @moduledoc """
+  """
   use Mix.Project
 
   def project do

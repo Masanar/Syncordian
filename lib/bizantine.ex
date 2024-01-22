@@ -1,4 +1,6 @@
 defmodule Logoot.Byzantine do
+    @moduledoc """
+    """
     require Record
     Record.defrecord(:dag, head: [], predecessors: %{})
     def new_dag() ,do: dag()

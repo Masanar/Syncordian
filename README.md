@@ -1,6 +1,6 @@
 # Bizantine Logoot
 
-**TODO: Add description**
+This a Elixir implementation of Logoot supporting byzantine faults.
 
 ## Installation
 

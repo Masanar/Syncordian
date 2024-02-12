@@ -3,7 +3,7 @@ defmodule Logoot.Site do
     This module is responsible for the site structure and the site operations provides the
     following functions:
     - start(site_id) : starts a site with the given id
-    - insert(pid,value,index) : inserts a value at the given index
+    - insert(pid,content,index) : inserts a content at the given index
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
   """
@@ -28,17 +28,17 @@ defmodule Logoot.Site do
 
         loop(site)
 
-      {:insert, [value, pos]} ->
+      {:insert, [content, pos]} ->
         document = site(site, :document)
-        [previous, next] = get_position_index(document, pos)
         current_clock = site(site, :clock)
+        [previous, next] = get_position_index(document, pos)
         site_new_clock = tick_site_clock(site, current_clock + 1)
 
         sequence =
           site
           |> site(:id)
           |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
-          |> create_sequence_atom(value)
+          |> create_sequence_atom(content)
 
         send(self(), {:send_broadcast, sequence})
 
@@ -80,9 +80,9 @@ defmodule Logoot.Site do
   end
 
   @doc """
-    This function inserts a value at the given index and a pid by sending a message to the
+    This function inserts a content at the given index and a pid by sending a message to the
     loop site function. The messages uses the following format:
-    {:insert,[value,index]}
+    {:insert,[content,index]}
   """
   @spec insert(pid, String.t(), integer) :: any
   def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
@@ -103,7 +103,7 @@ defmodule Logoot.Site do
 
   @doc """
     This function starts a site with the given id and registers it in the global registry.
-    The returned value is the pid of the site. The pid is the corresponding value of the
+    The returned content is the pid of the site. The pid is the corresponding content of the
     pid of the spawned process.
   """
   @spec start(CRDT.Types.peer_id()) :: pid

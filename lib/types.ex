@@ -11,26 +11,28 @@ defmodule CRDT.Types do
   @type peer_id :: integer
 
   @typedoc """
-      Type that represents the id of a Logoot document line
+      Type that represents the position identifier of a CRDT document line 
   """
-  @type id :: {integer, peer_id}
+  @type line_id :: float 
 
   @typedoc """
-      Type that represents the position identifier of a Logoot document line 
+      Type that represents a line of a CRDT document
   """
-  @type pid_ :: {list[id], clock}
+  @type line :: {line_id, String.t()}
 
   @typedoc """
-      Type that represents a line of a Logoot document
+      Type that represents a CRDT document, that is a list of lines, each line has an
+      unique position identifier and a content
   """
-  @type line :: {pid_, String.t()}
-
   @type document :: [line]
 
+  @typedoc """
+      Type that represents the individual replica of the CRDT document for each peer
+  """
   @type site :: %{
-          id: integer(),
-          clock: integer(),
-          document: any(),
+          id: peer_id(),
+          clock: clock(),
+          document: document(),
           pid: pid()
         }
 end

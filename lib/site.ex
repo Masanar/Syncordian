@@ -1,19 +1,19 @@
 defmodule Logoot.Site do
   @moduledoc """
-  This module is responsible for the site structure and the site operations provides the
-  following functions:
-  - start(site_id) : starts a site with the given id
-  - insert(pid,value,index) : inserts a value at the given index
-  - info(pid) : prints the document of the site
-  - raw_print(pid) : prints the document of the site without the site structure
+    This module is responsible for the site structure and the site operations provides the
+    following functions:
+    - start(site_id) : starts a site with the given id
+    - insert(pid,value,index) : inserts a value at the given index
+    - info(pid) : prints the document of the site
+    - raw_print(pid) : prints the document of the site without the site structure
   """
   import Logoot.Structures
   import Logoot.Info
   require Record
 
   Record.defrecord(:site, id: None, clock: 1, document: None, pid: None)
-  @min_int 130
-  @max_int 32767
+  @min_float 130.0
+  @max_float 230_584_300_921_369.0
 
   @doc """
   This function is the main loop of the site, it receives messages and calls the 
@@ -80,31 +80,31 @@ defmodule Logoot.Site do
   end
 
   @doc """
-  This function inserts a value at the given index and a pid by sending a message to the
-  loop site function. The messages uses the following format:
-  {:insert,[value,index]}
+    This function inserts a value at the given index and a pid by sending a message to the
+    loop site function. The messages uses the following format:
+    {:insert,[value,index]}
   """
   @spec insert(pid, String.t(), integer) :: any
-  def insert(pid, value, index), do: send(pid, {:insert, [value, index]})
+  def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
 
   @doc """
-  This function prints the document as an string and the length of the document by
-  sending a message to the loop site function with the atom :info.
+    This function prints the document as an string and the length of the document by
+    sending a message to the loop site function with the atom :info.
   """
   @spec info(pid) :: any
   def info(pid), do: send(pid, {:info, :document})
 
   @doc """
-  This function prints the whole document as a list of lists by sending a message to the
-  loop site function with the atom :print.
+    This function prints the whole document as a list of lists by sending a message to the
+    loop site function with the atom :print.
   """
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
 
   @doc """
-  This function starts a site with the given id and registers it in the global registry.
-  The returned value is the pid of the site. The pid is the corresponding value of the
-  pid of the spawned process.
+    This function starts a site with the given id and registers it in the global registry.
+    The returned value is the pid of the site. The pid is the corresponding value of the
+    pid of the spawned process.
   """
   @spec start(CRDT.Types.peer_id()) :: pid
   def start(site_id) do
@@ -143,7 +143,6 @@ defmodule Logoot.Site do
 
   defp get_position_index(document, pos_index) do
     len = length(document)
-
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
       {nil, _} -> [Enum.at(document, len - 2), Enum.at(document, len - 1)]
       {next, previous} -> [previous, next]
@@ -158,11 +157,11 @@ defmodule Logoot.Site do
   end
 
   @doc """
-  This is a private function used to instance the initial document of the site within
-  the record site.
+    This is a private function used to instance the initial document of the site within
+    the record site.
   """
   defp define(site_id) do
-    initial_site_document = [[[[[@min_int, site_id]], 0], ""], [[[[@max_int, site_id]], 1], ""]]
+    initial_site_document = [{@min_float, "Start"}, {@max_float, "End"}]
     site(id: site_id, document: initial_site_document)
   end
 end

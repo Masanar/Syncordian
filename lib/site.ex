@@ -22,56 +22,56 @@ defmodule CRDT.Site do
   @spec loop(CRDT.Types.site()) :: any
   def loop(site) do
     receive do
-      {:info, _} ->
-        site(site, :document)
-        |> print_document_info
+      # {:info, _} ->
+      #   site(site, :document)
+      #   |> print_document_info
+      #   loop(site)
 
-        loop(site)
-
+      # This correspond to the insert process do it by the peer
       {:insert, [content, index_position]} ->
         document = site(site, :document)
         current_clock = site(site, :clock)
         [previous, next] = get_position_index(document, index_position)
-        site_new_clock = tick_site_clock(site, current_clock + 1)
+        # site_new_clock = tick_site_clock(site, current_clock + 1)
 
-        sequence =
-          site
-          |> site(:id)
-          |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
-          |> create_sequence_atom(content)
+        # sequence =
+        #   site
+        #   |> site(:id)
+        #   |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
+        #   |> create_sequence_atom(content)
 
-        send(self(), {:send_broadcast, sequence})
+        # send(self(), {:send_broadcast, sequence})
 
-        sequence
-        |> add_sequence_to_document(document)
-        |> update_site_document(site_new_clock)
-        |> loop
+        # sequence
+        # |> add_sequence_to_document(document)
+        # |> update_site_document(site_new_clock)
+        # |> loop
 
-      {:send_broadcast, sequence} ->
-        :global.registered_names()
-        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
+      # {:send_broadcast, sequence} ->
+      #   :global.registered_names()
+      #   |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
+      #   |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
 
-        loop(site)
+      #   loop(site)
 
-      {:receive_broadcast, sequence} ->
-        document = site(site, :document)
-        current_clock = site(site, :clock)
-        site_new_clock = tick_site_clock(site, current_clock + 1)
+      # {:receive_broadcast, sequence} ->
+      #   document = site(site, :document)
+      #   current_clock = site(site, :clock)
+      #   site_new_clock = tick_site_clock(site, current_clock + 1)
 
-        sequence
-        |> add_sequence_to_document(document)
-        |> update_site_document(site_new_clock)
-        |> loop
+      #   sequence
+      #   |> add_sequence_to_document(document)
+      #   |> update_site_document(site_new_clock)
+      #   |> loop
 
-      {:print, _} ->
-        IO.inspect(site)
-        loop(site)
+      # {:print, _} ->
+      #   IO.inspect(site)
+      #   loop(site)
 
-      {:save_pid, pid} ->
-        pid
-        |> update_site_pid(site)
-        |> loop
+      # {:save_pid, pid} ->
+      #   pid
+      #   |> update_site_pid(site)
+      #   |> loop
 
       {_, _} ->
         IO.puts("Wrong message")
@@ -88,20 +88,6 @@ defmodule CRDT.Site do
   def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
 
   @doc """
-    This function prints the document as an string and the length of the document by
-    sending a message to the loop site function with the atom :info.
-  """
-  @spec info(pid) :: any
-  def info(pid), do: send(pid, {:info, :document})
-
-  @doc """
-    This function prints the whole document as a list of lists by sending a message to the
-    loop site function with the atom :print.
-  """
-  @spec raw_print(pid) :: any
-  def raw_print(pid), do: send(pid, {:print, :document})
-
-  @doc """
     This function starts a site with the given id and registers it in the global registry.
     The returned content is the pid of the site. The pid is the corresponding content of the
     pid of the spawned process.
@@ -116,26 +102,6 @@ defmodule CRDT.Site do
   end
 
   @doc """
-  This is a private function used to save the pid of the site in the record.
-  """
-  @spec save_site_pid(pid) :: any
-  defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
-
-  @doc """
-  This is a private function used whenever an update to the document is needed. It
-  updates the record site with the new document.
-  """
-  @spec update_site_document(CRDT.Types.document(), CRDT.Types.site()) :: any
-  defp update_site_document(document, site), do: site(site, document: document)
-
-  @doc """
-  This is a private function used whenever an update to the pid is needed. It updates
-  the record site with the new pid.
-  """
-  @spec update_site_pid(pid, CRDT.Types.site()) :: any
-  defp update_site_pid(pid, site), do: site(site, pid: pid)
-
-  @doc """
   Given a document and a position index, this function returns the previous and next
   positions
   """
@@ -144,6 +110,7 @@ defmodule CRDT.Site do
 
   defp get_position_index(document, pos_index) do
     len = length(document)
+
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
       {nil, _} -> [Enum.at(document, len - 2), Enum.at(document, len - 1)]
       {next, previous} -> [previous, next]

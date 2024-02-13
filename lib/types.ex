@@ -16,12 +16,15 @@ defmodule CRDT.Types do
   @typedoc """
       Type that represents the position identifier of a CRDT document line 
   """
-  @type line_id :: float 
+  @type line_id :: float
 
   @typedoc """
       Type that represents a line of a CRDT document
   """
-  @type line :: {line_id, content, signature, peer_id}
+  @type line :: %{line_id: line_id,
+                  content: content, 
+                  signature: signature, 
+                  peer_id: peer_id}
 
   @typedoc """
       Type that represents a CRDT document, that is a list of lines, each line has an

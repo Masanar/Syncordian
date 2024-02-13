@@ -7,13 +7,11 @@ defmodule CRDT.Site do
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
   """
-  import CRDT.Behavior
+  import CRDT.Line
   import CRDT.Info
   require Record
 
   Record.defrecord(:site, id: None, clock: 1, document: None, pid: None)
-  @min_float 130.0
-  @max_float 230_584_300_921_369.0
 
   @doc """
   This function is the main loop of the site, it receives messages and calls the
@@ -31,21 +29,24 @@ defmodule CRDT.Site do
       {:insert, [content, index_position]} ->
         document = site(site, :document)
         current_clock = site(site, :clock)
-        [previous, next] = get_position_index(document, index_position)
-        # site_new_clock = tick_site_clock(site, current_clock + 1)
+        [left_parent, right_parent] = get_parents_by_index(document, index_position)
+        site_new_clock = tick_site_clock(site, current_clock + 1)
 
-        # sequence =
-        #   site
-        #   |> site(:id)
-        #   |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
-        #   |> create_sequence_atom(content)
+        create_line_between_two_lines(content, left_parent, right_parent)
+        |> IO.inspect
 
-        # send(self(), {:send_broadcast, sequence})
+      # sequence =
+      #   site
+      #   |> site(:id)
+      #   |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
+      #   |> create_sequence_atom(content)
 
-        # sequence
-        # |> add_sequence_to_document(document)
-        # |> update_site_document(site_new_clock)
-        # |> loop
+      # send(self(), {:send_broadcast, sequence})
+
+      # sequence
+      # |> add_sequence_to_document(document)
+      # |> update_site_document(site_new_clock)
+      # |> loop
 
       # {:send_broadcast, sequence} ->
       #   :global.registered_names()
@@ -64,20 +65,40 @@ defmodule CRDT.Site do
       #   |> update_site_document(site_new_clock)
       #   |> loop
 
-      # {:print, _} ->
-      #   IO.inspect(site)
-      #   loop(site)
+      {:print, _} ->
+        IO.inspect(site)
+        loop(site)
 
-      # {:save_pid, pid} ->
-      #   pid
-      #   |> update_site_pid(site)
-      #   |> loop
+      {:save_pid, pid} ->
+        pid
+        |> update_site_pid(site)
+        |> loop
 
       {_, _} ->
         IO.puts("Wrong message")
         loop(site)
     end
   end
+
+  @doc """
+    This is a private function used whenever an update to the pid is needed. It updates
+    the record site with the new pid.
+  """
+  @spec update_site_pid(pid, CRDT.Types.site()) :: any
+  defp update_site_pid(pid, site), do: site(site, pid: pid)
+
+  @doc """
+    This is a private function used to save the pid of the site in the record.
+  """
+  @spec save_site_pid(pid) :: any
+  defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
+
+  @doc """
+    This function prints the whole document as a list of lists by sending a message to the
+    loop site function with the atom :print.
+  """
+  @spec raw_print(pid) :: any
+  def raw_print(pid), do: send(pid, {:print, :document})
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to the
@@ -103,12 +124,12 @@ defmodule CRDT.Site do
 
   @doc """
   Given a document and a position index, this function returns the previous and next
-  positions
+  parents of the given index.
   """
-  @spec get_position_index(CRDT.Types.document(), integer) :: any
-  defp get_position_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
+  @spec get_parents_by_index(CRDT.Types.document(), integer) :: any
+  defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
-  defp get_position_index(document, pos_index) do
+  defp get_parents_by_index(document, pos_index) do
     len = length(document)
 
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
@@ -129,7 +150,7 @@ defmodule CRDT.Site do
     the record site.
   """
   defp define(peer_id) do
-    initial_site_document = [{@min_float, "Start", "", peer_id}, {@max_float, "End", "", peer_id}]
+    initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
     site(id: peer_id, document: initial_site_document)
   end
 end

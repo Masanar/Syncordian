@@ -19,30 +19,60 @@ defmodule CRDT.Line do
   @max_float 230_584_300_921_369.0
   Record.defrecord(:line, line_id: None, content: None, signature: None, peer_id: None)
 
+  @doc """
+    This function is a getter for  the line_id field of a line record
+  """
   @spec get_line_id(CRDT.Types.line()) :: CRDT.Types.line_id()
   def get_line_id(line),
     do: line(line, :line_id)
 
+  @doc """
+    This function is a getter for the content field of a line record
+  """
   @spec get_content(CRDT.Types.line()) :: CRDT.Types.content()
   def get_content(line),
     do: line(line, :content)
 
+  @doc """
+    This function is a getter for the signature field of a line record
+  """
   @spec get_signature(CRDT.Types.line()) :: CRDT.Types.signature()
   def get_signature(line),
     do: line(line, :signature)
 
+  @doc """
+    This function is a getter for the peer_id field of a line record
+  """
   @spec get_peer_id(CRDT.Types.line()) :: CRDT.Types.peer_id()
   def get_peer_id(line),
     do: line(line, :peer_id)
 
+  @doc """
+    This function creates the infimum line for the given peer id
+    that is the absolute first line within peer's document
+  """
   @spec create_infimum_line(CRDT.Types.peer_id()) :: CRDT.Types.line()
   def create_infimum_line(peer_id),
     do: line(line_id: @min_float, content: "Infimum", signature: "", peer_id: peer_id)
 
+  @doc """
+    This function creates the supremum line for the given peer id
+    that is the absolute last line within peer's document
+  """
   @spec create_supremum_line(CRDT.Types.peer_id()) :: CRDT.Types.line()
   def create_supremum_line(peer_id),
     do: line(line_id: @max_float, content: "Supremum", signature: "", peer_id: peer_id)
 
+  @doc """
+    Given two lines, left_parent and right_parent, this function creates a new line
+    between them taken into account the parent's ids to calculate the new line id
+    and the parent's content to create the line signature.
+    There are two cases to consider:
+      - If there is 'room' between the parent's ids, then the new line id is calculated
+        randomly between the parent's ids and the signature is created using the parent's
+        content and the peer id.
+      - If there is no 'room' between the parent's ids, then...
+  """
   @spec create_line_between_two_lines(
           content :: CRDT.Types.content(),
           left_parent :: CRDT.Types.line(),
@@ -53,7 +83,6 @@ defmodule CRDT.Line do
         left_parent,
         right_parent
       ) do
-    # TODO: create the signature and get the new line id
     left_parent_id = get_line_id(left_parent)
     right_parent_id = get_line_id(right_parent)
     peer_id = get_peer_id(left_parent)

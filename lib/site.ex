@@ -1,14 +1,14 @@
-defmodule Logoot.Site do
+defmodule CRDT.Site do
   @moduledoc """
     This module is responsible for the site structure and the site operations provides the
     following functions:
-    - start(site_id) : starts a site with the given id
+    - start(peer_id) : starts a site with the given id
     - insert(pid,content,index) : inserts a content at the given index
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
   """
-  import Logoot.Structures
-  import Logoot.Info
+  import CRDT.Behavior
+  import CRDT.Info
   require Record
 
   Record.defrecord(:site, id: None, clock: 1, document: None, pid: None)
@@ -16,7 +16,7 @@ defmodule Logoot.Site do
   @max_float 230_584_300_921_369.0
 
   @doc """
-  This function is the main loop of the site, it receives messages and calls the 
+  This function is the main loop of the site, it receives messages and calls the
   appropriate functions to handle them.
   """
   @spec loop(CRDT.Types.site()) :: any
@@ -28,10 +28,10 @@ defmodule Logoot.Site do
 
         loop(site)
 
-      {:insert, [content, pos]} ->
+      {:insert, [content, index_position]} ->
         document = site(site, :document)
         current_clock = site(site, :clock)
-        [previous, next] = get_position_index(document, pos)
+        [previous, next] = get_position_index(document, index_position)
         site_new_clock = tick_site_clock(site, current_clock + 1)
 
         sequence =
@@ -107,11 +107,11 @@ defmodule Logoot.Site do
     pid of the spawned process.
   """
   @spec start(CRDT.Types.peer_id()) :: pid
-  def start(site_id) do
-    pid = spawn(__MODULE__, :loop, [define(site_id)])
-    :global.register_name(site_id, pid)
+  def start(peer_id) do
+    pid = spawn(__MODULE__, :loop, [define(peer_id)])
+    :global.register_name(peer_id, pid)
     save_site_pid(pid)
-    IO.puts("#{inspect(site_id)} registered at #{inspect(pid)}")
+    IO.puts("#{inspect(peer_id)} registered at #{inspect(pid)}")
     pid
   end
 
@@ -136,7 +136,8 @@ defmodule Logoot.Site do
   defp update_site_pid(pid, site), do: site(site, pid: pid)
 
   @doc """
-  This is a private function used to get the position index of the document. 
+  Given a document and a position index, this function returns the previous and next
+  positions
   """
   @spec get_position_index(CRDT.Types.document(), integer) :: any
   defp get_position_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
@@ -160,8 +161,8 @@ defmodule Logoot.Site do
     This is a private function used to instance the initial document of the site within
     the record site.
   """
-  defp define(site_id) do
-    initial_site_document = [{@min_float, "Start"}, {@max_float, "End"}]
-    site(id: site_id, document: initial_site_document)
+  defp define(peer_id) do
+    initial_site_document = [{@min_float, "Start", "", peer_id}, {@max_float, "End", "", peer_id}]
+    site(id: peer_id, document: initial_site_document)
   end
 end

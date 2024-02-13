@@ -1,4 +1,4 @@
-defmodule Logoot.Byzantine do
+defmodule CRDT.Byzantine do
   @moduledoc """
   """
   require Record

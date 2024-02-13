@@ -1,4 +1,4 @@
-defmodule Logoot.Structures do
+defmodule CRDT.Structures do
   @min_int 130
   @max_int 32767
 

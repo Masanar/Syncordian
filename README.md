@@ -1,6 +1,6 @@
-# Bizantine Logoot
+# Bizantine CRDT
 
-This a Elixir implementation of Logoot supporting byzantine faults.
+This a Elixir implementation of CRDT supporting byzantine faults.
 
 ## Installation
 

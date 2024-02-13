@@ -1,4 +1,4 @@
-defmodule Logoot.Info do
+defmodule CRDT.Info do
   @moduledoc """
   This module provides information functions about the site document:
   - print_document_info(document) : prints the document content as an string and the

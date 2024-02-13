@@ -3,6 +3,9 @@ defmodule CRDT.Types do
       This module provides the types used in the CRDT implementation
   """
 
+  @type content :: String.t()
+  @type signature :: String.t()
+
   @type clock :: integer
 
   @typedoc """
@@ -18,7 +21,7 @@ defmodule CRDT.Types do
   @typedoc """
       Type that represents a line of a CRDT document
   """
-  @type line :: {line_id, String.t()}
+  @type line :: {line_id, content, signature, peer_id}
 
   @typedoc """
       Type that represents a CRDT document, that is a list of lines, each line has an

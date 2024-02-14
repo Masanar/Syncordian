@@ -15,7 +15,7 @@ defmodule CRDT.Document do
   end
 
   @doc """
-      This function returns the length of the document
+    This function returns the length of the document
   """
   @spec get_document_length(CRDT.Types.document()) :: integer
   def get_document_length(document) ,do:

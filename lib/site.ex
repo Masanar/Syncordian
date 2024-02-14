@@ -2,7 +2,7 @@ defmodule CRDT.Site do
   @moduledoc """
     This module is responsible for the site structure and the site operations provides the
     following functions:
-    - start(peer_id) : starts a site with the given id
+    - start(peer_id) : starts a site with the given peer_id
     - insert(pid,content,index) : inserts a content at the given index
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
@@ -13,7 +13,7 @@ defmodule CRDT.Site do
   require Record
   @delete_limit 10_000
   Record.defrecord(:site,
-    id: None,
+    peer_id: None,
     document: None,
     pid: None,
     deleted_count: 0,
@@ -40,7 +40,7 @@ defmodule CRDT.Site do
   def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
 
   @doc """
-    This function starts a site with the given id and registers it in the global registry.
+    This function starts a site with the given peer_id and registers it in the global registry.
     The returned content is the pid of the site. The pid is the corresponding content of the
     pid of the spawned process.
   """
@@ -54,8 +54,8 @@ defmodule CRDT.Site do
   end
 
   @doc """
-  This function is the main loop of the site, it receives messages and calls the
-  appropriate functions to handle them.
+    This function is the main loop of the site, it receives messages and calls the
+    appropriate functions to handle them.
   """
   @spec loop(CRDT.Types.site()) :: any
   def loop(site) do
@@ -77,7 +77,7 @@ defmodule CRDT.Site do
             |> update_site_document(site)
 
             tick_site_deleted_count(site)
-            |> loop
+            |> check_deleted_lines_limit
             # TODO: Check if the deleted limit is reached, I think that this is possible by 
             # checking the length of the document and the number of deleted lines, or maybe
             # change the clock to be just the number of lines deleted. 
@@ -90,10 +90,14 @@ defmodule CRDT.Site do
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
         # site_new_clock = tick_site_clock(site, current_clock + 1)
 
-        create_line_between_two_lines(content, left_parent, right_parent)
+        new_line = create_line_between_two_lines(content, left_parent, right_parent)
+        
+        new_line
         |> add_line_to_document(document)
         |> update_site_document(site)
         |> loop
+
+        IO.inspect("The execution continues after the loop call \n")
 
       # TODO: Send the broadcast to the other sites and migrate that implementation
       # send(self(), {:send_broadcast, sequence})
@@ -130,6 +134,28 @@ defmodule CRDT.Site do
     end
   end
 
+
+  def check_deleted_lines_limit(site) do
+    case get_document_deleted_lines(site) > @delete_limit do
+      true -> 
+        # TODO: HERE call the mechanism of broadcast consensus
+        IO.puts(" \n __________________________________________________________________________ \n ")
+        IO.puts(" The deleted lines limit has been reached by #{inspect(get_site_peer_id(site))} ")
+        IO.puts(" __________________________________________________________________________ \n ")
+        loop(site)
+      _ -> 
+        loop(site)
+    end
+  end
+
+  @doc """
+    This is a private function used to get the number of marked as deleted lines of the
+    document of the site.
+  """
+  @spec get_document_deleted_lines(CRDT.Types.site()) :: integer
+  defp get_document_deleted_lines(site), do:
+    site(site, :deleted_count) 
+
   @doc """
     This is a private function used whenever an update to the document is needed. It
     updates the record site with the new document.
@@ -144,6 +170,9 @@ defmodule CRDT.Site do
   @spec update_site_pid(pid, CRDT.Types.site()) :: any
   defp update_site_pid(pid, site), do: site(site, pid: pid)
 
+  defp get_site_peer_id(site) ,do:
+    site(site, :peer_id)
+
   @doc """
     This is a private function used to save the pid of the site in the record.
   """
@@ -151,8 +180,8 @@ defmodule CRDT.Site do
   defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
 
   @doc """
-  Given a document and a position index, this function returns the previous and next
-  parents of the given index.
+    Given a document and a position index, this function returns the previous and next
+    parents of the given index.
   """
   @spec get_parents_by_index(CRDT.Types.document(), integer) :: any
   defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
@@ -181,6 +210,6 @@ defmodule CRDT.Site do
   """
   defp define(peer_id) do
     initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
-    site(id: peer_id, document: initial_site_document)
+    site(peer_id: peer_id, document: initial_site_document)
   end
 end

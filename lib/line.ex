@@ -17,7 +17,21 @@ defmodule CRDT.Line do
   import CRDT.Byzantine
   @min_float 130.0
   @max_float 230_584_300_921_369.0
-  Record.defrecord(:line, line_id: None, content: None, signature: None, peer_id: None)
+  Record.defrecord(:line,
+    line_id: None,
+    content: None,
+    signature: None,
+    peer_id: None,
+    status: false
+  )
+
+  @doc """
+    This function is a getter for the deleted field of a line record, this field is true
+    when the line was marked as deleted false otherwise
+  """
+  @spec get_status(CRDT.Types.line()) :: boolean()
+  def get_status(line),
+    do: line(line, :status)
 
   @doc """
     This function is a getter for  the line_id field of a line record
@@ -114,6 +128,30 @@ defmodule CRDT.Line do
           signature: signature,
           peer_id: peer_id
         )
+    end
+  end
+
+  @doc """
+    Given two lines this function defines the order between them, mainly based on the
+    line_id field of the lines and the usual number comparison. It returns:
+      - 1 if the first line is greater than the second line
+      - 0 if the first line is equal to the second line
+      - -1 if the first line is less than the second line
+      TODO: When is the case that the distance between the lines is 1 is important review
+      this, I think that in the case the 0 option should be returned (?)
+  """
+  @spec compare_lines(
+          line1 :: CRDT.Types.line(),
+          line2 :: CRDT.Types.line()
+        ) :: 0 | 1 | -1
+  def compare_lines(line1, line2) do
+    line1_id = get_line_id(line1)
+    line2_id = get_line_id(line2)
+
+    case {line1_id - line2_id > 0, line1_id - line2_id == 0, line1_id - line2_id < 0} do
+      {true, _, _} -> 1
+      {_, true, _} -> 0
+      {_, _, true} -> -1
     end
   end
 end

@@ -24,7 +24,9 @@ defmodule CRDT.Types do
   @type line :: %{line_id: line_id,
                   content: content, 
                   signature: signature, 
-                  peer_id: peer_id}
+                  peer_id: peer_id,
+                  status: boolean
+                }
 
   @typedoc """
       Type that represents a CRDT document, that is a list of lines, each line has an

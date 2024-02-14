@@ -8,6 +8,7 @@ defmodule CRDT.Site do
     - raw_print(pid) : prints the document of the site without the site structure
   """
   import CRDT.Line
+  import CRDT.Document
   import CRDT.Info
   require Record
 
@@ -33,7 +34,11 @@ defmodule CRDT.Site do
         site_new_clock = tick_site_clock(site, current_clock + 1)
 
         create_line_between_two_lines(content, left_parent, right_parent)
-        |> IO.inspect
+        |> add_line_to_document(document)
+        |> update_site_document(site_new_clock)
+        |> loop
+
+      # send(self(), {:send_broadcast, sequence})
 
       # sequence =
       #   site
@@ -41,11 +46,9 @@ defmodule CRDT.Site do
       #   |> create_atom_identifier_between_two_sequence(current_clock, previous, next)
       #   |> create_sequence_atom(content)
 
-      # send(self(), {:send_broadcast, sequence})
 
       # sequence
       # |> add_sequence_to_document(document)
-      # |> update_site_document(site_new_clock)
       # |> loop
 
       # {:send_broadcast, sequence} ->
@@ -79,6 +82,13 @@ defmodule CRDT.Site do
         loop(site)
     end
   end
+
+  @doc """
+    This is a private function used whenever an update to the document is needed. It
+    updates the record site with the new document.
+  """
+  @spec update_site_document(CRDT.Types.document(), CRDT.Types.site()) :: any
+  defp update_site_document(document, site), do: site(site, document: document)
 
   @doc """
     This is a private function used whenever an update to the pid is needed. It updates
@@ -130,8 +140,8 @@ defmodule CRDT.Site do
   defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
   defp get_parents_by_index(document, pos_index) do
+    pos_index = pos_index + 1
     len = length(document)
-
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
       {nil, _} -> [Enum.at(document, len - 2), Enum.at(document, len - 1)]
       {next, previous} -> [previous, next]

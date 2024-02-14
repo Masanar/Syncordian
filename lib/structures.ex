@@ -34,7 +34,8 @@ defmodule CRDT.Structures do
   """
   @spec add_sequence_to_document(CRDT.Types.line(), CRDT.Types.document()) ::
           CRDT.Types.document()
-  def add_sequence_to_document(atom = [[position, _], _], document = [head | tail = [next | _]]) do
+  def add_sequence_to_document(atom = [[position, _], _],
+                               document = [head | tail = [next | _]]) do
     [[previous_position, _], _] = head
     [[next_position, _], _] = next
 

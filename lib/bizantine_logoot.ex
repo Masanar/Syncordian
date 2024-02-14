@@ -1,4 +1,5 @@
 defmodule CRDT do
+  import CRDT.Site
   @moduledoc """
   Documentation for `BizantineLogoot`.
   """
@@ -28,6 +29,8 @@ defmodule CRDT do
     #   CRDT.Site.insert(pid, "value#{i}\n", 0)
     # end
     # CRDT.Site.info(pid)
+    CRDT.Site.raw_print(pid_0)
+    delete_line(pid_0, 2)
     CRDT.Site.raw_print(pid_0)
   end
 

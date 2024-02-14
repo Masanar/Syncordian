@@ -25,6 +25,10 @@ defmodule CRDT.Line do
     status: false
   )
 
+  def set_line_status(line, new_status) do
+    line(line, status: new_status)
+  end
+
   @doc """
     This function is a getter for the deleted field of a line record, this field is true
     when the line was marked as deleted false otherwise

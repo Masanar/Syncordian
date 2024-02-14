@@ -81,6 +81,7 @@ defmodule CRDT.Site do
             # TODO: Check if the deleted limit is reached, I think that this is possible by 
             # checking the length of the document and the number of deleted lines, or maybe
             # change the clock to be just the number of lines deleted. 
+            # TODO: Send the broadcast to the other sites and migrate that implementation
         end
 
       # This correspond to the insert process do it by the peer

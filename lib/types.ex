@@ -25,7 +25,8 @@ defmodule CRDT.Types do
                   content: content, 
                   signature: signature, 
                   peer_id: peer_id,
-                  status: boolean
+                  status: boolean,
+                  insertion_attempts: integer
                 }
 
   @typedoc """

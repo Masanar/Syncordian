@@ -16,13 +16,13 @@ defmodule CRDT do
   def test do
     # pid = CRDT.Site.start(0)
     pid_0 = CRDT.Site.start(1)
-    # pid_1 = CRDT.Site.start(2)
+    pid_1 = CRDT.Site.start(2)
     # pid_2 = CRDT.Site.start(3)
 
     CRDT.Site.insert(pid_0, "first of 0\n", 0)
-    CRDT.Site.insert(pid_0, "second of 0\n", 1)
-    CRDT.Site.insert(pid_0, "third of 0\n", 2)
-    CRDT.Site.insert(pid_0, "fourth of 0\n", 3)
+    # CRDT.Site.insert(pid_0, "second of 0\n", 1)
+    # CRDT.Site.insert(pid_0, "third of 0\n", 2)
+    # CRDT.Site.insert(pid_0, "fourth of 0\n", 3)
     # CRDT.Site.insert(pid_1, "first of 1", 1)
     # CRDT.Site.insert(pid_2, "first of 2\n", 2)
 
@@ -30,9 +30,9 @@ defmodule CRDT do
     #   CRDT.Site.insert(pid, "value#{i}\n", 0)
     # end
     # CRDT.Site.info(pid)
-    CRDT.Site.raw_print(pid_0)
-    delete_line(pid_0, 2)
-    delete_line(pid_0, 3)
+    # CRDT.Site.raw_print(pid_0)
+    # delete_line(pid_0, 2)
+    # delete_line(pid_0, 3)
     CRDT.Site.raw_print(pid_0)
   end
 

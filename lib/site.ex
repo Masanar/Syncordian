@@ -7,9 +7,11 @@ defmodule CRDT.Site do
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
   """
-  import CRDT.Line
-  import CRDT.Document
   import CRDT.Info
+  import CRDT.Document
+  import CRDT.Byzantine
+  import CRDT.Line
+  import CRDT.Line_Object
   require Record
   @delete_limit 10_000
   Record.defrecord(:site,
@@ -27,9 +29,7 @@ defmodule CRDT.Site do
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
 
-
-  def delete_line(pid,index_position) ,do:
-    send(pid, {:delete_line, index_position})
+  def delete_line(pid, index_position), do: send(pid, {:delete_line, index_position})
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to the
@@ -60,64 +60,67 @@ defmodule CRDT.Site do
   @spec loop(CRDT.Types.site()) :: any
   def loop(site) do
     receive do
-      # {:info, _} ->
-      #   site(site, :document)
-      #   |> print_document_info
-      #   loop(site)
       {:delete_line, index_position} ->
+        # TODO: Check if the deleted limit is reached, I think that this is possible by 
+        # checking the length of the document and the number of deleted lines, or maybe
+        # change the clock to be just the number of lines deleted. 
+        # TODO: Send the broadcast to the other sites and migrate that implementation
         document = site(site, :document)
         document_len = get_document_length(document)
-        case document_len - 1 <= index_position or document_len < 0  do
+
+        case document_len - 1 <= index_position or document_len < 0 do
           true ->
             IO.puts("This line does not exist! \n")
             loop(site)
-          _ -> 
-            site = document
-            |> update_line_status(index_position, true)
-            |> update_site_document(site)
+
+          _ ->
+            site =
+              document
+              |> update_line_status(index_position, true)
+              |> update_site_document(site)
 
             tick_site_deleted_count(site)
             |> check_deleted_lines_limit
-            # TODO: Check if the deleted limit is reached, I think that this is possible by 
-            # checking the length of the document and the number of deleted lines, or maybe
-            # change the clock to be just the number of lines deleted. 
-            # TODO: Send the broadcast to the other sites and migrate that implementation
         end
 
       # This correspond to the insert process do it by the peer
       {:insert, [content, index_position]} ->
+        # TODO: Send the broadcast to the other sites and migrate that implementation
         document = site(site, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
         # site_new_clock = tick_site_clock(site, current_clock + 1)
 
         new_line = create_line_between_two_lines(content, left_parent, right_parent)
-        
+
+        send(self(), {:send_broadcast, new_line})
+
         new_line
         |> add_line_to_document(document)
         |> update_site_document(site)
         |> loop
 
-        IO.inspect("The execution continues after the loop call \n")
+      {:send_broadcast, sequence} ->
+        :global.registered_names()
+        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
+        |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
 
-      # TODO: Send the broadcast to the other sites and migrate that implementation
-      # send(self(), {:send_broadcast, sequence})
+        loop(site)
 
-      # {:send_broadcast, sequence} ->
-      #   :global.registered_names()
-      #   |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-      #   |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
-
-      #   loop(site)
-
-      # {:receive_broadcast, sequence} ->
-      #   document = site(site, :document)
-      #   current_clock = site(site, :clock)
-      #   site_new_clock = tick_site_clock(site, current_clock + 1)
-
-      #   sequence
-      #   |> add_sequence_to_document(document)
-      #   |> update_site_document(site_new_clock)
-      #   |> loop
+      {:receive_broadcast, line} ->
+        # TODO: check the information and reduce the count if the line is not ready yet
+        document = site(site, :document)
+        line_content = get_content(line)
+        line_index = get_document_index_by_line_id(line, document)
+        [left_parent, right_parent] = get_parents_by_index(document, line_index)
+        IO.inspect(line_index)
+        IO.inspect(left_parent)
+        IO.inspect(right_parent)
+        check_signature(
+          left_parent,
+          line,
+          right_parent
+        ) |>  IO.inspect
+        loop(site)
 
       {:print, _} ->
         IO.inspect(site)
@@ -134,17 +137,62 @@ defmodule CRDT.Site do
     end
   end
 
-
   def check_deleted_lines_limit(site) do
     case get_document_deleted_lines(site) > @delete_limit do
-      true -> 
+      true ->
         # TODO: HERE call the mechanism of broadcast consensus
-        IO.puts(" \n __________________________________________________________________________ \n ")
-        IO.puts(" The deleted lines limit has been reached by #{inspect(get_site_peer_id(site))} ")
+        IO.puts(
+          " \n __________________________________________________________________________ \n "
+        )
+
+        IO.puts(
+          " The deleted lines limit has been reached by #{inspect(get_site_peer_id(site))} "
+        )
+
         IO.puts(" __________________________________________________________________________ \n ")
         loop(site)
-      _ -> 
+
+      _ ->
         loop(site)
+    end
+  end
+
+  @doc """
+    This is a private function used to get the index (position in the document i.e. list)
+    of new line by its line_id. It calls an auxiliary function to do the job, passing the
+    line_id, the document as arguments ant the initial index 0.
+  """
+  @spec get_document_index_by_line_id(CRDT.Types.line(), CRDT.Types.document()) :: integer
+  defp get_document_index_by_line_id(line, document = [head | tail]) do
+    line_id = get_line_id(line)
+    get_document_index_by_line_id_aux(line_id, document, 0)
+  end
+
+  @doc """
+    This is an private recursive auxiliar function over the length of the document to get
+    the index of the line by its line_id.
+    NOTE: It is important to keep the precondition of not having any line ID greater than
+    the @max_float defined at CRDT.Line module! or else this function will get to an empty
+    document and will return an error. I define a case for this situation, but it is better
+    just to ensure that the line_id is always less than the @max_float.
+  """
+  @spec get_document_index_by_line_id_aux(
+          CRDT.Types.line_id(),
+          CRDT.Types.document(),
+          integer()
+        ) :: integer
+
+  defp get_document_index_by_line_id_aux(_, document = [], _) do
+    IO.puts("There is an error with the line id it is greater than the maximum float")
+    1
+  end
+
+  defp get_document_index_by_line_id_aux(line_id, document = [head | tail], index) do
+    head_line_id = get_line_id(head)
+
+    case line_id < head_line_id do
+      true -> index
+      _ -> get_document_index_by_line_id_aux(line_id, tail, index + 1)
     end
   end
 
@@ -153,8 +201,7 @@ defmodule CRDT.Site do
     document of the site.
   """
   @spec get_document_deleted_lines(CRDT.Types.site()) :: integer
-  defp get_document_deleted_lines(site), do:
-    site(site, :deleted_count) 
+  defp get_document_deleted_lines(site), do: site(site, :deleted_count)
 
   @doc """
     This is a private function used whenever an update to the document is needed. It
@@ -170,8 +217,7 @@ defmodule CRDT.Site do
   @spec update_site_pid(pid, CRDT.Types.site()) :: any
   defp update_site_pid(pid, site), do: site(site, pid: pid)
 
-  defp get_site_peer_id(site) ,do:
-    site(site, :peer_id)
+  defp get_site_peer_id(site), do: site(site, :peer_id)
 
   @doc """
     This is a private function used to save the pid of the site in the record.

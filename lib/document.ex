@@ -1,4 +1,5 @@
 defmodule CRDT.Document do
+  import CRDT.Line_Object
   import CRDT.Line
 
 

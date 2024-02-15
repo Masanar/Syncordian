@@ -7,6 +7,7 @@ defmodule CRDT.Site do
     - info(pid) : prints the document of the site
     - raw_print(pid) : prints the document of the site without the site structure
   """
+  use TypeCheck
   import CRDT.Info
   import CRDT.Document
   import CRDT.Byzantine

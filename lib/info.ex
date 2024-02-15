@@ -1,4 +1,5 @@
 defmodule CRDT.Info do
+  use TypeCheck
   @moduledoc """
   This module provides information functions about the site document:
   - print_document_info(document) : prints the document content as an string and the

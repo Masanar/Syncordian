@@ -1,4 +1,5 @@
 defmodule CRDT.Document do
+  use TypeCheck
   import CRDT.Line_Object
   import CRDT.Line
 

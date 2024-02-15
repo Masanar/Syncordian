@@ -1,4 +1,5 @@
 defmodule CRDT.Line_Object do
+  use TypeCheck
   import Record
   @min_float 130.0
   @max_float 230_584_300_921_369.0
@@ -86,6 +87,7 @@ defmodule CRDT.Line_Object do
 end
 
 defmodule CRDT.Line do
+  use TypeCheck
   @moduledoc """
     This module is responsible for the line structure and the line operations provides the
     following functions:

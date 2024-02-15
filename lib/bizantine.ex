@@ -1,4 +1,5 @@
 defmodule CRDT.Byzantine do
+  use TypeCheck
   @moduledoc """
     This module is responsible for the byzantine operations aiming to provide the features
     to support the byzantine fault tolerance in the CRDT implementation.

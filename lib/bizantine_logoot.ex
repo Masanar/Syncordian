@@ -1,4 +1,5 @@
 defmodule CRDT do
+  use TypeCheck
   import CRDT.Site
   @moduledoc """
   Documentation for `BizantineLogoot`.

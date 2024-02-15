@@ -2,6 +2,7 @@ defmodule CRDT.Types do
   @moduledoc """
       This module provides the types used in the CRDT implementation
   """
+  use TypeCheck
 
   @type content :: String.t()
   @type signature :: String.t()

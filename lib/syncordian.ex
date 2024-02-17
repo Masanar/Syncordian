@@ -1,6 +1,6 @@
-defmodule CRDT do
+defmodule Syncordian do
   use TypeCheck
-  import CRDT.Site
+  import Syncordian.Site
   @moduledoc """
   Documentation for `BizantineLogoot`.
   """
@@ -10,32 +10,32 @@ defmodule CRDT do
 
   ## Examples
 
-      iex> CRDT.hello()
+      iex> Syncordian.hello()
       :world
 
   """
   def test do
-    # pid = CRDT.Site.start(0)
-    pid_0 = CRDT.Site.start(1)
-    pid_1 = CRDT.Site.start(2)
-    # pid_2 = CRDT.Site.start(3)
+    # pid = Syncordian.Site.start(0)
+    pid_0 = Syncordian.Site.start(1)
+    pid_1 = Syncordian.Site.start(2)
+    # pid_2 = Syncordian.Site.start(3)
 
-    CRDT.Site.insert(pid_0, "first of 0\n", 0)
-    CRDT.Site.insert(pid_0, "second of 0\n", 1)
-    CRDT.Site.insert(pid_0, "third of 0\n", 2)
-    CRDT.Site.insert(pid_0, "fourth of 0\n", 3)
-    # CRDT.Site.insert(pid_1, "first of 1", 1)
-    # CRDT.Site.insert(pid_2, "first of 2\n", 2)
+    Syncordian.Site.insert(pid_0, "first of 0\n", 0)
+    Syncordian.Site.insert(pid_0, "second of 0\n", 1)
+    Syncordian.Site.insert(pid_0, "third of 0\n", 2)
+    Syncordian.Site.insert(pid_0, "fourth of 0\n", 3)
+    # Syncordian.Site.insert(pid_1, "first of 1", 1)
+    # Syncordian.Site.insert(pid_2, "first of 2\n", 2)
 
     # for i <- 1..10 do
-    #   CRDT.Site.insert(pid, "value#{i}\n", 0)
+    #   Syncordian.Site.insert(pid, "value#{i}\n", 0)
     # end
-    # CRDT.Site.info(pid)
-    # CRDT.Site.raw_print(pid_0)
+    # Syncordian.Site.info(pid)
+    # Syncordian.Site.raw_print(pid_0)
     # delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
     Process.sleep(2000)
-    CRDT.Site.raw_print(pid_1)
+    Syncordian.Site.raw_print(pid_1)
     # Process.sleep(3000)
     # kill()
   end

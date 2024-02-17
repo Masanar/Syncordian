@@ -1,4 +1,4 @@
-defmodule CRDT.Site do
+defmodule Syncordian.Site do
   @moduledoc """
     This module is responsible for the site structure and the site operations provides the
     following functions:
@@ -8,11 +8,11 @@ defmodule CRDT.Site do
     - raw_print(pid) : prints the document of the site without the site structure
   """
   use TypeCheck
-  import CRDT.Info
-  import CRDT.Document
-  import CRDT.Byzantine
-  import CRDT.Line
-  import CRDT.Line_Object
+  import Syncordian.Info
+  import Syncordian.Document
+  import Syncordian.Byzantine
+  import Syncordian.Line
+  import Syncordian.Line_Object
   require Record
   @delete_limit 10_000
   Record.defrecord(:site,
@@ -45,7 +45,7 @@ defmodule CRDT.Site do
     The returned content is the pid of the site. The pid is the corresponding content of the
     pid of the spawned process.
   """
-  @spec start(CRDT.Types.peer_id()) :: pid
+  @spec start(Syncordian.Types.peer_id()) :: pid
   def start(peer_id) do
     pid = spawn(__MODULE__, :loop, [define(peer_id)])
     :global.register_name(peer_id, pid)
@@ -58,7 +58,7 @@ defmodule CRDT.Site do
     This function is the main loop of the site, it receives messages and calls the
     appropriate functions to handle them.
   """
-  @spec loop(CRDT.Types.site()) :: any
+  @spec loop(Syncordian.Types.site()) :: any
   def loop(site) do
     receive do
       {:delete_line, index_position} ->
@@ -173,7 +173,7 @@ defmodule CRDT.Site do
     of new line by its line_id. It calls an auxiliary function to do the job, passing the
     line_id, the document as arguments ant the initial index 0.
   """
-  @spec get_document_index_by_line_id(CRDT.Types.line(), CRDT.Types.document()) :: integer
+  @spec get_document_index_by_line_id(Syncordian.Types.line(), Syncordian.Types.document()) :: integer
   defp get_document_index_by_line_id(line, document = [head | tail]) do
     line_id = get_line_id(line)
     get_document_index_by_line_id_aux(line_id, document, 0)
@@ -183,13 +183,13 @@ defmodule CRDT.Site do
     This is an private recursive auxiliar function over the length of the document to get
     the index of the line by its line_id.
     NOTE: It is important to keep the precondition of not having any line ID greater than
-    the @max_float defined at CRDT.Line module! or else this function will get to an empty
+    the @max_float defined at Syncordian.Line module! or else this function will get to an empty
     document and will return an error. I define a case for this situation, but it is better
     just to ensure that the line_id is always less than the @max_float.
   """
   @spec get_document_index_by_line_id_aux(
-          CRDT.Types.line_id(),
-          CRDT.Types.document(),
+          Syncordian.Types.line_id(),
+          Syncordian.Types.document(),
           integer()
         ) :: integer
 
@@ -211,21 +211,21 @@ defmodule CRDT.Site do
     This is a private function used to get the number of marked as deleted lines of the
     document of the site.
   """
-  @spec get_document_deleted_lines(CRDT.Types.site()) :: integer
+  @spec get_document_deleted_lines(Syncordian.Types.site()) :: integer
   defp get_document_deleted_lines(site), do: site(site, :deleted_count)
 
   @doc """
     This is a private function used whenever an update to the document is needed. It
     updates the record site with the new document.
   """
-  @spec update_site_document(CRDT.Types.document(), CRDT.Types.site()) :: any
+  @spec update_site_document(Syncordian.Types.document(), Syncordian.Types.site()) :: any
   defp update_site_document(document, site), do: site(site, document: document)
 
   @doc """
     This is a private function used whenever an update to the pid is needed. It updates
     the record site with the new pid.
   """
-  @spec update_site_pid(pid, CRDT.Types.site()) :: any
+  @spec update_site_pid(pid, Syncordian.Types.site()) :: any
   defp update_site_pid(pid, site), do: site(site, pid: pid)
 
   defp get_site_peer_id(site), do: site(site, :peer_id)
@@ -240,7 +240,7 @@ defmodule CRDT.Site do
     Given a document and a position index, this function returns the previous and next
     parents of the given index.
   """
-  @spec get_parents_by_index(CRDT.Types.document(), integer) :: any
+  @spec get_parents_by_index(Syncordian.Types.document(), integer) :: any
   defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
   defp get_parents_by_index(document, pos_index) do

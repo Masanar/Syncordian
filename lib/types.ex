@@ -1,6 +1,6 @@
-defmodule CRDT.Types do
+defmodule Syncordian.Types do
   @moduledoc """
-      This module provides the types used in the CRDT implementation
+      This module provides the types used in the Syncordian implementation
   """
   use TypeCheck
 
@@ -15,12 +15,12 @@ defmodule CRDT.Types do
   @type peer_id :: integer
 
   @typedoc """
-      Type that represents the position identifier of a CRDT document line 
+      Type that represents the position identifier of a Syncordian document line 
   """
   @type line_id :: float
 
   @typedoc """
-      Type that represents a line of a CRDT document
+      Type that represents a line of a Syncordian document
   """
   @type line :: %{line_id: line_id,
                   content: content, 
@@ -31,13 +31,13 @@ defmodule CRDT.Types do
                 }
 
   @typedoc """
-      Type that represents a CRDT document, that is a list of lines, each line has an
+      Type that represents a Syncordian document, that is a list of lines, each line has an
       unique position identifier and a content
   """
   @type document :: [line]
 
   @typedoc """
-      Type that represents the individual replica of the CRDT document for each peer
+      Type that represents the individual replica of the Syncordian document for each peer
   """
   @type site :: %{
           id: peer_id(),

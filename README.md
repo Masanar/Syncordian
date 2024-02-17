@@ -1,6 +1,6 @@
-# Bizantine CRDT
+# Bizantine Syncordian
 
-This a Elixir implementation of CRDT supporting byzantine faults.
+This a Elixir implementation of Syncordian supporting byzantine faults.
 
 ## Installation
 

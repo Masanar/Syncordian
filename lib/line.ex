@@ -1,4 +1,4 @@
-defmodule CRDT.Line_Object do
+defmodule Syncordian.Line_Object do
   use TypeCheck
   import Record
   @min_float 130.0
@@ -26,35 +26,35 @@ defmodule CRDT.Line_Object do
     This function is a getter for the deleted field of a line record, this field is true
     when the line was marked as deleted false otherwise
   """
-  @spec get_status(CRDT.Types.line()) :: boolean()
+  @spec get_status(Syncordian.Types.line()) :: boolean()
   def get_status(line),
     do: line(line, :status)
 
   @doc """
     This function is a getter for  the line_id field of a line record
   """
-  @spec get_line_id(CRDT.Types.line()) :: CRDT.Types.line_id()
+  @spec get_line_id(Syncordian.Types.line()) :: Syncordian.Types.line_id()
   def get_line_id(line),
     do: line(line, :line_id)
 
   @doc """
     This function is a getter for the content field of a line record
   """
-  @spec get_content(CRDT.Types.line()) :: CRDT.Types.content()
+  @spec get_content(Syncordian.Types.line()) :: Syncordian.Types.content()
   def get_content(line),
     do: line(line, :content)
 
   @doc """
     This function is a getter for the signature field of a line record
   """
-  @spec get_signature(CRDT.Types.line()) :: CRDT.Types.signature()
+  @spec get_signature(Syncordian.Types.line()) :: Syncordian.Types.signature()
   def get_signature(line),
     do: line(line, :signature)
 
   @doc """
     This function is a getter for the peer_id field of a line record
   """
-  @spec get_peer_id(CRDT.Types.line()) :: CRDT.Types.peer_id()
+  @spec get_peer_id(Syncordian.Types.line()) :: Syncordian.Types.peer_id()
   def get_peer_id(line),
     do: line(line, :peer_id)
 
@@ -62,7 +62,7 @@ defmodule CRDT.Line_Object do
     This function creates the infimum line for the given peer id
     that is the absolute first line within peer's document
   """
-  @spec create_infimum_line(CRDT.Types.peer_id()) :: CRDT.Types.line()
+  @spec create_infimum_line(Syncordian.Types.peer_id()) :: Syncordian.Types.line()
   def create_infimum_line(peer_id),
     do:
       line(
@@ -76,7 +76,7 @@ defmodule CRDT.Line_Object do
     This function creates the supremum line for the given peer id
     that is the absolute last line within peer's document
   """
-  @spec create_supremum_line(CRDT.Types.peer_id()) :: CRDT.Types.line()
+  @spec create_supremum_line(Syncordian.Types.peer_id()) :: Syncordian.Types.line()
   def create_supremum_line(peer_id),
     do:
       line(
@@ -87,7 +87,7 @@ defmodule CRDT.Line_Object do
       )
 end
 
-defmodule CRDT.Line do
+defmodule Syncordian.Line do
   use TypeCheck
   @moduledoc """
     This module is responsible for the line structure and the line operations provides the
@@ -103,8 +103,8 @@ defmodule CRDT.Line do
     - create_line_between_two_lines(content, left_parent, right_parent) : creates a new
       line between two lines
   """
-  import CRDT.Line_Object
-  import CRDT.Byzantine
+  import Syncordian.Line_Object
+  import Syncordian.Byzantine
 
   @doc """
     Given two lines, left_parent and right_parent, this function creates a new line
@@ -117,10 +117,10 @@ defmodule CRDT.Line do
       - If there is no 'room' between the parent's ids, then...
   """
   @spec create_line_between_two_lines(
-          content :: CRDT.Types.content(),
-          left_parent :: CRDT.Types.line(),
-          right_parent :: CRDT.Types.line()
-        ) :: CRDT.Types.line()
+          content :: Syncordian.Types.content(),
+          left_parent :: Syncordian.Types.line(),
+          right_parent :: Syncordian.Types.line()
+        ) :: Syncordian.Types.line()
   def create_line_between_two_lines(
         content,
         left_parent,
@@ -170,8 +170,8 @@ defmodule CRDT.Line do
       this, I think that in the case the 0 option should be returned (?)
   """
   @spec compare_lines(
-          line1 :: CRDT.Types.line(),
-          line2 :: CRDT.Types.line()
+          line1 :: Syncordian.Types.line(),
+          line2 :: Syncordian.Types.line()
         ) :: 0 | 1 | -1
   def compare_lines(line1, line2) do
     line1_id = get_line_id(line1)

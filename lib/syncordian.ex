@@ -2,7 +2,7 @@ defmodule Syncordian do
   use TypeCheck
   import Syncordian.Site
   @moduledoc """
-  Documentation for `BizantineLogoot`.
+  Documentation for `Syncordian`.
   """
 
   @doc """

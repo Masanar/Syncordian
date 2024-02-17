@@ -100,27 +100,37 @@ defmodule CRDT.Site do
         |> update_site_document(site)
         |> loop
 
-      {:send_broadcast, sequence} ->
-        :global.registered_names()
-        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
-
-        loop(site)
-
       {:receive_broadcast, line} ->
         # TODO: check the information and reduce the count if the line is not ready yet
         document = site(site, :document)
         line_content = get_content(line)
         line_index = get_document_index_by_line_id(line, document)
         [left_parent, right_parent] = get_parents_by_index(document, line_index)
-        IO.inspect(line_index)
-        IO.inspect(left_parent)
-        IO.inspect(right_parent)
-        check_signature(
-          left_parent,
-          line,
-          right_parent
-        ) |>  IO.inspect
+
+        valid_line? = check_signature(left_parent, line, right_parent)
+        insertion_attempts_reach? = get_line_insertion_attempts(line) > @max_insertion_attempts
+
+        case {valid_line?, insertion_attempts_reach?} do
+          {true, false} ->
+            add_line_to_document(line, document)
+            |> update_site_document(site)
+            |> loop
+
+          {false, false} ->
+            new_line = tick_line_insertion_attempts(line)
+            send(self(), {:receive_broadcast, new_line})
+            loop(site)
+
+          {false, true} ->
+            IO.inspect("A line has reach its insertion attempts limit! in peer #{get_site_peer_id(site)} \n")
+            loop(site)
+        end
+
+      {:send_broadcast, sequence} ->
+        :global.registered_names()
+        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
+        |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
+
         loop(site)
 
       {:print, _} ->
@@ -138,7 +148,7 @@ defmodule CRDT.Site do
     end
   end
 
-  def check_deleted_lines_limit(site) do
+  defp check_deleted_lines_limit(site) do
     case get_document_deleted_lines(site) > @delete_limit do
       true ->
         # TODO: HERE call the mechanism of broadcast consensus
@@ -244,7 +254,7 @@ defmodule CRDT.Site do
   end
 
   @doc """
-  This is a private function used to update the deleted count of the site.
+    This is a private function used to update the deleted count of the site.
   """
   defp tick_site_deleted_count(site) do
     new_count = site(site, :deleted_count) + 1

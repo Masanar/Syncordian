@@ -3,6 +3,7 @@ defmodule CRDT.Line_Object do
   import Record
   @min_float 130.0
   @max_float 230_584_300_921_369.0
+  @max_insertion_attempts 5
   Record.defrecord(:line,
     line_id: None,
     content: None,
@@ -12,10 +13,10 @@ defmodule CRDT.Line_Object do
     insertion_attempts: 0
   )
 
-  def tick_insertion_attempts(line),
+  def tick_line_insertion_attempts(line),
     do: line(line, insertion_attempts: line(line, :insertion_attempts) + 1)
 
-  def get_insertion_attempts(line), do: line(line, :insertion_attempts)
+  def get_line_insertion_attempts(line), do: line(line, :insertion_attempts)
 
   def set_line_status(line, new_status) do
     line(line, status: new_status)

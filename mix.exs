@@ -1,11 +1,11 @@
-defmodule BizantineLogoot.MixProject do
+defmodule Syncordian.MixProject do
   @moduledoc """
   """
   use Mix.Project
 
   def project do
     [
-      app: :bizantine_logoot,
+      app: :syncordian,
       version: "0.1.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,

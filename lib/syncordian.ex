@@ -21,9 +21,9 @@ defmodule CRDT do
     # pid_2 = CRDT.Site.start(3)
 
     CRDT.Site.insert(pid_0, "first of 0\n", 0)
-    # CRDT.Site.insert(pid_0, "second of 0\n", 1)
-    # CRDT.Site.insert(pid_0, "third of 0\n", 2)
-    # CRDT.Site.insert(pid_0, "fourth of 0\n", 3)
+    CRDT.Site.insert(pid_0, "second of 0\n", 1)
+    CRDT.Site.insert(pid_0, "third of 0\n", 2)
+    CRDT.Site.insert(pid_0, "fourth of 0\n", 3)
     # CRDT.Site.insert(pid_1, "first of 1", 1)
     # CRDT.Site.insert(pid_2, "first of 2\n", 2)
 
@@ -34,16 +34,17 @@ defmodule CRDT do
     # CRDT.Site.raw_print(pid_0)
     # delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
-    CRDT.Site.raw_print(pid_0)
+    Process.sleep(2000)
+    CRDT.Site.raw_print(pid_1)
+    # Process.sleep(3000)
+    # kill()
   end
 
-  def name(peer_id), do: :global.whereis_name(peer_id)
+  defp name(peer_id), do: :global.whereis_name(peer_id)
 
   def kill do
-    for i <- 0..3 do
-      :global.whereis_name(i) |> Process.exit(:kill)
-      IO.inspect("killed #{i}")
-    end
+    :global.registered_names()
+    |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
   end
 
 end

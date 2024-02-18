@@ -32,7 +32,7 @@ defmodule Syncordian do
     # end
     # Syncordian.Site.info(pid)
     # Syncordian.Site.raw_print(pid_0)
-    # delete_line(pid_0, 2)
+    delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
     Process.sleep(2000)
     Syncordian.Site.raw_print(pid_1)

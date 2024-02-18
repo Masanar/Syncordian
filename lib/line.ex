@@ -13,7 +13,15 @@ defmodule Syncordian.Line_Object do
     insertion_attempts: 0
   )
 
-  def compare_max_insertion_attempts(count), do: count < @max_insertion_attempts
+  @doc """
+    Compares the count of attempts to delete a broadcasted line with the predefine maximum
+    number, currently the insertion and deletion have both the same maximum number of
+    attempts. 
+
+    Returns true if the count is greater than the maximum number of attempts, false
+    otherwise.
+  """
+  def compare_max_insertion_attempts(count), do: count > @max_insertion_attempts
 
   def tick_line_insertion_attempts(line),
     do: line(line, insertion_attempts: line(line, :insertion_attempts) + 1)
@@ -91,20 +99,6 @@ end
 
 defmodule Syncordian.Line do
   use TypeCheck
-  @moduledoc """
-    This module is responsible for the line structure and the line operations provides the
-    following functions:
-    - get_line_id(line) : returns the line id
-    - get_content(line) : returns the content of the line
-    - get_signature(line) : returns the signature of the line
-    - get_peer_id(line) : returns the peer id of the line
-    - create_infimum_line(peer_id) : creates the infimum line for the given peer id
-      document
-    - create_supremum_line(peer_id) : creates the supremum line for the given peer id
-      document
-    - create_line_between_two_lines(content, left_parent, right_parent) : creates a new
-      line between two lines
-  """
   import Syncordian.Line_Object
   import Syncordian.Byzantine
 

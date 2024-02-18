@@ -92,7 +92,7 @@ defmodule Syncordian.Document do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
     right_parent = get_document_line_by_index(document, index + 1)
-    {left_parent, right_parent}
+    [left_parent, right_parent]
   end
 
   @doc """

@@ -61,11 +61,6 @@ defmodule Syncordian.Site do
   def loop(site) do
     receive do
       {:delete_line, index_position} ->
-        # TODO: Check if the deleted limit is reached, I think that this is possible by 
-        # checking the length of the document and the number of deleted lines, or maybe
-        # change the clock to be just the number of lines deleted. 
-        # HERE TO CONTINUE!!!!
-        # TODO: Send the broadcast to the other sites and migrate that implementation
         document = site(site, :document)
         document_len = get_document_length(document)
 
@@ -84,8 +79,7 @@ defmodule Syncordian.Site do
             line_deleted_id = line_deleted |> get_line_id
             [left_parent, right_parent] = get_document_line_fathers(document, line_deleted)
 
-            line_delete_signature =
-              create_signature_delete(left_parent, right_parent)
+            line_delete_signature = create_signature_delete(left_parent, right_parent)
 
             send(
               self(),
@@ -107,7 +101,6 @@ defmodule Syncordian.Site do
             left_parent,
             right_parent
           )
-        
 
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
 

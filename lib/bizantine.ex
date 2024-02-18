@@ -25,7 +25,7 @@ defmodule Syncordian.Byzantine do
     As a security feature the signature the creation of the signature for the delete operation
     is different from the insert operation. This function, create a signature just by using
     the left parent and right parent signatures.
-    # TODO: small -> Notice that deleted_line is not used in this function, refactor it.
+    # TODO (small) -> Notice that deleted_line is not used in this function, refactor it.
   """
   @spec create_signature_delete(
           left_parent :: Syncordian.Types.line(),

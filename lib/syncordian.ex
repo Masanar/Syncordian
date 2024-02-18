@@ -1,6 +1,6 @@
 defmodule Syncordian do
   use TypeCheck
-  import Syncordian.Site
+  import Syncordian.Peer
   @moduledoc """
   Documentation for `Syncordian`.
   """
@@ -10,32 +10,47 @@ defmodule Syncordian do
 
   ## Examples
 
-      iex> Syncordian.hello()
-      :world
+      iex> Syncordian.test
 
   """
   def test do
-    # pid = Syncordian.Site.start(0)
-    pid_0 = Syncordian.Site.start(1)
-    pid_1 = Syncordian.Site.start(2)
-    # pid_2 = Syncordian.Site.start(3)
+    # pid = start(0)
+    pid_0 = start(0)
+    pid_1 = start(1)
+    pid_2 = start(2)
 
-    Syncordian.Site.insert(pid_0, "first of 0\n", 0)
-    Syncordian.Site.insert(pid_0, "second of 0\n", 1)
-    Syncordian.Site.insert(pid_0, "third of 0\n", 2)
-    Syncordian.Site.insert(pid_0, "fourth of 0\n", 3)
-    # Syncordian.Site.insert(pid_1, "first of 1", 1)
-    # Syncordian.Site.insert(pid_2, "first of 2\n", 2)
+    insert(pid_0, "first of 0\n", 0)
+    insert(pid_0, "second of 0\n", 1)
+    insert(pid_0, "third of 0\n", 2)
+    insert(pid_0, "fourth of 0\n", 3)
+    # 
+    Process.sleep(4000)
+    # 
+    insert(pid_1, "first of 1", 1)
+    insert(pid_1, "second of 1", 1)
+    Process.sleep(4000)
+
+    # insert(pid_2, "first of 2\n", 2)
 
     # for i <- 1..10 do
-    #   Syncordian.Site.insert(pid, "value#{i}\n", 0)
+    #   insert(pid, "value#{i}\n", 0)
     # end
-    # Syncordian.Site.info(pid)
-    # Syncordian.Site.raw_print(pid_0)
-    delete_line(pid_0, 2)
+    # info(pid)
+    # raw_print(pid_0)
+    # delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
     Process.sleep(2000)
-    Syncordian.Site.raw_print(pid_1)
+    raw_print(pid_0)
+    IO.inspect("\n\n\n")
+    Process.sleep(2000)
+    raw_print(pid_1)
+    IO.inspect("\n\n\n")
+    Process.sleep(2000)
+    raw_print(pid_2)
+    IO.inspect("\n\n\n")
+    Process.sleep(2000)
+    raw_print(pid_0)
+    IO.inspect("\n\n\n")
     # Process.sleep(3000)
     # kill()
   end

@@ -1,11 +1,11 @@
-defmodule Syncordian.Site do
+defmodule Syncordian.Peer do
   @moduledoc """
-    This module is responsible for the site structure and the site operations provides the
+    This module is responsible for the peer structure and the peer operations provides the
     following functions:
-    - start(peer_id) : starts a site with the given peer_id
+    - start(peer_id) : starts a peer with the given peer_id
     - insert(pid,content,index) : inserts a content at the given index
-    - info(pid) : prints the document of the site
-    - raw_print(pid) : prints the document of the site without the site structure
+    - info(pid) : prints the document of the peer
+    - raw_print(pid) : prints the document of the peer without the peer structure
   """
   use TypeCheck
   require Record
@@ -14,7 +14,7 @@ defmodule Syncordian.Site do
   import Syncordian.Byzantine
   import Syncordian.Line_Object
   @delete_limit 10_000
-  Record.defrecord(:site,
+  Record.defrecord(:peer,
     peer_id: None,
     document: None,
     pid: None,
@@ -24,7 +24,7 @@ defmodule Syncordian.Site do
 
   @doc """
     This function prints the whole document as a list of lists by sending a message to the
-    loop site function with the atom :print.
+    loop peer function with the atom :print.
   """
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
@@ -33,15 +33,15 @@ defmodule Syncordian.Site do
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to the
-    loop site function. The messages uses the following format:
+    loop peer function. The messages uses the following format:
     {:insert,[content,index]}
   """
   @spec insert(pid, String.t(), integer) :: any
   def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
 
   @doc """
-    This function starts a site with the given peer_id and registers it in the global registry.
-    The returned content is the pid of the site. The pid is the corresponding content of the
+    This function starts a peer with the given peer_id and registers it in the global registry.
+    The returned content is the pid of the peer. The pid is the corresponding content of the
     pid of the spawned process.
   """
   @spec start(Syncordian.Types.peer_id()) :: pid
@@ -54,26 +54,26 @@ defmodule Syncordian.Site do
   end
 
   @doc """
-    This function is the main loop of the site, it receives messages and calls the
+    This function is the main loop of the peer, it receives messages and calls the
     appropriate functions to handle them.
   """
-  @spec loop(Syncordian.Types.site()) :: any
-  def loop(site) do
+  @spec loop(Syncordian.Types.peer()) :: any
+  def loop(peer) do
     receive do
       {:delete_line, index_position} ->
-        document = site(site, :document)
+        document = peer(peer, :document)
         document_len = get_document_length(document)
 
         case document_len - 1 <= index_position or document_len < 0 do
           true ->
             IO.puts("This line does not exist! \n")
-            loop(site)
+            loop(peer)
 
           _ ->
-            site =
+            peer =
               document
               |> update_line_status(index_position, true)
-              |> update_site_document(site)
+              |> update_site_document(peer)
 
             line_deleted = get_document_line_by_index(document, index_position)
             line_deleted_id = line_deleted |> get_line_id
@@ -86,11 +86,11 @@ defmodule Syncordian.Site do
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
 
-            tick_site_deleted_count(site)
+            tick_site_deleted_count(peer)
         end
 
       {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, attempt_count}} ->
-        document = site(site, :document)
+        document = peer(peer, :document)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
         [left_parent, right_parent] = get_document_line_fathers(document, current_document_line)
@@ -108,12 +108,12 @@ defmodule Syncordian.Site do
           {true, false} ->
             index_position = get_document_index_by_line_id(document, line_deleted_id)
 
-            site =
+            peer =
               document
               |> update_line_status(index_position, true)
-              |> update_site_document(site)
+              |> update_site_document(peer)
 
-            tick_site_deleted_count(site)
+            tick_site_deleted_count(peer)
 
           {false, false} ->
             send(
@@ -122,14 +122,14 @@ defmodule Syncordian.Site do
                {line_deleted_id, line_delete_signature, attempt_count + 1}}
             )
 
-            loop(site)
+            loop(peer)
 
           {_, true} ->
             IO.inspect(
-              "A line has reach its deletion attempts limit! in peer #{get_site_peer_id(site)} \n"
+              "A line has reach its deletion attempts limit! in peer #{get_site_peer_id(peer)} \n"
             )
 
-            loop(site)
+            loop(peer)
         end
 
       {:send_delete_broadcast, delete_line_info} ->
@@ -139,11 +139,11 @@ defmodule Syncordian.Site do
           send(x |> :global.whereis_name(), {:receive_delete_broadcast, delete_line_info})
         end)
 
-        loop(site)
+        loop(peer)
 
       # This correspond to the insert process do it by the peer
       {:insert, [content, index_position]} ->
-        document = site(site, :document)
+        document = peer(peer, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
 
         new_line = create_line_between_two_lines(content, left_parent, right_parent)
@@ -152,11 +152,11 @@ defmodule Syncordian.Site do
 
         new_line
         |> add_line_to_document(document)
-        |> update_site_document(site)
+        |> update_site_document(peer)
         |> loop
 
       {:receive_insert_broadcast, line} ->
-        document = site(site, :document)
+        document = peer(peer, :document)
         line_index = get_document_new_index_by_receiving_line_id(line, document)
         [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
@@ -167,20 +167,20 @@ defmodule Syncordian.Site do
           {true, false} ->
             # TODO: Reiniciar el contador de intentos de insercion a 0
             add_line_to_document(line, document)
-            |> update_site_document(site)
+            |> update_site_document(peer)
             |> loop
 
           {false, false} ->
             new_line = tick_line_insertion_attempts(line)
             send(self(), {:receive_insert_broadcast, new_line})
-            loop(site)
+            loop(peer)
 
           {false, true} ->
             IO.inspect(
-              "A line has reach its insertion attempts limit! in peer #{get_site_peer_id(site)} \n"
+              "A line has reach its insertion attempts limit! in peer #{get_site_peer_id(peer)} \n"
             )
 
-            loop(site)
+            loop(peer)
         end
 
       {:send_insert_broadcast, new_line} ->
@@ -190,25 +190,25 @@ defmodule Syncordian.Site do
           send(x |> :global.whereis_name(), {:receive_insert_broadcast, new_line})
         end)
 
-        loop(site)
+        loop(peer)
 
       {:print, _} ->
-        IO.inspect(site)
-        loop(site)
+        IO.inspect(peer)
+        loop(peer)
 
       {:save_pid, pid} ->
         pid
-        |> update_site_pid(site)
+        |> update_site_pid(peer)
         |> loop
 
       {_, _} ->
         IO.puts("Wrong message")
-        loop(site)
+        loop(peer)
     end
   end
 
-  defp check_deleted_lines_limit(site) do
-    case get_document_deleted_lines(site) > @delete_limit do
+  defp check_deleted_lines_limit(peer) do
+    case get_document_deleted_lines(peer) > @delete_limit do
       true ->
         # TODO: HERE call the mechanism of broadcast consensus
         IO.puts(
@@ -216,35 +216,35 @@ defmodule Syncordian.Site do
         )
 
         IO.puts(
-          " The deleted lines limit has been reached by #{inspect(get_site_peer_id(site))} "
+          " The deleted lines limit has been reached by #{inspect(get_site_peer_id(peer))} "
         )
 
         IO.puts(" __________________________________________________________________________ \n ")
-        loop(site)
+        loop(peer)
 
       _ ->
-        loop(site)
+        loop(peer)
     end
   end
 
   # This is a private function used to get the number of marked as deleted lines of the
-  # document of the site.
-  @spec get_document_deleted_lines(Syncordian.Types.site()) :: integer
-  defp get_document_deleted_lines(site), do: site(site, :deleted_count)
+  # document of the peer.
+  @spec get_document_deleted_lines(Syncordian.Types.peer()) :: integer
+  defp get_document_deleted_lines(peer), do: peer(peer, :deleted_count)
 
   # This is a private function used whenever an update to the document is needed. It
-  # updates the record site with the new document.
-  @spec update_site_document(Syncordian.Types.document(), Syncordian.Types.site()) :: any
-  defp update_site_document(document, site), do: site(site, document: document)
+  # updates the record peer with the new document.
+  @spec update_site_document(Syncordian.Types.document(), Syncordian.Types.peer()) :: any
+  defp update_site_document(document, peer), do: peer(peer, document: document)
 
   # This is a private function used whenever an update to the pid is needed. It updates
-  # the record site with the new pid.
-  @spec update_site_pid(pid, Syncordian.Types.site()) :: any
-  defp update_site_pid(pid, site), do: site(site, pid: pid)
+  # the record peer with the new pid.
+  @spec update_site_pid(pid, Syncordian.Types.peer()) :: any
+  defp update_site_pid(pid, peer), do: peer(peer, pid: pid)
 
-  defp get_site_peer_id(site), do: site(site, :peer_id)
+  defp get_site_peer_id(peer), do: peer(peer, :peer_id)
 
-  # This is a private function used to save the pid of the site in the record.
+  # This is a private function used to save the pid of the peer in the record.
   @spec save_site_pid(pid) :: any
   defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
 
@@ -263,18 +263,18 @@ defmodule Syncordian.Site do
     end
   end
 
-  # This is a private function used to update the deleted count of the site.
-  defp tick_site_deleted_count(site) do
-    new_count = site(site, :deleted_count) + 1
+  # This is a private function used to update the deleted count of the peer.
+  defp tick_site_deleted_count(peer) do
+    new_count = peer(peer, :deleted_count) + 1
 
-    site(site, deleted_count: new_count)
+    peer(peer, deleted_count: new_count)
     |> check_deleted_lines_limit
   end
 
-  # This is a private function used to instance the initial document of the site within
-  # the record site.
+  # This is a private function used to instance the initial document of the peer within
+  # the record peer.
   defp define(peer_id) do
     initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
-    site(peer_id: peer_id, document: initial_site_document)
+    peer(peer_id: peer_id, document: initial_site_document)
   end
 end

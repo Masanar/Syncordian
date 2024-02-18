@@ -39,7 +39,7 @@ defmodule Syncordian.Types do
   @typedoc """
       Type that represents the individual replica of the Syncordian document for each peer
   """
-  @type site :: %{
+  @type peer :: %{
           id: peer_id(),
           clock: clock(),
           document: document(),

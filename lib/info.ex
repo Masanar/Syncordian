@@ -1,7 +1,7 @@
 defmodule Syncordian.Info do
   use TypeCheck
   @moduledoc """
-  This module provides information functions about the site document:
+  This module provides information functions about the  document:
   - print_document_info(document) : prints the document content as an string and the
     length of the document, returns nothing.
   - document_length(document) : returns the length of the document, prints nothing.

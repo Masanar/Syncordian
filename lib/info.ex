@@ -29,10 +29,8 @@ defmodule Syncordian.Info do
   @spec document_length(Syncordian.Types.document()) :: integer
   def document_length(document), do: document |> length |> Kernel.-(2)
 
-  @doc """
-  This a private function that returns a list with the document content as an string and
-  the length of the document.
-  """
+  # This a private function that returns a list with the document content as an string and
+  # the length of the document.
   @spec show_document_str(Syncordian.Types.document()) :: {String.t(), integer}
   defp show_document_str(document),
     do:

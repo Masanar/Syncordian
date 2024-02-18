@@ -1,17 +1,19 @@
 defmodule Syncordian.Line_Object do
   use TypeCheck
-  import Record
+  require Record
   @min_float 130.0
   @max_float 230_584_300_921_369.0
   @max_insertion_attempts 5
   Record.defrecord(:line,
-    line_id: None,
-    content: None,
-    signature: None,
+    line_id: 0.0,
+    content: "",
+    signature: "",
     peer_id: None,
     status: false,
     insertion_attempts: 0
   )
+
+  def compare_max_insertion_attempts(count), do: count < @max_insertion_attempts
 
   def tick_line_insertion_attempts(line),
     do: line(line, insertion_attempts: line(line, :insertion_attempts) + 1)
@@ -144,7 +146,7 @@ defmodule Syncordian.Line do
           :rand.uniform(round(right_parent_id) - round(left_parent_id) - 1) + left_parent_id
 
         signature =
-          create_signature(
+          create_signature_insert(
             get_signature(left_parent),
             content,
             get_signature(right_parent),

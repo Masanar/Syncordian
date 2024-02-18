@@ -8,19 +8,18 @@ defmodule Syncordian.Site do
     - raw_print(pid) : prints the document of the site without the site structure
   """
   use TypeCheck
-  import Syncordian.Info
+  require Record
+  import Syncordian.Line
   import Syncordian.Document
   import Syncordian.Byzantine
-  import Syncordian.Line
   import Syncordian.Line_Object
-  require Record
   @delete_limit 10_000
   Record.defrecord(:site,
     peer_id: None,
     document: None,
     pid: None,
     deleted_count: 0,
-    deleted_limit: @deleted_limit
+    deleted_limit: @delete_limit
   )
 
   @doc """
@@ -65,6 +64,7 @@ defmodule Syncordian.Site do
         # TODO: Check if the deleted limit is reached, I think that this is possible by 
         # checking the length of the document and the number of deleted lines, or maybe
         # change the clock to be just the number of lines deleted. 
+        # HERE TO CONTINUE!!!!
         # TODO: Send the broadcast to the other sites and migrate that implementation
         document = site(site, :document)
         document_len = get_document_length(document)
@@ -80,56 +80,122 @@ defmodule Syncordian.Site do
               |> update_line_status(index_position, true)
               |> update_site_document(site)
 
+            line_deleted = get_document_line_by_index(document, index_position)
+            line_deleted_id = line_deleted |> get_line_id
+            [left_parent, right_parent] = get_document_line_fathers(document, line_deleted)
+
+            line_delete_signature =
+              create_signature_delete(left_parent, right_parent)
+
+            send(
+              self(),
+              {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
+            )
+
             tick_site_deleted_count(site)
-            |> check_deleted_lines_limit
         end
+
+      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, attempt_count}} ->
+        document = site(site, :document)
+        current_document_line = get_document_line_by_line_id(document, line_deleted_id)
+        current_document_line? = current_document_line != nil
+        [left_parent, right_parent] = get_document_line_fathers(document, current_document_line)
+
+        valid_signature? =
+          check_signature_delete(
+            line_delete_signature,
+            left_parent,
+            right_parent
+          )
+        
+
+        max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
+
+        case {valid_signature? and current_document_line?, max_attempts_reach?} do
+          {true, false} ->
+            index_position = get_document_index_by_line_id(document, line_deleted_id)
+
+            site =
+              document
+              |> update_line_status(index_position, true)
+              |> update_site_document(site)
+
+            tick_site_deleted_count(site)
+
+          {false, false} ->
+            send(
+              self(),
+              {:receive_insert_broadcast,
+               {line_deleted_id, line_delete_signature, attempt_count + 1}}
+            )
+
+            loop(site)
+
+          {_, true} ->
+            IO.inspect(
+              "A line has reach its deletion attempts limit! in peer #{get_site_peer_id(site)} \n"
+            )
+
+            loop(site)
+        end
+
+      {:send_delete_broadcast, delete_line_info} ->
+        :global.registered_names()
+        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
+        |> Enum.map(fn x ->
+          send(x |> :global.whereis_name(), {:receive_delete_broadcast, delete_line_info})
+        end)
+
+        loop(site)
 
       # This correspond to the insert process do it by the peer
       {:insert, [content, index_position]} ->
-        # TODO: Send the broadcast to the other sites and migrate that implementation
         document = site(site, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
-        # site_new_clock = tick_site_clock(site, current_clock + 1)
 
         new_line = create_line_between_two_lines(content, left_parent, right_parent)
 
-        send(self(), {:send_broadcast, new_line})
+        send(self(), {:send_insert_broadcast, new_line})
 
         new_line
         |> add_line_to_document(document)
         |> update_site_document(site)
         |> loop
 
-      {:receive_broadcast, line} ->
-        # TODO: check the information and reduce the count if the line is not ready yet
+      {:receive_insert_broadcast, line} ->
         document = site(site, :document)
-        line_content = get_content(line)
-        line_index = get_document_index_by_line_id(line, document)
+        line_index = get_document_new_index_by_receiving_line_id(line, document)
         [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
-        valid_line? = check_signature(left_parent, line, right_parent)
+        valid_line? = check_signature_insert(left_parent, line, right_parent)
         insertion_attempts_reach? = get_line_insertion_attempts(line) > @max_insertion_attempts
 
         case {valid_line?, insertion_attempts_reach?} do
           {true, false} ->
+            # TODO: Reiniciar el contador de intentos de insercion a 0
             add_line_to_document(line, document)
             |> update_site_document(site)
             |> loop
 
           {false, false} ->
             new_line = tick_line_insertion_attempts(line)
-            send(self(), {:receive_broadcast, new_line})
+            send(self(), {:receive_insert_broadcast, new_line})
             loop(site)
 
           {false, true} ->
-            IO.inspect("A line has reach its insertion attempts limit! in peer #{get_site_peer_id(site)} \n")
+            IO.inspect(
+              "A line has reach its insertion attempts limit! in peer #{get_site_peer_id(site)} \n"
+            )
+
             loop(site)
         end
 
-      {:send_broadcast, sequence} ->
+      {:send_insert_broadcast, new_line} ->
         :global.registered_names()
         |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x -> send(x |> :global.whereis_name(), {:receive_broadcast, sequence}) end)
+        |> Enum.map(fn x ->
+          send(x |> :global.whereis_name(), {:receive_insert_broadcast, new_line})
+        end)
 
         loop(site)
 
@@ -168,78 +234,29 @@ defmodule Syncordian.Site do
     end
   end
 
-  @doc """
-    This is a private function used to get the index (position in the document i.e. list)
-    of new line by its line_id. It calls an auxiliary function to do the job, passing the
-    line_id, the document as arguments ant the initial index 0.
-  """
-  @spec get_document_index_by_line_id(Syncordian.Types.line(), Syncordian.Types.document()) :: integer
-  defp get_document_index_by_line_id(line, document = [head | tail]) do
-    line_id = get_line_id(line)
-    get_document_index_by_line_id_aux(line_id, document, 0)
-  end
-
-  @doc """
-    This is an private recursive auxiliar function over the length of the document to get
-    the index of the line by its line_id.
-    NOTE: It is important to keep the precondition of not having any line ID greater than
-    the @max_float defined at Syncordian.Line module! or else this function will get to an empty
-    document and will return an error. I define a case for this situation, but it is better
-    just to ensure that the line_id is always less than the @max_float.
-  """
-  @spec get_document_index_by_line_id_aux(
-          Syncordian.Types.line_id(),
-          Syncordian.Types.document(),
-          integer()
-        ) :: integer
-
-  defp get_document_index_by_line_id_aux(_, document = [], _) do
-    IO.puts("There is an error with the line id it is greater than the maximum float")
-    1
-  end
-
-  defp get_document_index_by_line_id_aux(line_id, document = [head | tail], index) do
-    head_line_id = get_line_id(head)
-
-    case line_id < head_line_id do
-      true -> index
-      _ -> get_document_index_by_line_id_aux(line_id, tail, index + 1)
-    end
-  end
-
-  @doc """
-    This is a private function used to get the number of marked as deleted lines of the
-    document of the site.
-  """
+  # This is a private function used to get the number of marked as deleted lines of the
+  # document of the site.
   @spec get_document_deleted_lines(Syncordian.Types.site()) :: integer
   defp get_document_deleted_lines(site), do: site(site, :deleted_count)
 
-  @doc """
-    This is a private function used whenever an update to the document is needed. It
-    updates the record site with the new document.
-  """
+  # This is a private function used whenever an update to the document is needed. It
+  # updates the record site with the new document.
   @spec update_site_document(Syncordian.Types.document(), Syncordian.Types.site()) :: any
   defp update_site_document(document, site), do: site(site, document: document)
 
-  @doc """
-    This is a private function used whenever an update to the pid is needed. It updates
-    the record site with the new pid.
-  """
+  # This is a private function used whenever an update to the pid is needed. It updates
+  # the record site with the new pid.
   @spec update_site_pid(pid, Syncordian.Types.site()) :: any
   defp update_site_pid(pid, site), do: site(site, pid: pid)
 
   defp get_site_peer_id(site), do: site(site, :peer_id)
 
-  @doc """
-    This is a private function used to save the pid of the site in the record.
-  """
+  # This is a private function used to save the pid of the site in the record.
   @spec save_site_pid(pid) :: any
   defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
 
-  @doc """
-    Given a document and a position index, this function returns the previous and next
-    parents of the given index.
-  """
+  # Given a document and a position index, this function returns the previous and next
+  # parents of the given index.
   @spec get_parents_by_index(Syncordian.Types.document(), integer) :: any
   defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
@@ -253,18 +270,16 @@ defmodule Syncordian.Site do
     end
   end
 
-  @doc """
-    This is a private function used to update the deleted count of the site.
-  """
+  # This is a private function used to update the deleted count of the site.
   defp tick_site_deleted_count(site) do
     new_count = site(site, :deleted_count) + 1
+
     site(site, deleted_count: new_count)
+    |> check_deleted_lines_limit
   end
 
-  @doc """
-    This is a private function used to instance the initial document of the site within
-    the record site.
-  """
+  # This is a private function used to instance the initial document of the site within
+  # the record site.
   defp define(peer_id) do
     initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
     site(peer_id: peer_id, document: initial_site_document)

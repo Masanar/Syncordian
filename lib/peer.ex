@@ -13,13 +13,15 @@ defmodule Syncordian.Peer do
   import Syncordian.Document
   import Syncordian.Byzantine
   import Syncordian.Line_Object
+  import Syncordian.Utilities
   @delete_limit 10_000
   Record.defrecord(:peer,
     peer_id: None,
     document: None,
     pid: None,
     deleted_count: 0,
-    deleted_limit: @delete_limit
+    deleted_limit: @delete_limit,
+    vector_clock: []
   )
 
   @doc """
@@ -29,6 +31,10 @@ defmodule Syncordian.Peer do
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
 
+  @doc """
+    This function is used to delete a line at the given index in the current document of the
+    peer by sending a message to the loop peer function.
+  """
   def delete_line(pid, index_position), do: send(pid, {:delete_line, index_position})
 
   @doc """
@@ -44,11 +50,11 @@ defmodule Syncordian.Peer do
     The returned content is the pid of the peer. The pid is the corresponding content of the
     pid of the spawned process.
   """
-  @spec start(Syncordian.Types.peer_id()) :: pid
-  def start(peer_id) do
+  @spec start(Syncordian.Types.peer_id(), integer) :: pid
+  def start(peer_id, network_size) do
     pid = spawn(__MODULE__, :loop, [define(peer_id)])
     :global.register_name(peer_id, pid)
-    save_site_pid(pid)
+    save_site_pid(peer_id, pid, network_size)
     IO.puts("#{inspect(peer_id)} registered at #{inspect(pid)}")
     pid
   end
@@ -142,6 +148,11 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
+
+      # TODO: (question) This insert seems to be right, I just have a doubt about the
+      # status in which a new line is born, definitely is not tombstone, but I am not sure
+      # whether is should be aura or settled
+
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
@@ -153,6 +164,7 @@ defmodule Syncordian.Peer do
         new_line
         |> add_line_to_document(document)
         |> update_site_document(peer)
+        |> tick_individual_peer_clock
         |> loop
 
       {:receive_insert_broadcast, line} ->
@@ -196,8 +208,8 @@ defmodule Syncordian.Peer do
         IO.inspect(peer)
         loop(peer)
 
-      {:save_pid, pid} ->
-        pid
+      {:save_pid, info} ->
+        info
         |> update_site_pid(peer)
         |> loop
 
@@ -210,7 +222,7 @@ defmodule Syncordian.Peer do
   defp check_deleted_lines_limit(peer) do
     case get_document_deleted_lines(peer) > @delete_limit do
       true ->
-        # TODO: HERE call the mechanism of broadcast consensus
+        # TODO: HERE call the mechanism of broadcast consensus -> update
         IO.puts(
           " \n __________________________________________________________________________ \n "
         )
@@ -240,13 +252,20 @@ defmodule Syncordian.Peer do
   # This is a private function used whenever an update to the pid is needed. It updates
   # the record peer with the new pid.
   @spec update_site_pid(pid, Syncordian.Types.peer()) :: any
-  defp update_site_pid(pid, peer), do: peer(peer, pid: pid)
+  defp update_site_pid({pid, network_size, peer_id}, peer),
+    do:
+      peer(peer,
+        pid: pid,
+        vector_clock: List.duplicate(0, network_size),
+        peer_id: peer_id
+      )
 
   defp get_site_peer_id(peer), do: peer(peer, :peer_id)
 
   # This is a private function used to save the pid of the peer in the record.
-  @spec save_site_pid(pid) :: any
-  defp save_site_pid(pid), do: send(pid, {:save_pid, pid})
+  @spec save_site_pid(pid, integer, integer) :: any
+  defp save_site_pid(pid, network_size, peer_id),
+    do: send(pid, {:save_pid, {pid, network_size, peer_id}})
 
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index.
@@ -276,5 +295,17 @@ defmodule Syncordian.Peer do
   defp define(peer_id) do
     initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
     peer(peer_id: peer_id, document: initial_site_document)
+  end
+
+  # This function is used to update the vector clock of the peer, it increments only the
+  # value of the peer_id in the vector clock. The tick is done by adding 1 to the value of
+  # the peer_id in the vector clock.
+  @spec tick_individual_peer_clock(Syncordian.Types.peer()) :: Syncordian.Types.peer()
+  defp tick_individual_peer_clock(peer) do
+    peer_id = peer(peer, :peer_id)
+    vector_clock = peer(peer, :vector_clock)
+    new_peer_clock_value = Enum.at(vector_clock, peer_id) + 1
+    new_vector_clock = update_list_value(vector_clock, peer_id, new_peer_clock_value, 0)
+    peer(peer, vector_clock: new_vector_clock)
   end
 end

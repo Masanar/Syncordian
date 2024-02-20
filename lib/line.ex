@@ -9,7 +9,7 @@ defmodule Syncordian.Line_Object do
     content: "",
     signature: "",
     peer_id: None,
-    status: false,
+    status: :settled,
     insertion_attempts: 0
   )
 

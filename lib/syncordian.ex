@@ -15,8 +15,8 @@ defmodule Syncordian do
   """
   def test do
     # pid = start(0)
-    pid_0 = start(0)
-    pid_1 = start(1)
+    pid_0 = start(0,2)
+    pid_1 = start(1,2)
     # pid_2 = start(2)
 
     insert(pid_0, "first of 0\n", 0)

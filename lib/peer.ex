@@ -161,7 +161,7 @@ defmodule Syncordian.Peer do
         [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
         valid_line? = check_signature_insert(left_parent, line, right_parent)
-        insertion_attempts_reach? = get_line_insertion_attempts(line) > @max_insertion_attempts
+        insertion_attempts_reach? = check_insertions_attempts(line)
 
         case {valid_line?, insertion_attempts_reach?} do
           {true, false} ->

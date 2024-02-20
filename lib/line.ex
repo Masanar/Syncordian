@@ -13,10 +13,14 @@ defmodule Syncordian.Line_Object do
     insertion_attempts: 0
   )
 
+  @spec check_insertions_attempts(Syncordian.Types.line()) :: boolean()
+  def check_insertions_attempts(line),
+    do: line |> get_line_insertion_attempts |> compare_max_insertion_attempts
+
   @doc """
     Compares the count of attempts to delete a broadcasted line with the predefine maximum
     number, currently the insertion and deletion have both the same maximum number of
-    attempts. 
+    attempts.
 
     Returns true if the count is greater than the maximum number of attempts, false
     otherwise.

@@ -12,42 +12,42 @@ defmodule Syncordian.Document do
     the process of inserting a new line broadcasted in the document, so it is important to
     get the index by comparing the line_id with the line_id of the lines in the document.
     And giving the 'middle' index to insert the new line. In the current local peer
-    receiving the new insert.
+    incoming the new insert.
   """
-  @spec get_document_new_index_by_receiving_line_id(
+  @spec get_document_new_index_by_incoming_line_id(
           Syncordian.Types.line(),
           Syncordian.Types.document()
         ) ::
           integer
-  def get_document_new_index_by_receiving_line_id(line, document) do
+  def get_document_new_index_by_incoming_line_id(line, document) do
     line_id = get_line_id(line)
-    get_document_new_index_by_receiving_line_id_aux(line_id, document, 0)
+    get_document_new_index_by_incoming_line_id_aux(line_id, document, 0)
   end
 
   # This is an private recursive auxiliar function over the length of the document to get
-  # the index of the line by its line_id. 
+  # the index of the line by its line_id.
 
   # NOTE: It is important to keep the precondition of not having any line ID greater than
   # the @max_float defined at Syncordian.Line module! or else this function will get to an
   # empty document and will return an error. I define a case for this situation, but it is
   # better just to ensure that the line_id is always less than the @max_float.
-  @spec get_document_new_index_by_receiving_line_id_aux(
+  @spec get_document_new_index_by_incoming_line_id_aux(
           Syncordian.Types.line_id(),
           Syncordian.Types.document(),
           integer()
         ) :: integer
 
-  defp get_document_new_index_by_receiving_line_id_aux(_, [], _) do
+  defp get_document_new_index_by_incoming_line_id_aux(_, [], _) do
     IO.puts("There is an error with the line id it is greater than the maximum float")
     1
   end
 
-  defp get_document_new_index_by_receiving_line_id_aux(line_id, [head | tail], index) do
+  defp get_document_new_index_by_incoming_line_id_aux(line_id, [head | tail], index) do
     head_line_id = get_line_id(head)
 
     case line_id < head_line_id do
       true -> index
-      _ -> get_document_new_index_by_receiving_line_id_aux(line_id, tail, index + 1)
+      _ -> get_document_new_index_by_incoming_line_id_aux(line_id, tail, index + 1)
     end
   end
 

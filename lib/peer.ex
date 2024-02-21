@@ -14,6 +14,7 @@ defmodule Syncordian.Peer do
   import Syncordian.Byzantine
   import Syncordian.Line_Object
   import Syncordian.Utilities
+  import Syncordian.Vector_Clock
   @delete_limit 10_000
   Record.defrecord(:peer,
     peer_id: None,
@@ -52,9 +53,9 @@ defmodule Syncordian.Peer do
   """
   @spec start(Syncordian.Types.peer_id(), integer) :: pid
   def start(peer_id, network_size) do
-    pid = spawn(__MODULE__, :loop, [define(peer_id)])
+    pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
-    save_site_pid(peer_id, pid, network_size)
+    save_peer_pid(pid, peer_id, network_size)
     IO.puts("#{inspect(peer_id)} registered at #{inspect(pid)}")
     pid
   end
@@ -79,7 +80,7 @@ defmodule Syncordian.Peer do
             peer =
               document
               |> update_line_status(index_position, true)
-              |> update_site_document(peer)
+              |> update_peer_document(peer)
 
             line_deleted = get_document_line_by_index(document, index_position)
             line_deleted_id = line_deleted |> get_line_id
@@ -92,10 +93,11 @@ defmodule Syncordian.Peer do
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
 
-            tick_site_deleted_count(peer)
+            tick_peer_deleted_count(peer)
         end
 
       {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, attempt_count}} ->
+        # TODO: (question) Should we keep the delete attempt count? I think that YES
         document = peer(peer, :document)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
@@ -117,14 +119,14 @@ defmodule Syncordian.Peer do
             peer =
               document
               |> update_line_status(index_position, true)
-              |> update_site_document(peer)
+              |> update_peer_document(peer)
 
-            tick_site_deleted_count(peer)
+            tick_peer_deleted_count(peer)
 
           {false, false} ->
             send(
               self(),
-              {:receive_insert_broadcast,
+              {:receive_delete_broadcast,
                {line_deleted_id, line_delete_signature, attempt_count + 1}}
             )
 
@@ -132,7 +134,7 @@ defmodule Syncordian.Peer do
 
           {_, true} ->
             IO.inspect(
-              "A line has reach its deletion attempts limit! in peer #{get_site_peer_id(peer)} \n"
+              "A line has reach its deletion attempts limit! in peer #{get_peer_id(peer)} \n"
             )
 
             loop(peer)
@@ -148,11 +150,9 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-
       # TODO: (question) This insert seems to be right, I just have a doubt about the
       # status in which a new line is born, definitely is not tombstone, but I am not sure
       # whether is should be aura or settled
-
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
@@ -163,13 +163,52 @@ defmodule Syncordian.Peer do
 
         new_line
         |> add_line_to_document(document)
-        |> update_site_document(peer)
+        |> update_peer_document(peer)
         |> tick_individual_peer_clock
         |> loop
 
-      {:receive_insert_broadcast, line} ->
+      {:receive_insert_broadcast, line, incoming_peer_vector_clock} ->
+        # HERE!
+        # TODO: In some part the local vc of the incoming peer need to be updated
+        incoming_peer_id = get_line_peer_id(line)
+        local_vector_clock = get_local_vector_clock(peer)
+
+        clock_distance =
+          distance_between_vector_clocks(
+            local_vector_clock,
+            incoming_peer_vector_clock,
+            incoming_peer_id
+          )
+
+        case {clock_distance > 1, clock_distance == 1} do
+          {true, _} ->
+            send(self(), {:send_insert_broadcast, line, incoming_peer_vector_clock})
+            loop(peer)
+
+          {_, true} ->
+            order_vc = order_vector_clocks_definition(
+              local_vector_clock,
+              incoming_peer_vector_clock
+            )
+            case order_vc do
+              # local_vc < incoming_vc
+              true ->
+                IO.inspect("TO BE DEFINE")
+                # check the signature of the incoming line if it is valid merge the line
+                # else delete the line from the queue and loop over
+
+              # local_vc > incoming_vc
+              false ->
+                IO.inspect("TO BE DEFINE")
+
+            end
+
+          {_, _} ->
+            IO.inspect("The vector clock is not consistent")
+        end
+
         document = peer(peer, :document)
-        line_index = get_document_new_index_by_receiving_line_id(line, document)
+        line_index = get_document_new_index_by_incoming_line_id(line, document)
         [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
         valid_line? = check_signature_insert(left_parent, line, right_parent)
@@ -179,27 +218,34 @@ defmodule Syncordian.Peer do
           {true, false} ->
             # TODO: Reiniciar el contador de intentos de insercion a 0
             add_line_to_document(line, document)
-            |> update_site_document(peer)
+            |> update_peer_document(peer)
             |> loop
 
           {false, false} ->
             new_line = tick_line_insertion_attempts(line)
+            # TODO: (fix) check this send, if it is still necessary need to send the
+            # vector clock
             send(self(), {:receive_insert_broadcast, new_line})
             loop(peer)
 
           {false, true} ->
             IO.inspect(
-              "A line has reach its insertion attempts limit! in peer #{get_site_peer_id(peer)} \n"
+              "A line has reach its insertion attempts limit! in peer #{get_peer_id(peer)} \n"
             )
 
             loop(peer)
         end
 
       {:send_insert_broadcast, new_line} ->
+        current_vector_clock = peer(peer, :vector_clock)
+
         :global.registered_names()
         |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
         |> Enum.map(fn x ->
-          send(x |> :global.whereis_name(), {:receive_insert_broadcast, new_line})
+          send(
+            x |> :global.whereis_name(),
+            {:receive_insert_broadcast, new_line, current_vector_clock}
+          )
         end)
 
         loop(peer)
@@ -210,7 +256,7 @@ defmodule Syncordian.Peer do
 
       {:save_pid, info} ->
         info
-        |> update_site_pid(peer)
+        |> update_peer_pid(peer)
         |> loop
 
       {_, _} ->
@@ -227,9 +273,7 @@ defmodule Syncordian.Peer do
           " \n __________________________________________________________________________ \n "
         )
 
-        IO.puts(
-          " The deleted lines limit has been reached by #{inspect(get_site_peer_id(peer))} "
-        )
+        IO.puts(" The deleted lines limit has been reached by #{inspect(get_peer_id(peer))} ")
 
         IO.puts(" __________________________________________________________________________ \n ")
         loop(peer)
@@ -239,6 +283,10 @@ defmodule Syncordian.Peer do
     end
   end
 
+  # Getter for the current vector clock of the peer
+  @spec get_local_vector_clock(Syncordian.Types.peer()) :: list[integer]
+  defp get_local_vector_clock(peer), do: peer(peer, :vector_clock)
+
   # This is a private function used to get the number of marked as deleted lines of the
   # document of the peer.
   @spec get_document_deleted_lines(Syncordian.Types.peer()) :: integer
@@ -246,13 +294,14 @@ defmodule Syncordian.Peer do
 
   # This is a private function used whenever an update to the document is needed. It
   # updates the record peer with the new document.
-  @spec update_site_document(Syncordian.Types.document(), Syncordian.Types.peer()) :: any
-  defp update_site_document(document, peer), do: peer(peer, document: document)
+  @spec update_peer_document(Syncordian.Types.document(), Syncordian.Types.peer()) :: any
+  defp update_peer_document(document, peer), do: peer(peer, document: document)
 
   # This is a private function used whenever an update to the pid is needed. It updates
   # the record peer with the new pid.
-  @spec update_site_pid(pid, Syncordian.Types.peer()) :: any
-  defp update_site_pid({pid, network_size, peer_id}, peer),
+  @spec update_peer_pid(pid, Syncordian.Types.peer()) :: any
+  defp update_peer_pid({pid, network_size, peer_id}, peer),
+    # TODO: Be careful when using this function the vector clock is always set to 0
     do:
       peer(peer,
         pid: pid,
@@ -260,11 +309,11 @@ defmodule Syncordian.Peer do
         peer_id: peer_id
       )
 
-  defp get_site_peer_id(peer), do: peer(peer, :peer_id)
+  defp get_peer_id(peer), do: peer(peer, :peer_id)
 
   # This is a private function used to save the pid of the peer in the record.
-  @spec save_site_pid(pid, integer, integer) :: any
-  defp save_site_pid(pid, network_size, peer_id),
+  @spec save_peer_pid(pid, integer, integer) :: any
+  defp save_peer_pid(pid, network_size, peer_id),
     do: send(pid, {:save_pid, {pid, network_size, peer_id}})
 
   # Given a document and a position index, this function returns the previous and next
@@ -283,7 +332,7 @@ defmodule Syncordian.Peer do
   end
 
   # This is a private function used to update the deleted count of the peer.
-  defp tick_site_deleted_count(peer) do
+  defp tick_peer_deleted_count(peer) do
     new_count = peer(peer, :deleted_count) + 1
 
     peer(peer, deleted_count: new_count)
@@ -292,9 +341,9 @@ defmodule Syncordian.Peer do
 
   # This is a private function used to instance the initial document of the peer within
   # the record peer.
-  defp define(peer_id) do
-    initial_site_document = [create_infimum_line(peer_id), create_supremum_line(peer_id)]
-    peer(peer_id: peer_id, document: initial_site_document)
+  defp define(peer_id,network_size) do
+    initial_peer_document = [create_infimum_line(peer_id,network_size), create_supremum_line(peer_id,network_size)]
+    peer(peer_id: peer_id, document: initial_peer_document)
   end
 
   # This function is used to update the vector clock of the peer, it increments only the

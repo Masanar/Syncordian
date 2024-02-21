@@ -6,10 +6,14 @@ defmodule Syncordian.Types do
 
   @typedoc """
     Type that represents the status of a Syncordian document line, those are:
-        - :tombstone: the line was deleted by the user, but still exists in the document.
-        - :aura: the line was stash due to a clock inconsistency, and will be reinserted
+        - :tombstone: The line was deleted by the peer, but still exists in the document.
+
+        - :aura:
+            - The line has not been received but the whole network.
+            - The line was stash due to a clock inconsistency, and will be reinserted
             in the document when the stash is resolved.
-        - :settled: is a 'normal' line, that is not tombstone or aura.
+
+        - :settled: The line was received but all the peers.
   """
   @type status :: :tombstone | :aura | :settled
 
@@ -30,6 +34,13 @@ defmodule Syncordian.Types do
   @type vector_clock :: [integer()]
 
   @typedoc """
+    Type that represents the commit list of a Syncordian document line, it is a list of
+    boolean values, each value represents the commit status of the line in the peer
+    position
+  """
+  @type commit_list :: [boolean()]
+
+  @typedoc """
       Type that represents the peer id
   """
   @type peer_id :: integer()
@@ -48,7 +59,8 @@ defmodule Syncordian.Types do
           signature: signature(),
           peer_id: peer_id(),
           status: status(),
-          insertion_attempts: integer()
+          insertion_attempts: integer(),
+          committed_at: commit_list()
         }
 
   @typedoc """

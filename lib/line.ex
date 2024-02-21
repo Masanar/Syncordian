@@ -10,8 +10,14 @@ defmodule Syncordian.Line_Object do
     signature: "",
     peer_id: None,
     status: :settled,
-    insertion_attempts: 0
+    insertion_attempts: 0,
+    commit_at: []
   )
+
+
+  @spec get_commit_at(Syncordian.Types.line()) :: Syncordian.Types.commit_list()
+  def get_commit_at(line),
+    do: line(line, :commit_at)
 
   @spec check_insertions_attempts(Syncordian.Types.line()) :: boolean()
   def check_insertions_attempts(line),
@@ -68,43 +74,46 @@ defmodule Syncordian.Line_Object do
   @doc """
     This function is a getter for the peer_id field of a line record
   """
-  @spec get_peer_id(Syncordian.Types.line()) :: Syncordian.Types.peer_id()
-  def get_peer_id(line),
+  @spec get_line_peer_id(Syncordian.Types.line()) :: Syncordian.Types.peer_id()
+  def get_line_peer_id(line),
     do: line(line, :peer_id)
 
   @doc """
     This function creates the infimum line for the given peer id
     that is the absolute first line within peer's document
   """
-  @spec create_infimum_line(Syncordian.Types.peer_id()) :: Syncordian.Types.line()
-  def create_infimum_line(peer_id),
+  @spec create_infimum_line(Syncordian.Types.peer_id(), network_size :: integer) :: Syncordian.Types.line()
+  def create_infimum_line(peer_id, network_size),
     do:
       line(
         line_id: @min_float,
         content: "Infimum",
         signature: "Infimum",
-        peer_id: peer_id
+        peer_id: peer_id,
+        commit_at: List.duplicate(false, network_size)
       )
 
   @doc """
     This function creates the supremum line for the given peer id
     that is the absolute last line within peer's document
   """
-  @spec create_supremum_line(Syncordian.Types.peer_id()) :: Syncordian.Types.line()
-  def create_supremum_line(peer_id),
+  @spec create_supremum_line(Syncordian.Types.peer_id(), network_size :: integer) :: Syncordian.Types.line()
+  def create_supremum_line(peer_id, network_size),
     do:
       line(
         line_id: @max_float,
         content: "Supremum",
         signature: "Supremum",
-        peer_id: peer_id
+        peer_id: peer_id,
+        commit_at: List.duplicate(false, network_size)
       )
 end
 
 defmodule Syncordian.Line do
   use TypeCheck
-  import Syncordian.Line_Object
+  import Syncordian.Utilities
   import Syncordian.Byzantine
+  import Syncordian.Line_Object
 
   @doc """
     Given two lines, left_parent and right_parent, this function creates a new line
@@ -128,10 +137,15 @@ defmodule Syncordian.Line do
       ) do
     left_parent_id = get_line_id(left_parent)
     right_parent_id = get_line_id(right_parent)
-    peer_id = get_peer_id(left_parent)
+    peer_id = get_line_peer_id(left_parent)
+    network_size = length(get_commit_at(left_parent))
+    empty_commit_list = List.duplicate(false, network_size)
 
     case abs(left_parent_id - right_parent_id) do
+      # TODO: (implementation) review this case! What really happens when the distance is
+      # 1?
       1.0 ->
+        IO.puts("The distance between the parents id is 1, this is yet to be implemented!!! line.ex")
         line(
           line_id: 0.0,
           content: content,
@@ -155,7 +169,8 @@ defmodule Syncordian.Line do
           line_id: new_line_id,
           content: content,
           signature: signature,
-          peer_id: peer_id
+          peer_id: peer_id,
+          commit_at: update_list_value(empty_commit_list, peer_id, true, 0)
         )
     end
   end

@@ -51,7 +51,7 @@ defmodule Syncordian.Byzantine do
   def check_signature_insert(left_parent, to_check_line, right_parent) do
     left_parent_signature = get_signature(left_parent)
     right_parent_signature = get_signature(right_parent)
-    peer_id = get_peer_id(to_check_line)
+    peer_id = get_line_peer_id(to_check_line)
     signature = get_signature(to_check_line)
     content = get_content(to_check_line)
 
@@ -91,7 +91,7 @@ defmodule Syncordian.Byzantine do
            )
 
   @doc """
-    This function creates a signature based on the left parent content, the new content, 
+    This function creates a signature based on the left parent content, the new content,
     the right parent content and the peer id by concatenating them and hashing the result
     using the sha256 algorithm. It returns the hash encoded in base16.
   """

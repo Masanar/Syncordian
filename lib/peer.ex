@@ -89,7 +89,7 @@ defmodule Syncordian.Peer do
           _ ->
             peer =
               document
-              |> update_line_status(index_position, true)
+              |> update_document_line_status(index_position, :tombstone)
               |> update_peer_document(peer)
 
             line_deleted = get_document_line_by_index(document, index_position)
@@ -128,7 +128,7 @@ defmodule Syncordian.Peer do
 
             peer =
               document
-              |> update_line_status(index_position, true)
+              |> update_document_line_status(index_position, :tombstone)
               |> update_peer_document(peer)
 
             tick_peer_deleted_count(peer)
@@ -176,8 +176,6 @@ defmodule Syncordian.Peer do
         send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)
 
-      # |> loop
-
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         :global.registered_names()
         |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
@@ -190,11 +188,18 @@ defmodule Syncordian.Peer do
 
         loop(peer)
 
-      {:receive_insert_broadcast, line, insertion_state_vc} ->
-        IO.puts("\n \n \n Receive insert broadcast")
-        IO.inspect(line)
+      {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
+        IO.puts('\n\n\n----------')
+        IO.inspect("Confirmation received")
+        IO.inspect(inserted_line_id)
+        IO.inspect(received_peer_id)
         IO.puts('----------\n\n\n')
-        # HERE!
+        peer(peer, :document)
+        |> update_document_line_commit_at(inserted_line_id, received_peer_id)
+        |> update_peer_document(peer)
+        |> loop
+
+      {:receive_insert_broadcast, line, insertion_state_vc} ->
         # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_local_vector_clock(peer)
@@ -241,10 +246,7 @@ defmodule Syncordian.Peer do
                 # clock??
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
-                    # QUESTION? Es necesario reiniciar el contador de intentos de
-                    # inserción de la linea a 0? actualmente no se esta haciendo.
-                    # Creo que no!
-
+                    send_confirmation_line_insertion(get_peer_id(peer), incoming_peer_id,  get_line_id(line))
                     add_line_to_document(line, document)
                     |> update_peer_document(peer)
                     |> tick_projection_peer_clock(incoming_peer_id)
@@ -394,5 +396,20 @@ defmodule Syncordian.Peer do
     new_peer_clock_value = Enum.at(local_vector_clock, projection) + 1
     new_vector_clock = update_list_value(local_vector_clock, projection, new_peer_clock_value)
     peer(peer, vector_clock: new_vector_clock)
+  end
+
+  @doc """
+    This function send a messages to the sending peer to update the commit list of the
+    line that was inserted in the document of the receiving peer. As it just receive the
+    peer id it has to search the pid of the sending peer in the global registry.
+    When the message is received by the sending peer it is handled by the loop function
+    of the peer module.
+  """
+  @spec send_confirmation_line_insertion(receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
+                                        sending_peer_id :: Syncordian.Basic_Types.peer_id(),
+                                        inserted_line_id :: Syncordian.Basic_Types.line_id()) :: any
+  def send_confirmation_line_insertion(receiving_peer_id, sending_peer_id, inserted_line_id) do
+    sending_peer_pid = :global.whereis_name(sending_peer_id)
+    send(sending_peer_pid, {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}})
   end
 end

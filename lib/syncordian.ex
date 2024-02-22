@@ -39,6 +39,8 @@ defmodule Syncordian do
     # info(pid)
     Process.sleep(1000)
     raw_print(pid_1)
+    IO.puts("\n\n\n")
+    raw_print(pid_0)
     # delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
     # Process.sleep(2000)

@@ -106,13 +106,14 @@ defmodule Syncordian.Document do
     Given a document and a index, this function change the status of the line at the given
     index, returning the updated document.
   """
-  @spec update_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
+  @spec update_document_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
           Syncordian.Basic_Types.document()
-  def update_line_status(document, index, new_value) do
+  def update_document_line_status(document, index, new_value) do
     line = Enum.at(document, index)
     updated_line = set_line_status(line, new_value)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
+
 
   @doc """
     This function returns the length of the document
@@ -137,5 +138,31 @@ defmodule Syncordian.Document do
       -1 ->
         [line | document]
     end
+  end
+
+  @doc """
+    Given a document, a line_id of the document, and a peer_id, this function updates the
+    commit_at field of the line in the projection of the corresponding peer_id, returning
+    the updated document.
+  """
+  @spec update_document_line_commit_at(document :: Syncordian.Basic_Types.document(),
+                                       line_id :: Syncordian.Basic_Types.line_id(),
+                                       received_peer_id :: Syncordian.Basic_types.peer_id()) ::
+          Syncordian.Basic_Types.document()
+  def update_document_line_commit_at(document, line_id, received_peer_id) do
+    get_document_line_by_line_id(document, line_id)
+    |> update_line_commit_at(received_peer_id)
+    |> update_document_line_by_line(document)
+  end
+
+  @spec update_document_line_by_line(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Line_Object.line()
+        ) ::
+          Syncordian.Basic_Types.document()
+  def update_document_line_by_line(updated_line, document) do
+    line_id = get_line_id(updated_line)
+    index = get_document_index_by_line_id(document, line_id)
+    Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
 end

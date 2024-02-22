@@ -1,6 +1,7 @@
 defmodule Syncordian.Line_Object do
   use TypeCheck
   require Record
+  import Syncordian.Utilities
   @min_float 130.0
   @max_float 230_584_300_921_369.0
   @max_insertion_attempts 5
@@ -124,6 +125,17 @@ defmodule Syncordian.Line_Object do
         peer_id: peer_id,
         commit_at: List.duplicate(false, network_size)
       )
+
+  @doc """
+    Update the commit_at list of the line with in the received peer id projection, setting
+    the value to true.
+  """
+  @spec update_line_commit_at(Syncordian.Line_Object.line(), received_peer_id ::  Syncordian.Basic_Type.peer_id()) ::
+          Syncordian.Line_Object.line()
+  def update_line_commit_at(line, received_peer_id) do
+    commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
+    line(line, commit_at: commit_at)
+  end
 end
 
 defmodule Syncordian.Line do

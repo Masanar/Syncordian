@@ -9,8 +9,8 @@ defmodule Syncordian.Byzantine do
 
   @spec check_signature_delete(
           deleted_line_signature :: Syncordian.Types.signature(),
-          left_parent :: Syncordian.Types.line(),
-          right_parent :: Syncordian.Types.line()
+          left_parent :: Syncordian.Line_Object.line(),
+          right_parent :: Syncordian.Line_Object.line()
         ) :: boolean()
   def check_signature_delete(
         deleted_line_signature,
@@ -28,8 +28,8 @@ defmodule Syncordian.Byzantine do
     # TODO (small) -> Notice that deleted_line is not used in this function, refactor it.
   """
   @spec create_signature_delete(
-          left_parent :: Syncordian.Types.line(),
-          right_parent :: Syncordian.Types.line()
+          left_parent :: Syncordian.Line_Object.line(),
+          right_parent :: Syncordian.Line_Object.line()
         ) ::
           Syncordian.Types.signature()
   def create_signature_delete(left_parent, right_parent) do
@@ -44,9 +44,9 @@ defmodule Syncordian.Byzantine do
     by the left parent content, the new content, the right parent content and the peer id.
   """
   @spec check_signature_insert(
-          left_parent :: Syncordian.Types.line(),
-          to_check_line :: Syncordian.Types.line(),
-          right_parent :: Syncordian.Types.line()
+          left_parent :: Syncordian.Line_Object.line(),
+          to_check_line :: Syncordian.Line_Object.line(),
+          right_parent :: Syncordian.Line_Object.line()
         ) :: boolean()
   def check_signature_insert(left_parent, to_check_line, right_parent) do
     left_parent_signature = get_signature(left_parent)

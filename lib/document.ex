@@ -15,7 +15,7 @@ defmodule Syncordian.Document do
     incoming the new insert.
   """
   @spec get_document_new_index_by_incoming_line_id(
-          Syncordian.Types.line(),
+          Syncordian.Line_Object.line(),
           Syncordian.Types.document()
         ) ::
           integer
@@ -76,7 +76,7 @@ defmodule Syncordian.Document do
     line with the given line_id. If not found returns nil.
   """
   @spec get_document_line_by_line_id(Syncordian.Types.document(), Syncordian.Types.line_id()) ::
-          Syncordian.Types.line()
+          Syncordian.Line_Object.line()
   def get_document_line_by_line_id(document, line_id) do
     # TODO: check if this functions takes into account that the first and last elements of
     # the document are the infimum and supremum lines.
@@ -86,8 +86,8 @@ defmodule Syncordian.Document do
   @doc """
     Given a line of the document, this function returns both parents of the line.
   """
-  @spec get_document_line_fathers(Syncordian.Types.document(), Syncordian.Types.line()) ::
-          {Syncordian.Types.line(), Syncordian.Types.line()}
+  @spec get_document_line_fathers(Syncordian.Types.document(), Syncordian.Line_Object.line()) ::
+          {Syncordian.Line_Object.line(), Syncordian.Line_Object.line()}
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
@@ -99,7 +99,7 @@ defmodule Syncordian.Document do
     This function returns the specific line at the given index in the document
   """
   @spec get_document_line_by_index(Syncordian.Types.document(), integer()) ::
-          Syncordian.Types.line()
+          Syncordian.Line_Object.line()
   def get_document_line_by_index(document, index), do: Enum.at(document, index)
 
   @doc """
@@ -123,7 +123,7 @@ defmodule Syncordian.Document do
   @doc """
       This function insert a line into the document in the right position
   """
-  @spec add_line_to_document(Syncordian.Types.line(), Syncordian.Types.document()) ::
+  @spec add_line_to_document(Syncordian.Line_Object.line(), Syncordian.Types.document()) ::
           Syncordian.Types.document()
   def add_line_to_document(line, document = [head | tail]) do
     case compare_lines(line, head) do

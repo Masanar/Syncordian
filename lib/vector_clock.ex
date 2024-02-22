@@ -41,10 +41,10 @@ defmodule Syncordian.Vector_Clock do
         ) :: boolean
   def order_vector_clocks_definition(local_vc, incoming_vc) do
     local_vc_sum = Enum.sum(local_vc)
-    incoming_vc_sum = Enum.sum(local_vc)
+    incoming_vc_sum = Enum.sum(incoming_vc)
     case {local_vc_sum < incoming_vc_sum, local_vc_sum == incoming_vc_sum} do
-      {true, _}  -> true
-      {false, _} -> false
+      {true, false}  -> true
+      {false, false} -> false
       {_, true}  -> true
     end
   end

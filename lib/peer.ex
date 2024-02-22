@@ -24,14 +24,16 @@ defmodule Syncordian.Peer do
     deleted_limit: @delete_limit,
     vector_clock: []
   )
-  @type peer :: record(:peer,
-                       peer_id: Syncordian.Types.peer_id(),
-    document: Syncordian.Types.document(),
-    pid: pid(),
-    deleted_count: integer(),
-    deleted_limit: integer(),
-    vector_clock: list[integer]
-  )
+
+  @type peer ::
+          record(:peer,
+            peer_id: Syncordian.Basic_Types.peer_id(),
+            document: Syncordian.Basic_Types.document(),
+            pid: pid(),
+            deleted_count: integer(),
+            deleted_limit: integer(),
+            vector_clock: list[integer]
+          )
 
   @doc """
     This function prints the whole document as a list of lists by sending a message to the
@@ -59,11 +61,11 @@ defmodule Syncordian.Peer do
     The returned content is the pid of the peer. The pid is the corresponding content of the
     pid of the spawned process.
   """
-  @spec start(Syncordian.Types.peer_id(), integer) :: pid
+  @spec start(Syncordian.Basic_Types.peer_id(), integer) :: pid
   def start(peer_id, network_size) do
     pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
-    save_peer_pid(pid, peer_id, network_size)
+    save_peer_pid(pid, network_size, peer_id)
     IO.puts("#{inspect(peer_id)} registered at #{inspect(pid)}")
     pid
   end
@@ -158,9 +160,6 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      # TODO: (question) This insert seems to be right, I just have a doubt about the
-      # status in which a new line is born, definitely is not tombstone, but I am not sure
-      # whether is should be aura or settled
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
@@ -174,6 +173,20 @@ defmodule Syncordian.Peer do
         |> update_peer_document(peer)
         |> tick_individual_peer_clock
         |> loop
+
+      {:send_insert_broadcast, new_line} ->
+        current_vector_clock = peer(peer, :vector_clock)
+
+        :global.registered_names()
+        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
+        |> Enum.map(fn x ->
+          send(
+            x |> :global.whereis_name(),
+            {:receive_insert_broadcast, new_line, current_vector_clock}
+          )
+        end)
+
+        loop(peer)
 
       {:receive_insert_broadcast, line, incoming_peer_vector_clock} ->
         # HERE!
@@ -194,21 +207,23 @@ defmodule Syncordian.Peer do
             loop(peer)
 
           {_, true} ->
-            order_vc = order_vector_clocks_definition(
-              local_vector_clock,
-              incoming_peer_vector_clock
-            )
+            order_vc =
+              order_vector_clocks_definition(
+                local_vector_clock,
+                incoming_peer_vector_clock
+              )
+
             case order_vc do
               # local_vc < incoming_vc
               true ->
                 IO.inspect("TO BE DEFINE")
-                # check the signature of the incoming line if it is valid merge the line
-                # else delete the line from the queue and loop over
+
+              # check the signature of the incoming line if it is valid merge the line
+              # else delete the line from the queue and loop over
 
               # local_vc > incoming_vc
               false ->
                 IO.inspect("TO BE DEFINE")
-
             end
 
           {_, _} ->
@@ -243,20 +258,6 @@ defmodule Syncordian.Peer do
 
             loop(peer)
         end
-
-      {:send_insert_broadcast, new_line} ->
-        current_vector_clock = peer(peer, :vector_clock)
-
-        :global.registered_names()
-        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x ->
-          send(
-            x |> :global.whereis_name(),
-            {:receive_insert_broadcast, new_line, current_vector_clock}
-          )
-        end)
-
-        loop(peer)
 
       {:print, _} ->
         IO.inspect(peer)
@@ -302,12 +303,13 @@ defmodule Syncordian.Peer do
 
   # This is a private function used whenever an update to the document is needed. It
   # updates the record peer with the new document.
-  @spec update_peer_document(Syncordian.Types.document(), peer()) :: any
+  @spec update_peer_document(Syncordian.Basic_Types.document(), peer()) ::
+          any
   defp update_peer_document(document, peer), do: peer(peer, document: document)
 
   # This is a private function used whenever an update to the pid is needed. It updates
   # the record peer with the new pid.
-  @spec update_peer_pid(pid, peer()) :: any
+  @spec update_peer_pid({pid, integer(), Syncordian.Basic_Types.peer_id()}, peer()) :: peer()
   defp update_peer_pid({pid, network_size, peer_id}, peer),
     # TODO: Be careful when using this function the vector clock is always set to 0
     do:
@@ -326,7 +328,8 @@ defmodule Syncordian.Peer do
 
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index.
-  @spec get_parents_by_index(Syncordian.Types.document(), integer) :: any
+  @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
+          list[Syncordian.Line_Object.line()]
   defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
   defp get_parents_by_index(document, pos_index) do
@@ -349,8 +352,13 @@ defmodule Syncordian.Peer do
 
   # This is a private function used to instance the initial document of the peer within
   # the record peer.
-  defp define(peer_id,network_size) do
-    initial_peer_document = [create_infimum_line(peer_id,network_size), create_supremum_line(peer_id,network_size)]
+  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: peer()
+  defp define(peer_id, network_size) do
+    initial_peer_document = [
+      create_infimum_line(peer_id, network_size),
+      create_supremum_line(peer_id, network_size)
+    ]
+
     peer(peer_id: peer_id, document: initial_peer_document)
   end
 

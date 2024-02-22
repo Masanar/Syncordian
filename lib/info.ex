@@ -13,7 +13,7 @@ defmodule Syncordian.Info do
   Prints the document content as an string and the length of the document, returns
   nothing.
   """
-  @spec print_document_info(Syncordian.Types.document()) :: any
+  @spec print_document_info(Syncordian.Basic_Types.document()) :: any
   def print_document_info(document) do
     [document_str, document_len] = document |> show_document_str
     IO.puts("\n ------------------")
@@ -26,12 +26,12 @@ defmodule Syncordian.Info do
   @doc """
   Returns the length of the document, prints nothing.
   """
-  @spec document_length(Syncordian.Types.document()) :: integer
+  @spec document_length(Syncordian.Basic_Types.document()) :: integer
   def document_length(document), do: document |> length |> Kernel.-(2)
 
   # This a private function that returns a list with the document content as an string and
   # the length of the document.
-  @spec show_document_str(Syncordian.Types.document()) :: {String.t(), integer}
+  @spec show_document_str(Syncordian.Basic_Types.document()) :: {String.t(), integer}
   defp show_document_str(document),
     do:
       Enum.reduce(document, ["", 0], fn [_, value], [str, count] -> [str <> value, count + 1] end)

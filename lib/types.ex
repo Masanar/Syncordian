@@ -1,4 +1,4 @@
-defmodule Syncordian.Types do
+defmodule Syncordian.Basic_Types do
   @moduledoc """
       This module provides the types used in the Syncordian implementation
   """

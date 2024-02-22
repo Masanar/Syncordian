@@ -19,16 +19,17 @@ defmodule Syncordian do
     pid_1 = start(1,2)
     # pid_2 = start(2)
 
+
     insert(pid_0, "first of 0\n", 0)
     insert(pid_0, "second of 0\n", 1)
-    insert(pid_0, "third of 0\n", 2)
-    insert(pid_0, "fourth of 0\n", 3)
+    # insert(pid_1, "first of 1\n", 2)
+    # insert(pid_0, "fourth of 0\n", 3)
     #
-    Process.sleep(9000)
+    # Process.sleep(9000)
     #
-    insert(pid_1, "first of 1", 1)
-    insert(pid_1, "second of 1", 1)
-    Process.sleep(4000)
+    # insert(pid_1, "first of 1", 1)
+    # insert(pid_1, "second of 1", 1)
+    # Process.sleep(4000)
 
     # insert(pid_2, "first of 2\n", 2)
 
@@ -41,9 +42,9 @@ defmodule Syncordian do
     # delete_line(pid_0, 3)
     Process.sleep(2000)
     raw_print(pid_0)
-    IO.inspect("\n\n\n")
-    Process.sleep(2000)
-    raw_print(pid_1)
+    # IO.inspect("\n\n\n")
+    # Process.sleep(2000)
+    # raw_print(pid_1)
     # IO.inspect("\n\n\n")
     # Process.sleep(2000)
     # raw_print(pid_2)

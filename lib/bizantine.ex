@@ -8,7 +8,7 @@ defmodule Syncordian.Byzantine do
   import Syncordian.Line_Object
 
   @spec check_signature_delete(
-          deleted_line_signature :: Syncordian.Types.signature(),
+          deleted_line_signature :: Syncordian.Basic_Types.signature(),
           left_parent :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line()
         ) :: boolean()
@@ -31,7 +31,7 @@ defmodule Syncordian.Byzantine do
           left_parent :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line()
         ) ::
-          Syncordian.Types.signature()
+          Syncordian.Basic_Types.signature()
   def create_signature_delete(left_parent, right_parent) do
     left_parent_signature = get_signature(left_parent)
     right_parent_signature = get_signature(right_parent)
@@ -68,11 +68,11 @@ defmodule Syncordian.Byzantine do
   # created by the left parent content, the new content, the right parent content and the
   # peer id.
   @spec check_signature_insert(
-          left_parent_signature :: Syncordian.Types.content(),
-          content :: Syncordian.Types.content(),
-          right_parent_signature :: Syncordian.Types.content(),
-          peer_id :: Syncordian.Types.peer_id(),
-          signature :: Syncordian.Types.signature()
+          left_parent_signature :: Syncordian.Basic_Types.content(),
+          content :: Syncordian.Basic_Types.content(),
+          right_parent_signature :: Syncordian.Basic_Types.content(),
+          peer_id :: Syncordian.Basic_Types.peer_id(),
+          signature :: Syncordian.Basic_Types.signature()
         ) :: boolean()
   defp check_signature_insert(
          left_parent_signature,
@@ -96,11 +96,11 @@ defmodule Syncordian.Byzantine do
     using the sha256 algorithm. It returns the hash encoded in base16.
   """
   @spec create_signature_insert(
-          left_parent_signature :: Syncordian.Types.content(),
-          new_content :: Syncordian.Types.content(),
-          right_parent_signature :: Syncordian.Types.content(),
-          peer_id :: Syncordian.Types.peer_id()
-        ) :: Syncordian.Types.signature()
+          left_parent_signature :: Syncordian.Basic_Types.content(),
+          new_content :: Syncordian.Basic_Types.content(),
+          right_parent_signature :: Syncordian.Basic_Types.content(),
+          peer_id :: Syncordian.Basic_Types.peer_id()
+        ) :: Syncordian.Basic_Types.signature()
   def create_signature_insert(
         left_parent_signature,
         new_content,

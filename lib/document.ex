@@ -16,7 +16,7 @@ defmodule Syncordian.Document do
   """
   @spec get_document_new_index_by_incoming_line_id(
           Syncordian.Line_Object.line(),
-          Syncordian.Types.document()
+          Syncordian.Basic_Types.document()
         ) ::
           integer
   def get_document_new_index_by_incoming_line_id(line, document) do
@@ -32,8 +32,8 @@ defmodule Syncordian.Document do
   # empty document and will return an error. I define a case for this situation, but it is
   # better just to ensure that the line_id is always less than the @max_float.
   @spec get_document_new_index_by_incoming_line_id_aux(
-          Syncordian.Types.line_id(),
-          Syncordian.Types.document(),
+          Syncordian.Basic_Types.line_id(),
+          Syncordian.Basic_Types.document(),
           integer()
         ) :: integer
 
@@ -56,7 +56,7 @@ defmodule Syncordian.Document do
     line in the document.
   """
   @spec get_document_index_by_line_id(
-          document :: Syncordian.Types.document(),
+          document :: Syncordian.Basic_Types.document(),
           line_id :: Syncordian.Type.line_id()
         ) :: integer()
   def get_document_index_by_line_id(document, line_id) do
@@ -75,7 +75,7 @@ defmodule Syncordian.Document do
     Given the document and the line_id, this function search through the document to find the
     line with the given line_id. If not found returns nil.
   """
-  @spec get_document_line_by_line_id(Syncordian.Types.document(), Syncordian.Types.line_id()) ::
+  @spec get_document_line_by_line_id(Syncordian.Basic_Types.document(), Syncordian.Basic_Types.line_id()) ::
           Syncordian.Line_Object.line()
   def get_document_line_by_line_id(document, line_id) do
     # TODO: check if this functions takes into account that the first and last elements of
@@ -86,7 +86,7 @@ defmodule Syncordian.Document do
   @doc """
     Given a line of the document, this function returns both parents of the line.
   """
-  @spec get_document_line_fathers(Syncordian.Types.document(), Syncordian.Line_Object.line()) ::
+  @spec get_document_line_fathers(Syncordian.Basic_Types.document(), Syncordian.Line_Object.line()) ::
           {Syncordian.Line_Object.line(), Syncordian.Line_Object.line()}
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
@@ -98,7 +98,7 @@ defmodule Syncordian.Document do
   @doc """
     This function returns the specific line at the given index in the document
   """
-  @spec get_document_line_by_index(Syncordian.Types.document(), integer()) ::
+  @spec get_document_line_by_index(Syncordian.Basic_Types.document(), integer()) ::
           Syncordian.Line_Object.line()
   def get_document_line_by_index(document, index), do: Enum.at(document, index)
 
@@ -106,8 +106,8 @@ defmodule Syncordian.Document do
     Given a document and a index, this function change the status of the line at the given
     index, returning the updated document.
   """
-  @spec update_line_status(Syncordian.Types.document(), integer(), boolean()) ::
-          Syncordian.Types.document()
+  @spec update_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
+          Syncordian.Basic_Types.document()
   def update_line_status(document, index, new_value) do
     line = Enum.at(document, index)
     updated_line = set_line_status(line, new_value)
@@ -117,14 +117,14 @@ defmodule Syncordian.Document do
   @doc """
     This function returns the length of the document
   """
-  @spec get_document_length(Syncordian.Types.document()) :: integer
+  @spec get_document_length(Syncordian.Basic_Types.document()) :: integer
   def get_document_length(document), do: Enum.count(document)
 
   @doc """
       This function insert a line into the document in the right position
   """
-  @spec add_line_to_document(Syncordian.Line_Object.line(), Syncordian.Types.document()) ::
-          Syncordian.Types.document()
+  @spec add_line_to_document(Syncordian.Line_Object.line(), Syncordian.Basic_Types.document()) ::
+          Syncordian.Basic_Types.document()
   def add_line_to_document(line, document = [head | tail]) do
     case compare_lines(line, head) do
       1 ->

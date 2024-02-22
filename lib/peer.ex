@@ -166,29 +166,34 @@ defmodule Syncordian.Peer do
 
         new_line = create_line_between_two_lines(content, left_parent, right_parent)
 
-        send(self(), {:send_insert_broadcast, new_line})
+        peer =
+          new_line
+          |> add_line_to_document(document)
+          |> update_peer_document(peer)
+          |> tick_individual_peer_clock
 
-        new_line
-        |> add_line_to_document(document)
-        |> update_peer_document(peer)
-        |> tick_individual_peer_clock
-        |> loop
-
-      {:send_insert_broadcast, new_line} ->
         current_vector_clock = peer(peer, :vector_clock)
+        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
+        loop(peer)
 
+      # |> loop
+
+      {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         :global.registered_names()
         |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
         |> Enum.map(fn x ->
           send(
             x |> :global.whereis_name(),
-            {:receive_insert_broadcast, new_line, current_vector_clock}
+            {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
           )
         end)
 
         loop(peer)
 
-      {:receive_insert_broadcast, line, incoming_peer_vector_clock} ->
+      {:receive_insert_broadcast, line, insertion_state_vc} ->
+        IO.puts("\n \n \n Receive insert broadcast")
+        IO.inspect(line)
+        IO.puts('----------\n\n\n')
         # HERE!
         # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
@@ -197,66 +202,73 @@ defmodule Syncordian.Peer do
         clock_distance =
           distance_between_vector_clocks(
             local_vector_clock,
-            incoming_peer_vector_clock,
+            insertion_state_vc,
             incoming_peer_id
           )
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            send(self(), {:send_insert_broadcast, line, incoming_peer_vector_clock})
+            send(self(), {:receive_insert_broadcast, line, insertion_state_vc})
             loop(peer)
 
           {_, true} ->
             order_vc =
               order_vector_clocks_definition(
                 local_vector_clock,
-                incoming_peer_vector_clock
+                insertion_state_vc
               )
+
+            document = peer(peer, :document)
+            line_index = get_document_new_index_by_incoming_line_id(line, document)
+            [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
             case order_vc do
               # local_vc < incoming_vc
               true ->
-                IO.inspect("TO BE DEFINE")
+                # check the signature of the incoming line
+                # - if it is valid merge the line
+                # - else:
+                #   - if room for lines attempts requeue and loop over
+                #   - else delete the line from the queue and loop over
+                # TODO: check if the next code could be refactored into a function
+                valid_line? = check_signature_insert(left_parent, line, right_parent)
+                insertion_attempts_reach? = check_insertions_attempts(line)
 
-              # check the signature of the incoming line if it is valid merge the line
-              # else delete the line from the queue and loop over
+                # TODO: when sucsefully insert a line send a message to the peer that sent
+                # the line to update the commit_at of the line in the sending peer
+                # document
+                # IDEA: using the sucsefully inserted message we can update receiving peer
+                # clock??
+                case {valid_line?, insertion_attempts_reach?} do
+                  {true, false} ->
+                    # QUESTION? Es necesario reiniciar el contador de intentos de
+                    # inserción de la linea a 0? actualmente no se esta haciendo.
+                    # Creo que no!
+
+                    add_line_to_document(line, document)
+                    |> update_peer_document(peer)
+                    |> tick_projection_peer_clock(incoming_peer_id)
+                    |> loop
+
+                  {false, false} ->
+                    new_line = tick_line_insertion_attempts(line)
+                    send(self(), {:receive_insert_broadcast, new_line, insertion_state_vc})
+                    loop(peer)
+
+                  {false, true} ->
+                    IO.inspect("A line has reach the insertion attempts limit!")
+                    IO.inspect("peer: #{get_peer_id(peer)} \n")
+                    loop(peer)
+                end
 
               # local_vc > incoming_vc
               false ->
-                IO.inspect("TO BE DEFINE")
+                # stash process
+                IO.inspect("TO BE DEFINE second")
             end
 
           {_, _} ->
             IO.inspect("The vector clock is not consistent")
-        end
-
-        document = peer(peer, :document)
-        line_index = get_document_new_index_by_incoming_line_id(line, document)
-        [left_parent, right_parent] = get_parents_by_index(document, line_index)
-
-        valid_line? = check_signature_insert(left_parent, line, right_parent)
-        insertion_attempts_reach? = check_insertions_attempts(line)
-
-        case {valid_line?, insertion_attempts_reach?} do
-          {true, false} ->
-            # TODO: Reiniciar el contador de intentos de insercion a 0
-            add_line_to_document(line, document)
-            |> update_peer_document(peer)
-            |> loop
-
-          {false, false} ->
-            new_line = tick_line_insertion_attempts(line)
-            # TODO: (fix) check this send, if it is still necessary need to send the
-            # vector clock
-            send(self(), {:receive_insert_broadcast, new_line})
-            loop(peer)
-
-          {false, true} ->
-            IO.inspect(
-              "A line has reach its insertion attempts limit! in peer #{get_peer_id(peer)} \n"
-            )
-
-            loop(peer)
         end
 
       {:print, _} ->
@@ -370,7 +382,17 @@ defmodule Syncordian.Peer do
     peer_id = peer(peer, :peer_id)
     vector_clock = peer(peer, :vector_clock)
     new_peer_clock_value = Enum.at(vector_clock, peer_id) + 1
-    new_vector_clock = update_list_value(vector_clock, peer_id, new_peer_clock_value, 0)
+    new_vector_clock = update_list_value(vector_clock, peer_id, new_peer_clock_value)
+    peer(peer, vector_clock: new_vector_clock)
+  end
+
+  # This function is used to update only the specific projection in the vector clock of
+  # the local peer, it increments the current projection value by one.
+  @spec tick_projection_peer_clock(peer(), integer) :: peer()
+  defp tick_projection_peer_clock(peer, projection) do
+    local_vector_clock = peer(peer, :vector_clock)
+    new_peer_clock_value = Enum.at(local_vector_clock, projection) + 1
+    new_vector_clock = update_list_value(local_vector_clock, projection, new_peer_clock_value)
     peer(peer, vector_clock: new_vector_clock)
   end
 end

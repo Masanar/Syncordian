@@ -15,9 +15,8 @@ defmodule Syncordian.Vector_Clock do
           incoming_vc :: list[integer],
           incoming_peer_position :: integer
         ) :: integer
-  def distance_between_vector_clocks(local_vc, incoming_vc, incoming_peer_position) do
-    abs(local_vc[incoming_peer_position] - incoming_vc[incoming_peer_position])
-  end
+  def distance_between_vector_clocks(local_vc, incoming_vc, incoming_peer_position) ,do:
+    abs(Enum.at(local_vc,incoming_peer_position) - Enum.at(incoming_vc,incoming_peer_position))
 
   @doc """
     Return true when the local_vc is less than the incoming_vc.

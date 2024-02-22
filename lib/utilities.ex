@@ -11,8 +11,9 @@ defmodule Syncordian.Utilities do
   @spec update_list_value([any()], integer, any) :: [any()]
   def update_list_value([head | tail], index, value),
     do: update_list_value([head | tail], index, value, 0)
+
   @spec update_list_value([any()], integer, any, integer) :: [any()]
-  def update_list_value([head | tail], index, value, acc) do
+  defp update_list_value([head | tail], index, value, acc) do
     case index == acc do
       true -> [value | tail]
       false -> [head | update_list_value(tail, index, value, acc + 1)]

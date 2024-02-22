@@ -9,7 +9,7 @@ defmodule Syncordian.Line_Object do
     content: "",
     signature: "",
     peer_id: None,
-    status: :aurora,
+    status: :aura,
     insertion_attempts: 0,
     commit_at: []
   )
@@ -39,8 +39,8 @@ defmodule Syncordian.Line_Object do
     number, currently the insertion and deletion have both the same maximum number of
     attempts.
 
-    Returns true if the count is greater than the maximum number of attempts, false
-    otherwise.
+    true when the count of attempts to insert a line is greater than the maximum number.
+    false otherwise.
   """
   @spec compare_max_insertion_attempts(integer()) :: boolean()
   def compare_max_insertion_attempts(count), do: count > @max_insertion_attempts
@@ -190,7 +190,7 @@ defmodule Syncordian.Line do
           content: content,
           signature: signature,
           peer_id: peer_id,
-          commit_at: update_list_value(empty_commit_list, peer_id, true, 0)
+          commit_at: update_list_value(empty_commit_list, peer_id, true)
         )
     end
   end

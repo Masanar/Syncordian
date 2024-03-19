@@ -2,6 +2,8 @@ defmodule Syncordian.Document do
   use TypeCheck
   import Syncordian.Line_Object
   import Syncordian.Line
+  import Syncordian.Vector_Clock
+  import Syncordian.Byzantine
 
   @doc """
     This is a private function used to get the index (position in the document i.e. list)
@@ -75,7 +77,10 @@ defmodule Syncordian.Document do
     Given the document and the line_id, this function search through the document to find the
     line with the given line_id. If not found returns nil.
   """
-  @spec get_document_line_by_line_id(Syncordian.Basic_Types.document(), Syncordian.Basic_Types.line_id()) ::
+  @spec get_document_line_by_line_id(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Basic_Types.line_id()
+        ) ::
           Syncordian.Line_Object.line()
   def get_document_line_by_line_id(document, line_id) do
     # TODO: check if this functions takes into account that the first and last elements of
@@ -86,7 +91,10 @@ defmodule Syncordian.Document do
   @doc """
     Given a line of the document, this function returns both parents of the line.
   """
-  @spec get_document_line_fathers(Syncordian.Basic_Types.document(), Syncordian.Line_Object.line()) ::
+  @spec get_document_line_fathers(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Line_Object.line()
+        ) ::
           {Syncordian.Line_Object.line(), Syncordian.Line_Object.line()}
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
@@ -113,7 +121,6 @@ defmodule Syncordian.Document do
     updated_line = set_line_status(line, new_value)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
-
 
   @doc """
     This function returns the length of the document
@@ -145,9 +152,11 @@ defmodule Syncordian.Document do
     commit_at field of the line in the projection of the corresponding peer_id, returning
     the updated document.
   """
-  @spec update_document_line_commit_at(document :: Syncordian.Basic_Types.document(),
-                                       line_id :: Syncordian.Basic_Types.line_id(),
-                                       received_peer_id :: Syncordian.Basic_types.peer_id()) ::
+  @spec update_document_line_commit_at(
+          document :: Syncordian.Basic_Types.document(),
+          line_id :: Syncordian.Basic_Types.line_id(),
+          received_peer_id :: Syncordian.Basic_types.peer_id()
+        ) ::
           Syncordian.Basic_Types.document()
   def update_document_line_commit_at(document, line_id, received_peer_id) do
     get_document_line_by_line_id(document, line_id)
@@ -164,5 +173,100 @@ defmodule Syncordian.Document do
     line_id = get_line_id(updated_line)
     index = get_document_index_by_line_id(document, line_id)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  end
+
+  @spec stash_document_lines(
+          document :: Syncordian.Basic_Types.document(),
+          incoming_line :: Syncordian.Line_Object.line(),
+          local_peer_vc :: Syncordian.Basic_Types.clock(),
+          incoming_peer_vc :: Syncordian.Basic_Types.clock()
+        ) :: {boolean(), {integer(), integer()}}
+  def stash_document_lines(document, incoming_line, local_peer_vc, incoming_peer_vc) do
+    # HERE
+    # Les't try this:
+    # 1. Calculate the number of lines to stash by comparing the incoming_peer_vc with the
+    #    local_peer_vc in the projection of the incoming_peer_id in the local_peer_vc.
+    # 2. Base on the aforementioned number, stash the lines in the document in a stack.
+    #    using a sliding window process that alway contains the incoming_line_id.
+    # 3. For each slide, check if the incoming_line is checkable, if so, the incoming_line
+    #    is a valid line and continue the insert process. Else continue the stash process.
+    #    if the incoming_line is never checkable, then the incoming_line is a invalid line
+
+    incoming_line_id = get_line_id(incoming_line)
+    window_size = projection_distance(local_peer_vc, incoming_peer_vc)
+    document_length = get_document_length(document)
+    window_center = get_document_index_by_line_id(document, incoming_line_id)
+
+    window_stash_check_signature(
+      {document_length, window_size, window_center, document, incoming_line},
+      -1,
+      1
+    )
+  end
+
+  # This function checks if the incoming line is checkable in the window of the document
+  # defined by the window_center, window_size, and the document_length. It need to check
+  # any window size until the window_size attribute in the available parte of the document,
+  # based on the document_length, window_size and window center. If the incoming line
+  # is checkable, it returns true, otherwise, it returns false.
+  @spec window_stash_check_signature(
+          fix_parameter :: {
+            integer(),
+            integer(),
+            integer(),
+            Syncordian.Basic_Types.document(),
+            Syncordian.Line_Object.line()
+          },
+          left_shift :: integer(),
+          right_shift :: integer()
+        ) :: {boolean(), {integer(), integer()}}
+
+  defp window_stash_check_signature(
+         fix_parameter = {document_length, window_size, window_center, document, incoming_line},
+         left_shift,
+         right_shift
+       ) do
+    left_parent = get_document_line_by_index(document, window_center + left_shift)
+    right_parent = get_document_line_by_index(document, window_center + right_shift)
+
+    not_found_value = {false, {0, 0}}
+
+    case check_signature_insert(left_parent, incoming_line, right_parent) do
+      true ->
+        {true, {left_shift + window_center, right_shift + window_center}}
+
+      false ->
+        new_left_shift = left_shift - 1
+        new_right_shift = right_shift + 1
+
+        result_left =
+          if window_center + new_left_shift >= 0 and
+               new_left_shift * -1 + right_shift <= window_size + 2 do
+            window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
+          else
+            not_found_value
+          end
+
+        result_right =
+          if window_center + new_right_shift < document_length and
+               left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
+            window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
+          else
+            not_found_value
+          end
+
+        case {elem(result_left, 0), elem(result_right, 0)} do
+          {false, false} ->
+            not_found_value
+
+          {true, false} ->
+            result_left
+
+          {false, true} ->
+            result_right
+            # This match may never happen, if so, it is a bug in the code or in the idea :/
+            # {true, true} -> ...
+        end
+    end
   end
 end

@@ -1,4 +1,7 @@
 defmodule Syncordian.Line_Object do
+  @moduledoc """
+    This module provides the line object and its basic operations
+  """
   use TypeCheck
   require Record
   import Syncordian.Utilities
@@ -107,7 +110,7 @@ defmodule Syncordian.Line_Object do
         content: "Infimum",
         signature: "Infimum",
         peer_id: peer_id,
-        commit_at: List.duplicate(false, network_size)
+        commit_at: List.duplicate(true, network_size)
       )
 
   @doc """
@@ -123,7 +126,7 @@ defmodule Syncordian.Line_Object do
         content: "Supremum",
         signature: "Supremum",
         peer_id: peer_id,
-        commit_at: List.duplicate(false, network_size)
+        commit_at: List.duplicate(true, network_size)
       )
 
   @doc """
@@ -139,6 +142,9 @@ defmodule Syncordian.Line_Object do
 end
 
 defmodule Syncordian.Line do
+  @moduledoc """
+    This module provides complex features for the line object
+  """
   use TypeCheck
   import Syncordian.Utilities
   import Syncordian.Byzantine
@@ -164,47 +170,47 @@ defmodule Syncordian.Line do
         left_parent,
         right_parent
       ) do
-    left_parent_id = get_line_id(left_parent)
-    right_parent_id = get_line_id(right_parent)
-    peer_id = get_line_peer_id(left_parent)
-    network_size = length(get_commit_at(left_parent))
-    empty_commit_list = List.duplicate(false, network_size)
+      left_parent_id = get_line_id(left_parent)
+      right_parent_id = get_line_id(right_parent)
+      peer_id = get_line_peer_id(left_parent)
+      network_size = length(get_commit_at(left_parent))
+      empty_commit_list = List.duplicate(false, network_size)
 
-    case abs(left_parent_id - right_parent_id) do
-      # TODO: (implementation) review this case! What really happens when the distance is
-      # 1? Also, pending to review when the distance is less than 0
-      1.0 ->
-        IO.puts(
-          "The distance between the parents id is 1, this is yet to be implemented!!! line.ex"
-        )
-
-        line(
-          line_id: 0.0,
-          content: content,
-          signature: "",
-          peer_id: peer_id
-        )
-
-      _ ->
-        new_line_id =
-          :rand.uniform(round(right_parent_id) - round(left_parent_id) - 1) + left_parent_id
-
-        signature =
-          create_signature_insert(
-            get_signature(left_parent),
-            content,
-            get_signature(right_parent),
-            peer_id
+      case abs(left_parent_id - right_parent_id) do
+        # TODO: (implementation) review this case! What really happens when the distance
+        # is 1? Also, pending to review when the distance is less than 0
+        1.0 ->
+          IO.puts(
+            "The distance between the parents id is 1, this is yet to be implemented!!! line.ex"
           )
 
-        line(
-          line_id: new_line_id,
-          content: content,
-          signature: signature,
-          peer_id: peer_id,
-          commit_at: update_list_value(empty_commit_list, peer_id, true)
-        )
-    end
+          line(
+            line_id: 0.0,
+            content: content,
+            signature: "",
+            peer_id: peer_id
+          )
+
+        _ ->
+          new_line_id =
+            :rand.uniform(round(right_parent_id) - round(left_parent_id) - 1) + left_parent_id
+
+          signature =
+            create_signature_insert(
+              get_signature(left_parent),
+              content,
+              get_signature(right_parent),
+              peer_id
+            )
+
+          line(
+            line_id: new_line_id,
+            content: content,
+            signature: signature,
+            peer_id: peer_id,
+            commit_at: update_list_value(empty_commit_list, peer_id, true)
+          )
+      end
   end
 
   @doc """

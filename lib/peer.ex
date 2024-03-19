@@ -189,11 +189,6 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
-        IO.puts('\n\n\n----------')
-        IO.inspect("Confirmation received")
-        IO.inspect(inserted_line_id)
-        IO.inspect(received_peer_id)
-        IO.puts('----------\n\n\n')
         peer(peer, :document)
         |> update_document_line_commit_at(inserted_line_id, received_peer_id)
         |> update_peer_document(peer)
@@ -239,11 +234,6 @@ defmodule Syncordian.Peer do
                 valid_line? = check_signature_insert(left_parent, line, right_parent)
                 insertion_attempts_reach? = check_insertions_attempts(line)
 
-                # TODO: when sucsefully insert a line send a message to the peer that sent
-                # the line to update the commit_at of the line in the sending peer
-                # document
-                # IDEA: using the sucsefully inserted message we can update receiving peer
-                # clock??
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
                     send_confirmation_line_insertion(get_peer_id(peer), incoming_peer_id,  get_line_id(line))
@@ -265,12 +255,13 @@ defmodule Syncordian.Peer do
 
               # local_vc > incoming_vc
               false ->
-                # stash process
+                # WORKING_ON: stash process
                 IO.inspect("TO BE DEFINE second")
             end
 
           {_, _} ->
             IO.inspect("The vector clock is not consistent")
+            loop(peer)
         end
 
       {:print, _} ->

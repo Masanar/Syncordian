@@ -23,7 +23,7 @@ defmodule Syncordian.Vector_Clock do
   def projection_distance(local_vc, incoming_vc) do
     local_vc_sum = Enum.sum(local_vc)
     incoming_vc_sum = Enum.sum(incoming_vc)
-    incoming_vc_sum - local_vc_sum
+    abs(incoming_vc_sum - local_vc_sum)
   end
 
   @doc """

@@ -1,0 +1,13 @@
+/_build
+/cover
+/deps
+/.fetch
+erl_crash.dump
+*.ez
+*.beam
+/config/*.secret.exs
+.elixir_ls/
+!/.g
+/.vscode
+TODO.md
+test.*

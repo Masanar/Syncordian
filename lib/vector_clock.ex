@@ -21,9 +21,20 @@ defmodule Syncordian.Vector_Clock do
           incoming_vc :: Syncordian.Basic_Types.vector_clock()
         ) :: integer
   def projection_distance(local_vc, incoming_vc) do
-    local_vc_sum = Enum.sum(local_vc)
-    incoming_vc_sum = Enum.sum(incoming_vc)
-    abs(incoming_vc_sum - local_vc_sum)
+    projection_distance? =
+      Enum.zip_reduce(local_vc, incoming_vc, 0, fn local_vc_projection,
+                                                   incoming_vc_projection,
+                                                   acc ->
+        acc + abs(local_vc_projection - incoming_vc_projection)
+      end)
+    case projection_distance? do
+      # TODO: Be sure about this solution! This was before the change of definition!!
+      # I think that with this new definition this is not needed anymore.
+      # Case: Local[1,1] incoming[2,0] without this we get 0 and the stash window is 0 thus
+      # the stash process never starts. I THINK this is the correct behavior! THINK!
+      0 -> Enum.sum(local_vc)
+      _ -> projection_distance?
+    end
   end
 
   @doc """
@@ -44,8 +55,11 @@ defmodule Syncordian.Vector_Clock do
           incoming_vc :: Syncordian.Basic_Types.vector_clock(),
           incoming_peer_position :: integer
         ) :: integer
-  def distance_between_vector_clocks(local_vc, incoming_vc, incoming_peer_position) ,do:
-    abs(Enum.at(local_vc,incoming_peer_position) - Enum.at(incoming_vc,incoming_peer_position))
+  def distance_between_vector_clocks(local_vc, incoming_vc, incoming_peer_position),
+    do:
+      abs(
+        Enum.at(local_vc, incoming_peer_position) - Enum.at(incoming_vc, incoming_peer_position)
+      )
 
   @doc """
     Return true when the local_vc is less than the incoming_vc.
@@ -71,10 +85,11 @@ defmodule Syncordian.Vector_Clock do
     # TODO: Rethink the definition when equal
     local_vc_sum = Enum.sum(local_vc)
     incoming_vc_sum = Enum.sum(incoming_vc)
+
     case {local_vc_sum < incoming_vc_sum, local_vc_sum == incoming_vc_sum} do
-      {true, false}  -> true
+      {true, false} -> true
       {false, false} -> false
-      {_, true}  -> true
+      {_, true} -> false
     end
   end
 end

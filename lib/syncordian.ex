@@ -22,8 +22,8 @@ defmodule Syncordian do
 
     insert(pid_0, "first of 0\n", 0)
     insert(pid_0, "second of 0\n", 1)
-    # insert(pid_1, "first of 1\n", 2)
-    # insert(pid_0, "fourth of 0\n", 3)
+    insert(pid_1, "first of 1\n", 2)
+    # insert(pid_0, " of 0\n", 3)
     #
     # Process.sleep(9000)
     #
@@ -37,14 +37,16 @@ defmodule Syncordian do
     #   insert(pid, "value#{i}\n", 0)
     # end
     # info(pid)
-    Process.sleep(1000)
-    raw_print(pid_1)
-    IO.puts("\n\n\n")
-    raw_print(pid_0)
+    Process.sleep(2000)
+    print_content(pid_1)
+    Process.sleep(2000)
+    print_content(pid_0)
     # delete_line(pid_0, 2)
     # delete_line(pid_0, 3)
-    # Process.sleep(2000)
-    # raw_print(pid_0)
+    Process.sleep(4000)
+    raw_print(pid_0)
+    Process.sleep(4000)
+    raw_print(pid_1)
     # IO.inspect("\n\n\n")
     # Process.sleep(2000)
     # raw_print(pid_1)
@@ -55,8 +57,8 @@ defmodule Syncordian do
     # Process.sleep(2000)
     # raw_print(pid_0)
     # IO.inspect("\n\n\n")
-    # Process.sleep(3000)
-    # kill()
+    Process.sleep(3000)
+    kill()
   end
 
   defp name(peer_id), do: :global.whereis_name(peer_id)

@@ -4,6 +4,7 @@ defmodule Syncordian.Document do
   import Syncordian.Line
   import Syncordian.Vector_Clock
   import Syncordian.Byzantine
+  import Syncordian.Utilities
 
   @doc """
     This is a private function used to get the index (position in the document i.e. list)
@@ -192,16 +193,41 @@ defmodule Syncordian.Document do
     #    is a valid line and continue the insert process. Else continue the stash process.
     #    if the incoming_line is never checkable, then the incoming_line is a invalid line
 
-    incoming_line_id = get_line_id(incoming_line)
     window_size = projection_distance(local_peer_vc, incoming_peer_vc)
-    document_length = get_document_length(document)
-    window_center = get_document_index_by_line_id(document, incoming_line_id)
+    document_length = get_document_length(document) + 1
+    window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
+    new_document = add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
-    window_stash_check_signature(
-      {document_length, window_size, window_center, document, incoming_line},
-      -1,
-      1
-    )
+    :rand.uniform(2000) |> Process.sleep()
+    # IO.puts("\nStashing document lines")
+    # IO.puts("Local")
+    # IO.inspect(local_peer_vc)
+    # IO.puts("Incoming")
+    # IO.inspect(incoming_peer_vc)
+    # IO.inspect({document_length, window_size, window_center})
+    # IO.inspect(document)
+    # IO.inspect(incoming_line)
+    # IO.puts("-------------\n")
+    test =
+      window_stash_check_signature(
+        {document_length, window_size, window_center, new_document, incoming_line},
+        -1,
+        1
+      )
+
+    if !elem(test, 0) do
+      IO.puts("\nStashing document lines")
+      IO.puts("Local")
+      IO.inspect(local_peer_vc)
+      IO.puts("Incoming")
+      IO.inspect(incoming_peer_vc)
+      IO.inspect({document_length, window_size, window_center})
+      IO.inspect(new_document)
+      IO.inspect(incoming_line)
+      IO.puts("-------------\n")
+    end
+
+    test
   end
 
   # This function checks if the incoming line is checkable in the window of the document

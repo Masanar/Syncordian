@@ -9,6 +9,7 @@ defmodule Syncordian.Peer do
   """
   use TypeCheck
   require Record
+  import Syncordian.Info
   import Syncordian.Line
   import Syncordian.Document
   import Syncordian.Byzantine
@@ -41,6 +42,8 @@ defmodule Syncordian.Peer do
   """
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
+
+  def print_content(pid), do: send(pid, {:print_content, :document})
 
   @doc """
     This function is used to delete a line at the given index in the current document of the
@@ -194,28 +197,27 @@ defmodule Syncordian.Peer do
         |> update_peer_document(peer)
         |> loop
 
-      {:receive_insert_broadcast, line, insertion_state_vc} ->
+      {:receive_insert_broadcast, line, incoming_vc} ->
         # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_local_vector_clock(peer)
-
         clock_distance =
           distance_between_vector_clocks(
             local_vector_clock,
-            insertion_state_vc,
+            incoming_vc,
             incoming_peer_id
           )
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            send(self(), {:receive_insert_broadcast, line, insertion_state_vc})
+            send(self(), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
           {_, true} ->
             order_vc =
               order_vector_clocks_definition(
                 local_vector_clock,
-                insertion_state_vc
+                incoming_vc
               )
 
             document = peer(peer, :document)
@@ -236,7 +238,12 @@ defmodule Syncordian.Peer do
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
-                    send_confirmation_line_insertion(get_peer_id(peer), incoming_peer_id,  get_line_id(line))
+                    send_confirmation_line_insertion(
+                      get_peer_id(peer),
+                      incoming_peer_id,
+                      get_line_id(line)
+                    )
+
                     add_line_to_document(line, document)
                     |> update_peer_document(peer)
                     |> tick_projection_peer_clock(incoming_peer_id)
@@ -244,10 +251,16 @@ defmodule Syncordian.Peer do
 
                   {false, false} ->
                     new_line = tick_line_insertion_attempts(line)
-                    send(self(), {:receive_insert_broadcast, new_line, insertion_state_vc})
+                    send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
+                    IO.puts("receive insert broadcast")
+                    IO.inspect(line)
+                    IO.inspect(incoming_peer_id) # [1,0]
+                    IO.inspect(incoming_vc) # [0,1]
+                    IO.inspect(local_vector_clock)
+                    IO.puts("")
                     IO.inspect("A line has reach the insertion attempts limit!")
                     IO.inspect("peer: #{get_peer_id(peer)} \n")
                     loop(peer)
@@ -255,8 +268,41 @@ defmodule Syncordian.Peer do
 
               # local_vc > incoming_vc
               false ->
-                # WORKING_ON: stash process
-                IO.inspect("TO BE DEFINE second")
+                # HERE
+                # TODO: Check the interleaving!
+                # IO.puts("\n---------------------------------")
+                # IO.puts("stash action")
+                # IO.inspect(document)
+                # IO.inspect(line)
+                # IO.puts("Local:")
+                # IO.inspect(local_vector_clock)
+                # IO.puts("Incoming:")
+                # IO.inspect(incoming_vc)
+                # IO.puts("---------------------------------\n")
+
+                {valid_line?, _} =
+                  stash_document_lines(document, line, local_vector_clock, incoming_vc)
+
+                case valid_line? do
+                  true ->
+                    IO.inspect("Stash process succeeded!!!")
+                    # This is repeted code! Should be a function!
+                    send_confirmation_line_insertion(
+                      get_peer_id(peer),
+                      incoming_peer_id,
+                      get_line_id(line)
+                    )
+
+                    add_line_to_document(line, document)
+                    |> update_peer_document(peer)
+                    |> tick_projection_peer_clock(incoming_peer_id)
+                    |> loop
+
+                  false ->
+                    IO.inspect("Stash process failed")
+                    IO.inspect("peer: #{get_peer_id(peer)} \n")
+                    loop(peer)
+                end
             end
 
           {_, _} ->
@@ -266,6 +312,10 @@ defmodule Syncordian.Peer do
 
       {:print, _} ->
         IO.inspect(peer)
+        loop(peer)
+
+      {:print_content, :document} ->
+        print_document_content(peer(peer, :document), peer(peer, :peer_id))
         loop(peer)
 
       {:save_pid, info} ->
@@ -396,11 +446,17 @@ defmodule Syncordian.Peer do
     When the message is received by the sending peer it is handled by the loop function
     of the peer module.
   """
-  @spec send_confirmation_line_insertion(receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
-                                        sending_peer_id :: Syncordian.Basic_Types.peer_id(),
-                                        inserted_line_id :: Syncordian.Basic_Types.line_id()) :: any
+  @spec send_confirmation_line_insertion(
+          receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
+          sending_peer_id :: Syncordian.Basic_Types.peer_id(),
+          inserted_line_id :: Syncordian.Basic_Types.line_id()
+        ) :: any
   def send_confirmation_line_insertion(receiving_peer_id, sending_peer_id, inserted_line_id) do
     sending_peer_pid = :global.whereis_name(sending_peer_id)
-    send(sending_peer_pid, {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}})
+
+    send(
+      sending_peer_pid,
+      {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}}
+    )
   end
 end

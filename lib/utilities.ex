@@ -19,4 +19,8 @@ defmodule Syncordian.Utilities do
       false -> [head | update_list_value(tail, index, value, acc + 1)]
     end
   end
+
+  def add_element_list_in_given_index(list, index, new_element) do
+    Enum.concat(Enum.take(list, index+1), [new_element | Enum.drop(list, index+1)])
+  end
 end

@@ -1,6 +1,46 @@
 defmodule SyncordianTest do
   @moduledoc """
-  This module contains functions for parsing and manipulating git log data.
+  This module contains functions for parsing and manipulating git log data. So far the
+  structure of a commit is something like this:
+
+    %{
+      author_id: "Olivia (Zoe)",
+      commit_hash: "f9993d0c687c0fb50490aa530adee57ea4c70c12",
+      position_changes: [
+        [
+          {{88, 6}, {88, 14}, 14},
+          " | **wget**  | `sh -c \"$(wget -O- https://raw.githubusercontent.com/ohy...",
+          " | **fetch** | `sh -c \"$(fetch -o - https://raw.githubusercontent.com/o...",
+          "",
+          "+Alternatively, the installer is also mirrored outside GitHub. Using thi...",
+          "+",
+          "+| Method    | Command                                                  ...",
+          "+| :-------- | :--------------------------------------------------------...",
+          "+| **curl**  | `sh -c \"$(curl -fsSL https://install.ohmyz.sh/)\"`      ...",
+          "+| **wget**  | `sh -c \"$(wget -O- https://install.ohmyz.sh/)\"`        ...",
+          "+| **fetch** | `sh -c \"$(fetch -o - https://install.ohmyz.sh/)\"`      ...",
+          "+",
+          " _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-....",
+          "",
+          " #### Manual Inspection"
+        ]
+      ]
+    }
+
+  where :
+    - author_id :: String -> The id of the author of the commit.
+    - commit_hash :: String -> The hash of the commit.
+    - position_changes :: list -> A list of changes in the commit. Each change is a list
+      with the following structure:
+      - The first element is a tuple with the starting and ending position of the change
+        corresponding to the structure `@@ -88,6 +88,14 @@` of the original git log
+        additionally a number that represents the total context lines in the change
+        (max(6,14)).
+      - The rest of the elements are the lines of the change.
+
+  #TODO: Each element of the position_changes list should be parsed into a map that better
+  #      represents the intention of the change.
+
   """
 
   @doc """
@@ -100,14 +140,35 @@ defmodule SyncordianTest do
     |> Enum.reverse()
   end
 
-  # def parse_changes_to_map(changes) do changes
-  # end
+  def parse_changes_to_map(changes) do
+    reduce_function = fn line, acc ->
+      case line do
+        {_, _, _} -> {:cont, Enum.reverse(acc), [line]}
+        _ -> {:cont, [line | acc]}
+      end
+    end
 
-  def parse_line_to_map([hash, id, changes]) do
+    after_fun = fn
+      [_ | acc1] ->
+        # Is there always a " " (empty line) at the end of each set of changes
+        {:cont, Enum.reverse(acc1), []}
+
+      _ ->
+        {:cont, []}
+    end
+
+    [first_positions | new_changes] = changes
+    new_changes
+    |> Enum.chunk_while([first_positions], reduce_function, after_fun)
+    # TODO: Here continue with parsing the changes, now each chunk is a set of changes
+    # those need to be parsed into THE definite structure
+  end
+
+  def parse_line_to_map([hash | [id | changes]]) do
     %{
-      commit_hash: hash,
       author_id: id,
-      change: changes |> parse_changes_to_map
+      commit_hash: hash,
+      position_changes: changes |> parse_changes_to_map
     }
   end
 
@@ -121,6 +182,7 @@ defmodule SyncordianTest do
       case {contains?, flag} do
         {true, false} -> {:cont, {true, [element | acc1]}}
         {false, true} -> {:cont, {true, [element | acc1]}}
+        # New chunk starts
         {true, true} -> {:cont, Enum.reverse(acc1), {true, [element]}}
       end
     end
@@ -135,8 +197,9 @@ defmodule SyncordianTest do
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
+    |> Stream.map(&parse_line_to_map/1)
+    |> Stream.take(1)
     |> Enum.to_list()
-    |> Enum.take(2)
     |> IO.inspect()
   end
 end

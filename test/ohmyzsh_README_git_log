@@ -2406,13 +2406,6 @@ index fd4a0abc..558d2412 100644
  
  ![Agnoster theme](https://cloud.githubusercontent.com/assets/2618447/6316862/70f58fb6-ba03-11e4-82c9-c083bf9a6574.png)
 
-commit a1d13aa0b4a794c4f10fdd9d69d59ce2d04c3785
-Merge: d848c948 5e77e00a
-Author: Robby Russell <robby@planetargon.com>
-Date:   Wed Nov 1 05:35:37 2017 -0700
-
-    Merge branch 'Random_Theme_From_List' of https://github.com/Gnouc/oh-my-zsh into Gnouc-Random_Theme_From_List
-
 commit e609fd5a9f7f7c9a16945ca9c0748b6de99f6635
 Author: Robby Russell <robby@planetargon.com>
 Date:   Sat Feb 25 19:59:11 2017 -0800
@@ -2482,19 +2475,6 @@ index 0e39f4c5..eecde155 100644
  
  ```shell
  plugins=(git bundler osx rake ruby)
-
-commit 2fe358852b2bac84d2e6124ebb012d6bdc30c507
-Merge: 37bf9186 3bd6be10
-Author: Marc Cornellà <marc.cornella@live.com>
-Date:   Tue Oct 25 06:04:54 2016 +0200
-
-    Add a tip to ease agnoster first setup (#5565)
-    
-    * Add a tip to ease agnoster first setup
-    
-    * Change link to agnoster wiki + format changes
-    
-    https://github.com/robbyrussell/oh-my-zsh/wiki/Themes#agnoster
 
 commit 3bd6be10769097351156c6460db78b5f529f4b03
 Author: Marc Cornellà <marc.cornella@live.com>

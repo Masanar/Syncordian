@@ -168,7 +168,7 @@ defmodule SyncordianTest do
     |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
       case String.at(line, 0) do
         "-" ->
-          {index_position + 1, [%{op: :delete, index: index_position, content: ""} | acc]}
+          {index_position - 1, [%{op: :delete, index: index_position, content: ""} | acc]}
 
         "+" ->
           case line do
@@ -213,8 +213,7 @@ defmodule SyncordianTest do
 
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
-
-    # |> Enum.map(&parse_positional_change/1)
+    |> Enum.map(&parse_positional_change/1)
   end
 
   @spec parse_line_to_map([String.t()]) :: map
@@ -243,19 +242,18 @@ defmodule SyncordianTest do
 
     after_fun = fn
       [] -> {:cont, []}
-      {_, acc} -> {:cont, acc, []}
-      acc -> {:cont, acc, []}
+      {_, acc} -> {:cont, Enum.reverse(acc), []}
+      acc -> {:cont, Enum.reverse(acc), []}
     end
 
-    # File.stream!("ohmyzsh_README_git_log")
-    File.stream!("test1")
+    File.stream!("ohmyzsh_README_git_log")
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
-    # |> Stream.map(&drop_junk/1)
-    # |> Stream.map(&parse_line_to_map/1)
+    |> Stream.map(&drop_junk/1)
+    |> Stream.map(&parse_line_to_map/1)
     # |> Stream.take(1)
-    |> Enum.to_list()
-    |> IO.inspect()
+    # |> Enum.to_list()
+    # |> IO.inspect()
   end
 end
 

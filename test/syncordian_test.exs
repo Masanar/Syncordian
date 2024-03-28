@@ -140,10 +140,65 @@ defmodule SyncordianTest do
     |> Enum.reverse()
   end
 
-  def parse_changes_to_map(changes) do
+  @doc """
+    A positional change is a list like:
+          [
+            {{88, 6}, {88, 14}, 14},
+            " | **wget**  | `sh -c \"$(wget -O- https://raw.githubusercontent.com/ohy...",
+            " | **fetch** | `sh -c \"$(fetch -o - https://raw.githubusercontent.com/o...",
+            "",
+            "+Alternatively, the installer is also mirrored outside GitHub. Using thi...",
+            "+",
+            "+| Method    | Command                                                  ...",
+            "+| :-------- | :--------------------------------------------------------...",
+            "+| **curl**  | `sh -c \"$(curl -fsSL https://install.ohmyz.sh/)\"`      ...",
+            "+| **wget**  | `sh -c \"$(wget -O- https://install.ohmyz.sh/)\"`        ...",
+            "+| **fetch** | `sh -c \"$(fetch -o - https://install.ohmyz.sh/)\"`      ...",
+            "+",
+            " _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-....",
+            "",
+            " #### Manual Inspection"
+          ]
+    The idea of this function is to parse the positional change into insertions, deletions
+    that is to define insert(_,insert_value,index_position) or
+    delete_line(_,index_position) base on the lines that start with "+" (insert) or "-"
+    (delete). The index_position is the index position line in the context lines plus the
+    global position, in the case of the example the global position is 88.
+  """
+  def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
+    context_lines
+    |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
+
+      case String.at(line, 0) do
+        "-" ->
+          {index_position + 1, [%{op: :delete, index: index_position, content: ""} | acc]}
+
+        "+" ->
+          case line do
+            "+" <> content ->
+              {index_position + 1,
+               [%{op: :insert, index: index_position, content: content} | acc]}
+
+            "+" ->
+              {index_position + 1, [%{op: :insert, index: index_position, content: "\n"} | acc]}
+          end
+
+        _ ->
+          {index_position + 1, acc}
+      end
+    end)
+    |> elem(1)
+    |> Enum.reverse()
+  end
+
+  def parse_changes(changes) do
     reduce_function = fn line, acc ->
       case line do
+        # This is the case where the line is something like:
+        #   {{88, 6}, {88, 14}, 14} that is the same as @@ -88,6 +88,14 @@
+        # It means that a new set of changes was found
         {_, _, _} -> {:cont, Enum.reverse(acc), [line]}
+        # This is the case of a line that is within the context lines
         _ -> {:cont, [line | acc]}
       end
     end
@@ -158,17 +213,21 @@ defmodule SyncordianTest do
     end
 
     [first_positions | new_changes] = changes
+
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
+    |> Enum.map(&parse_positional_change/1)
+
     # TODO: Here continue with parsing the changes, now each chunk is a set of changes
     # those need to be parsed into THE definite structure
   end
 
+  @spec parse_line_to_map([String.t()]) :: map
   def parse_line_to_map([hash | [id | changes]]) do
     %{
       author_id: id,
       commit_hash: hash,
-      position_changes: changes |> parse_changes_to_map
+      position_changes: changes |> parse_changes
     }
   end
 
@@ -198,10 +257,8 @@ defmodule SyncordianTest do
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
     |> Stream.map(&parse_line_to_map/1)
-    |> Stream.take(1)
     |> Enum.to_list()
-    |> IO.inspect()
   end
 end
 
-SyncordianTest.parser_git_log()
+# SyncordianTest.parser_git_log()

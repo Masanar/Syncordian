@@ -24,7 +24,7 @@ defmodule Syncordian.Document do
           integer
   def get_document_new_index_by_incoming_line_id(line, document) do
     line_id = get_line_id(line)
-    get_document_new_index_by_incoming_line_id_aux(line_id, document, 0)
+    get_document_new_index_by_incoming_line_id_aux(line_id, document, -1)
   end
 
   # This is an private recursive auxiliar function over the length of the document to get
@@ -198,7 +198,7 @@ defmodule Syncordian.Document do
     window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
     new_document = add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
-    :rand.uniform(2000) |> Process.sleep()
+    # :rand.uniform(2000) |> Process.sleep()
     # IO.puts("\nStashing document lines")
     # IO.puts("Local")
     # IO.inspect(local_peer_vc)
@@ -293,6 +293,25 @@ defmodule Syncordian.Document do
             # This match may never happen, if so, it is a bug in the code or in the idea :/
             # {true, true} -> ...
         end
+    end
+  end
+
+  # Given a document and a position index, this function returns the previous and next
+  # parents of the given index.
+  @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
+          list[Syncordian.Line_Object.line()]
+  def get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
+
+  def get_parents_by_index(document, pos_index) do
+    pos_index = pos_index + 1
+    len = get_document_length(document)
+
+    case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
+      {nil, _} ->
+        [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+
+      {next, previous} ->
+        [previous, next]
     end
   end
 end

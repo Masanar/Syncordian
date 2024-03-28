@@ -201,6 +201,7 @@ defmodule Syncordian.Peer do
         # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_local_vector_clock(peer)
+
         clock_distance =
           distance_between_vector_clocks(
             local_vector_clock,
@@ -255,14 +256,11 @@ defmodule Syncordian.Peer do
                     loop(peer)
 
                   {false, true} ->
-                    IO.puts("receive insert broadcast")
-                    IO.inspect(line)
-                    IO.inspect(incoming_peer_id) # [1,0]
-                    IO.inspect(incoming_vc) # [0,1]
-                    IO.inspect(local_vector_clock)
-                    IO.puts("")
                     IO.inspect("A line has reach the insertion attempts limit!")
                     IO.inspect("peer: #{get_peer_id(peer)} \n")
+                    IO.puts("\n----------------------\n")
+                    IO.inspect(line)
+                    IO.puts("\n----------------------\n")
                     loop(peer)
                 end
 
@@ -270,23 +268,13 @@ defmodule Syncordian.Peer do
               false ->
                 # HERE
                 # TODO: Check the interleaving!
-                # IO.puts("\n---------------------------------")
-                # IO.puts("stash action")
-                # IO.inspect(document)
-                # IO.inspect(line)
-                # IO.puts("Local:")
-                # IO.inspect(local_vector_clock)
-                # IO.puts("Incoming:")
-                # IO.inspect(incoming_vc)
-                # IO.puts("---------------------------------\n")
-
                 {valid_line?, _} =
                   stash_document_lines(document, line, local_vector_clock, incoming_vc)
 
                 case valid_line? do
                   true ->
                     IO.inspect("Stash process succeeded!!!")
-                    # This is repeted code! Should be a function!
+                    # TODO: This is repeted code! Should be a function!
                     send_confirmation_line_insertion(
                       get_peer_id(peer),
                       incoming_peer_id,
@@ -380,22 +368,6 @@ defmodule Syncordian.Peer do
   @spec save_peer_pid(pid, integer, integer) :: any
   defp save_peer_pid(pid, network_size, peer_id),
     do: send(pid, {:save_pid, {pid, network_size, peer_id}})
-
-  # Given a document and a position index, this function returns the previous and next
-  # parents of the given index.
-  @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
-          list[Syncordian.Line_Object.line()]
-  defp get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
-
-  defp get_parents_by_index(document, pos_index) do
-    pos_index = pos_index + 1
-    len = get_document_length(document)
-
-    case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
-      {nil, _} -> [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-      {next, previous} -> [previous, next]
-    end
-  end
 
   # This is a private function used to update the deleted count of the peer.
   defp tick_peer_deleted_count(peer) do

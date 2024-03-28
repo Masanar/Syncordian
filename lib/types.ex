@@ -5,17 +5,18 @@ defmodule Syncordian.Basic_Types do
   use TypeCheck
 
   @typedoc """
-    Type that represents the status of a Syncordian document line, those are:
-        - :tombstone: The line was deleted by the peer, but still exists in the document.
+    Type that represents the status of a Syncordian document line, those are: -
+        :tombstone: The line was deleted by the peer, but still exists in the document.
 
         - :aura:
             - The line has not been received but the whole network.
-            - The line was stash due to a clock inconsistency, and will be reinserted
-            in the document when the stash is resolved.
 
         - :settled: The line was received but all the peers.
+
+        - :conflict: The line was stash due to a clock inconsistency, and will be reinserted
+            in the document when the stash is resolved.
   """
-  @type status :: :tombstone | :aura | :settled
+  @type status :: :tombstone | :aura | :settled | :conflict
 
   @typedoc """
       Type that represents the content of a Syncordian document line

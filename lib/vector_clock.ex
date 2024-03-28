@@ -89,6 +89,7 @@ defmodule Syncordian.Vector_Clock do
     case {local_vc_sum < incoming_vc_sum, local_vc_sum == incoming_vc_sum} do
       {true, false} -> true
       {false, false} -> false
+      # Revisar la proyeccion del local when equal
       {_, true} -> false
     end
   end

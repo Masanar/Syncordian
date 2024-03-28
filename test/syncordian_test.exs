@@ -38,8 +38,6 @@ defmodule SyncordianTest do
         (max(6,14)).
       - The rest of the elements are the lines of the change.
 
-  #TODO: Each element of the position_changes list should be parsed into a map that better
-  #      represents the intention of the change.
 
   """
 
@@ -168,7 +166,6 @@ defmodule SyncordianTest do
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
     context_lines
     |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
-
       case String.at(line, 0) do
         "-" ->
           {index_position + 1, [%{op: :delete, index: index_position, content: ""} | acc]}
@@ -216,10 +213,8 @@ defmodule SyncordianTest do
 
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
-    |> Enum.map(&parse_positional_change/1)
 
-    # TODO: Here continue with parsing the changes, now each chunk is a set of changes
-    # those need to be parsed into THE definite structure
+    # |> Enum.map(&parse_positional_change/1)
   end
 
   @spec parse_line_to_map([String.t()]) :: map
@@ -252,13 +247,16 @@ defmodule SyncordianTest do
       acc -> {:cont, acc, []}
     end
 
-    File.stream!("ohmyzsh_README_git_log")
+    # File.stream!("ohmyzsh_README_git_log")
+    File.stream!("test1")
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
-    |> Stream.map(&drop_junk/1)
-    |> Stream.map(&parse_line_to_map/1)
+    # |> Stream.map(&drop_junk/1)
+    # |> Stream.map(&parse_line_to_map/1)
+    # |> Stream.take(1)
     |> Enum.to_list()
+    |> IO.inspect()
   end
 end
 
-# SyncordianTest.parser_git_log()
+SyncordianTest.parser_git_log()

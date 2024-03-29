@@ -1,4 +1,4 @@
-# Bizantine Syncordian
+# Syncordian
 
 Collaborative editing, as observed in projects such as Google Docs, often relies on costly
 central services. While many Conflict-Free Replicated Data Types ( CRDTs) exists to solve

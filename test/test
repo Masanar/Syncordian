@@ -1,0 +1,43 @@
+commit f9993d0c687c0fb50490aa530adee57ea4c70c12
+Author: Olivia (Zoe) <zoe.i2k1@gmail.com>
+Date:   Fri Dec 1 16:06:50 2023 +0100
+
+    docs: document the off-GitHub installation URL (#12079)
+
+diff --git a/README.md b/README.md
+index 49998687..98743432 100644
+--- a/README.md
++++ b/README.md
+@@ -0,6 +0,14 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ 
++Alternatively, the installer is also mirrored outside GitHub. Using this URL instead may be required if you're in a country like India or China, that blocks `raw.githubusercontent.com`:
++
++| Method    | Command                                                                                           |
++| :-------- | :------------------------------------------------------------------------------------------------ |
++| **curl**  | `sh -c "$(curl -fsSL https://install.ohmyz.sh/)"`                                                 |
++| **wget**  | `sh -c "$(wget -O- https://install.ohmyz.sh/)"`                                                   |
++| **fetch** | `sh -c "$(fetch -o - https://install.ohmyz.sh/)"`                                                 |
++
+ _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
+ 
+commit 0f2715bb45ef025b48469817712a4cd3e23839b6
+Author: Bunyamin Shabanov <42899786+MetaMmodern@users.noreply.github.com>
+Date:   Mon Mar 14 19:09:45 2022 +0200
+
+    docs: add Table of Contents to README (#10766)
+    
+    Co-authored-by: Mohan Sha <mohansha@outlook.com>
+
+diff --git a/README.md b/README.md
+index 5a6b9844..4c41fad8 100644
+--- a/README.md
++++ b/README.md
+@@ -8,6 +8,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+ [![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+ 
++<details>
++<summary>Table of Contents</summary>
+

@@ -1,4 +1,4 @@
-defmodule SyncordianTest do
+defmodule Syncordian.Test_Git do
   @moduledoc """
   This module contains functions for parsing and manipulating git log data. So far the
   structure of a commit is something like this:
@@ -53,6 +53,11 @@ defmodule SyncordianTest do
   def find_commit_hash(line_name) do
     pattern_commit_hash = ~r/commit\s+(\w+)/
     find_regex(line_name, pattern_commit_hash)
+  end
+
+  def is_commit_hash?(line_name) do
+    pattern_commit_hash = ~r/commit\s+(\w+)/
+    Regex.match?(pattern_commit_hash, line_name)
   end
 
   @doc """
@@ -214,6 +219,7 @@ defmodule SyncordianTest do
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
     |> Enum.map(&parse_positional_change/1)
+    |> List.flatten()
   end
 
   @spec parse_line_to_map([String.t()]) :: map
@@ -228,7 +234,7 @@ defmodule SyncordianTest do
   @doc """
   Parses a git log file and returns a list of relevant lines.
   """
-  def parser_git_log() do
+  def parser_git_log(file_name) do
     chunk_fun = fn element, {flag, acc1} ->
       contains? = String.contains?(element, "commit")
 
@@ -245,16 +251,39 @@ defmodule SyncordianTest do
       {_, acc} -> {:cont, Enum.reverse(acc), []}
       acc -> {:cont, Enum.reverse(acc), []}
     end
-
-    File.stream!("ohmyzsh_README_git_log")
+    Path.join([File.cwd!(), "test", file_name])
+    # Path.join([File.cwd!(), "test", "test"])
+    # Path.join([File.cwd!(), "test", "ohmyzsh_README_git_log"])
+    |>File.stream!()
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
     |> Stream.map(&parse_line_to_map/1)
-    # |> Stream.take(1)
-    # |> Enum.to_list()
-    # |> IO.inspect()
   end
-end
 
-SyncordianTest.parser_git_log()
+  def get_list_of_commits(file_name) do
+    # Path.join([File.cwd!(), "test", "ohmyzsh_README_git_log"])
+    Path.join([File.cwd!(), "test", file_name])
+    |> File.stream!()
+    |> Stream.filter(&is_commit_hash?/1)
+    |> Stream.map(&find_commit_hash/1)
+    |> Enum.to_list()
+    |> Enum.reverse()
+  end
+
+  def group_by_commit(parsed_log) do
+    parsed_log
+    |> Enum.to_list()
+    |> Enum.group_by(&Map.get(&1, :commit_hash))
+  end
+
+  def group_by_author(parsed_log) do
+    authors_group_map = parsed_log
+    |> Enum.to_list()
+    |> Enum.group_by(&Map.get(&1, :author_id))
+
+    {authors_group_map, authors_group_map|> Map.keys()}
+  end
+
+
+end

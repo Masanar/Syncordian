@@ -48,7 +48,7 @@ defmodule Syncordian.Test_Git_Supervisor do
   def parse_edits(edits, peer_pid) do
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
-      Process.sleep(400)
+      Process.sleep(1000)
     end)
   end
 
@@ -81,20 +81,19 @@ defmodule Syncordian.Test_Git_Supervisor do
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
       parse_edits(position_changes, peer_pid)
-      Process.sleep(800)
+      Process.sleep(1000)
     end)
 
-    print_content(Enum.at(pid_list_author_peers,22))
-    Process.sleep(100)
-    print_content(Enum.at(pid_list_author_peers,28))
-    Process.sleep(100)
-    print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    Process.sleep(100)
-    print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    Process.sleep(400)
+    # print_content(Enum.at(pid_list_author_peers,22))
+    # Process.sleep(100)
+    # print_content(Enum.at(pid_list_author_peers,28))
+    # Process.sleep(100)
+    # print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    # Process.sleep(100)
+    # print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    # # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    # Process.sleep(400)
   end
-
 
   @doc """
     Initializes the peers for the Syncordian system based on the list of authors.
@@ -137,15 +136,20 @@ defmodule Syncordian.Test_Git_Supervisor do
   """
   def init() do
     parsed_git_log = parser_git_log("test")
-    # Path.join([File.cwd!(), "test", ""])
     list_of_commits = get_list_of_commits("test")
     commit_group_map = group_by_commit(parsed_git_log)
 
     ######## Temporary code to test the supervisor
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
-    {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    temp_authors_list = [
+      Enum.at(authors_list, 0),
+      Enum.at(authors_list, 1),
+      Enum.at(authors_list, 2),
+      Enum.at(authors_list, 3)
+    ]
 
+    {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
 
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()

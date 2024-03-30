@@ -69,7 +69,6 @@ defmodule Syncordian.Peer do
     pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, network_size, peer_id)
-    IO.puts("#{inspect(peer_id)} registered at #{inspect(pid)}")
     pid
   end
 
@@ -294,7 +293,19 @@ defmodule Syncordian.Peer do
             end
 
           {_, _} ->
-            IO.inspect("The vector clock is not consistent")
+            IO.inspect("Something happend")
+            local_peer_id = get_peer_id(peer)
+            line_id = get_line_id(line)
+            file_name = "debug/local:#{local_peer_id}_#{line_id}_incoming:#{incoming_peer_id}"
+
+            file_content =
+              "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
+                "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
+                "Distance: #{clock_distance}\n" <>
+                "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
+                "Line content: #{get_content(line)}\n"
+
+            File.write!(file_name, file_content)
             loop(peer)
         end
 

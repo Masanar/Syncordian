@@ -1,5 +1,5 @@
 commit f9993d0c687c0fb50490aa530adee57ea4c70c12
-Author: Olivia (Zoe) <zoe.i2k1@gmail.com>
+Author: 0xflotus <zoe.i2k1@gmail.com>
 Date:   Fri Dec 1 16:06:50 2023 +0100
 
     docs: document the off-GitHub installation URL (#12079)
@@ -23,7 +23,7 @@ index 49998687..98743432 100644
  _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
  
 commit 0f2715bb45ef025b48469817712a4cd3e23839b6
-Author: Bunyamin Shabanov <42899786+MetaMmodern@users.noreply.github.com>
+Author: Adam G. Emerson <42899786+MetaMmodern@users.noreply.github.com>
 Date:   Mon Mar 14 19:09:45 2022 +0200
 
     docs: add Table of Contents to README (#10766)

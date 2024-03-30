@@ -39,16 +39,13 @@ defmodule Syncordian.Vector_Clock do
 
   @doc """
     Given two vector clocks, local_vc and incoming_vc, this function returns the distance
-    between then. The distance is the distance between the local_vc and the incoming_vc in the
-    incoming_vc vector clock peer position.
+    between then. This distance is the distance between the local_vc and the incoming_vc
+    in the incoming_vc vector clock peer position.
 
     ## Examples
-      iex> distance_between_vector_clocks([1, 2, 3], [1, 2, 3], 0)
-      0
-      iex> distance_between_vector_clocks([1, 2, 0], [1, 2, 3], 2)
-      3
-      iex> distance_between_vector_clocks([1, 2, 0], [0, 3, 0], 1)
-      1
+      iex> distance_between_vector_clocks([1, 2, 3], [1, 2, 3], 0) 0 iex>
+      distance_between_vector_clocks([1, 2, 0], [1, 2, 3], 2) 3 iex>
+      distance_between_vector_clocks([1, 2, 0], [0, 3, 0], 1) 1
   """
   @spec distance_between_vector_clocks(
           local_vc :: Syncordinan.Basic_Types.vector_clock(),

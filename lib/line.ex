@@ -163,16 +163,17 @@ defmodule Syncordian.Line do
   @spec create_line_between_two_lines(
           content :: Syncordian.Basic_Types.content(),
           left_parent :: Syncordian.Line_Object.line(),
-          right_parent :: Syncordian.Line_Object.line()
+          right_parent :: Syncordian.Line_Object.line(),
+          peer_id :: Syncordian.Basic_Types.peer_id()
         ) :: Syncordian.Line_Object.line()
   def create_line_between_two_lines(
         content,
         left_parent,
-        right_parent
+        right_parent,
+        peer_id
       ) do
       left_parent_id = get_line_id(left_parent)
       right_parent_id = get_line_id(right_parent)
-      peer_id = get_line_peer_id(left_parent)
       network_size = length(get_commit_at(left_parent))
       empty_commit_list = List.duplicate(false, network_size)
 

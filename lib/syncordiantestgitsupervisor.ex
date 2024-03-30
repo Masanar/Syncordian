@@ -81,18 +81,17 @@ defmodule Syncordian.Test_Git_Supervisor do
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
       parse_edits(position_changes, peer_pid)
-      Process.sleep(1000)
     end)
-
-    # print_content(Enum.at(pid_list_author_peers,22))
-    # Process.sleep(100)
-    # print_content(Enum.at(pid_list_author_peers,28))
-    # Process.sleep(100)
-    # print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    # Process.sleep(100)
-    # print_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    # # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    # Process.sleep(400)
+    Process.sleep(2000)
+    print_content(Enum.at(pid_list_author_peers,0))
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,1))
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,2))
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,3))
+    # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    Process.sleep(400)
   end
 
   @doc """

@@ -183,6 +183,7 @@ defmodule Syncordian.Document do
           incoming_peer_vc :: Syncordian.Basic_Types.clock()
         ) :: {boolean(), {integer(), integer()}}
   def stash_document_lines(document, incoming_line, local_peer_vc, incoming_peer_vc) do
+    # TODO: There are things here that are borrables(translate this word)
     # HERE
     # Les't try this:
     # 1. Calculate the number of lines to stash by comparing the incoming_peer_vc with the

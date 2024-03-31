@@ -222,20 +222,6 @@ defmodule Syncordian.Peer do
             clock_distance_usual
           end
 
-        debug_function = fn _ ->
-          local_peer_id = get_peer_id(peer)
-          line_id = get_line_id(line)
-          file_name = "debug/local:#{local_peer_id}_#{line_id}_incoming:#{incoming_peer_id}"
-
-          file_content =
-            "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
-              "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
-              "Distance: #{clock_distance}\n" <>
-              "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
-              "Line content: #{get_content(line)}\n"
-
-          File.write!(file_name, file_content)
-        end
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
@@ -253,6 +239,26 @@ defmodule Syncordian.Peer do
             document = peer(peer, :document)
             line_index = get_document_new_index_by_incoming_line_id(line, document)
             [left_parent, right_parent] = get_parents_by_index(document, line_index)
+
+            debug_function = fn x ->
+              local_peer_id = get_peer_id(peer)
+              line_id = get_line_id(line)
+              file_name = "debug/local:#{local_peer_id}_"<>
+                          "#{line_id}_incoming:#{incoming_peer_id}"<>
+                          "_insertions:#{get_line_insertion_attempts(line)}"
+
+              file_content =
+                "Reason  : #{x}\n" <>
+                "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
+                "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
+                "Distance: #{clock_distance}\n" <>
+                "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
+                "Left line content : #{line_to_string(left_parent)}\n" <>
+                "Line content      : #{line_to_string(line)}\n" <>
+                "Right line content: #{line_to_string(right_parent)}"
+
+              File.write!(file_name, file_content)
+            end
 
             case order_vc do
               # local_vc < incoming_vc
@@ -280,17 +286,13 @@ defmodule Syncordian.Peer do
                     |> loop
 
                   {false, false} ->
-                    IO.puts("A line has been requeued! \n")
+                    debug_function.("Requesting requeue")
                     new_line = tick_line_insertion_attempts(line)
                     send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
-                    IO.inspect("A line has reach the insertion attempts limit!")
-                    IO.inspect("peer: #{get_peer_id(peer)}")
-                    # IO.puts("\n----------------------\n")
-                    # IO.inspect(line)
-                    # IO.puts("\n----------------------\n")
+                    # IO.inspect("A line has reach the insertion attempts limit!")
                     loop(peer)
                 end
 

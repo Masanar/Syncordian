@@ -48,7 +48,7 @@ defmodule Syncordian.Test_Git_Supervisor do
   def parse_edits(edits, peer_pid) do
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
-      Process.sleep(1000)
+      Process.sleep(900)
     end)
   end
 
@@ -83,13 +83,13 @@ defmodule Syncordian.Test_Git_Supervisor do
       parse_edits(position_changes, peer_pid)
     end)
 
-    Process.sleep(2000)
-    # print_content(Enum.at(pid_list_author_peers,0))
-    # Process.sleep(400)
-    # print_content(Enum.at(pid_list_author_peers,1))
-    # Process.sleep(400)
-    # print_content(Enum.at(pid_list_author_peers,2))
-    # Process.sleep(400)
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,0))
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,1))
+    Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers,2))
+    Process.sleep(400)
     print_content(Enum.at(pid_list_author_peers, 3))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(400)

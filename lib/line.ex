@@ -159,7 +159,7 @@ defmodule Syncordian.Line do
     and the parent's content to create the line signature.
     There are two cases to consider:
       - If there is 'room' between the parent's ids, then the new line id is calculated
-        randomly between the parent's ids and the signature is created using the parent's
+       create_line_b randomly between the parent's ids and the signature is created using the parent's
         content and the peer id.
       - If there is no 'room' between the parent's ids, then...
   """
@@ -179,8 +179,7 @@ defmodule Syncordian.Line do
     right_parent_id = get_line_id(right_parent)
     network_size = length(get_commit_at(left_parent))
     empty_commit_list = List.duplicate(false, network_size)
-
-    random_range = fn right, left -> :rand.uniform(trunc(right) - trunc(left) - 1) end
+    random_range = fn right, left -> :rand.uniform(trunc(right) - trunc(left) - 1) + left end
     distance = abs(left_parent_id - right_parent_id)
 
     new_line_id =
@@ -191,7 +190,7 @@ defmodule Syncordian.Line do
           decimal_part = fn number -> abs(number - trunc(number)) end
           left_decimal = decimal_part.(left_parent_id)
           right_decimal = decimal_part.(right_parent_id)
-          left_decimal + random_range.(right_decimal, left_decimal)
+          random_range.(right_decimal, left_decimal)
 
         {true, _, _} ->
           (left_parent_id + right_parent_id) / 2.0
@@ -240,4 +239,14 @@ defmodule Syncordian.Line do
       {_, _, true} -> -1
     end
   end
+
+  @spec line_to_string(Syncordian.Line_Object.line()) :: String.t()
+  # This is just for debugging purposes
+  def line_to_string(line) do
+    "#{get_line_id(line)}" <> ", " <>
+    Integer.to_string(get_line_peer_id(line)) <> ", " <>
+    get_content(line) <> ", " <>
+    get_signature(line)
+  end
+
 end

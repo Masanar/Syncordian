@@ -49,7 +49,7 @@ defmodule Syncordian do
     kill()
   end
 
-  defp name(peer_id), do: :global.whereis_name(peer_id)
+  # defp name(peer_id), do: :global.whereis_name(peer_id)
 
   def kill do
     :global.registered_names()

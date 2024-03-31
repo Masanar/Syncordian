@@ -6,7 +6,9 @@ defmodule Syncordian.Line_Object do
   require Record
   import Syncordian.Utilities
   @min_float 130.0
-  @max_float 230_584_300_921_369.0
+  # @max_float 230_584_300_921_369.0
+  @max_float 230_584_300_921.0
+  # @max_float   230_584_300.0
   @max_insertion_attempts 5
   Record.defrecord(:line,
     line_id: 0.0,
@@ -179,25 +181,22 @@ defmodule Syncordian.Line do
     right_parent_id = get_line_id(right_parent)
     network_size = length(get_commit_at(left_parent))
     empty_commit_list = List.duplicate(false, network_size)
-    random_range = fn right, left -> :rand.uniform(trunc(right) - trunc(left) - 1) + left end
     distance = abs(left_parent_id - right_parent_id)
 
     new_line_id =
-      case {distance == 1, distance > 1, distance < 1} do
-        # TODO: (implementation) review this case! What really happens when the distance
-        # is 1? Also, pending to review when the distance is less than 0
-        {_, _, true} ->
-          decimal_part = fn number -> abs(number - trunc(number)) end
-          left_decimal = decimal_part.(left_parent_id)
-          right_decimal = decimal_part.(right_parent_id)
-          random_range.(right_decimal, left_decimal)
+        get_random_range(right_parent_id, left_parent_id)
+    # case {distance > 100_000} do
+    #   {true} ->
+    #     (left_parent_id + right_parent_id) / 2.0
+    #   {_} ->
+    #     get_random_range(right_parent_id, left_parent_id)
+    # end
 
-        {true, _, _} ->
-          (left_parent_id + right_parent_id) / 2.0
-
-        {_, true, _} ->
-          random_range.(right_parent_id, left_parent_id)
-      end
+    IO.puts("")
+    IO.inspect("Left parent id : #{left_parent_id}")
+    IO.inspect("New line id    : #{new_line_id}")
+    IO.inspect("Right parent id: #{right_parent_id}")
+    IO.puts("")
 
     signature =
       create_signature_insert(

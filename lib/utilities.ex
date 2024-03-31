@@ -23,4 +23,16 @@ defmodule Syncordian.Utilities do
   def add_element_list_in_given_index(list, index, new_element) do
     Enum.concat(Enum.take(list, index+1), [new_element | Enum.drop(list, index+1)])
   end
+  def get_less_than_one_positive_random() do
+    random = abs(:rand.normal(0,0.002))
+    if random > 1 do
+      get_less_than_one_positive_random()
+    else
+      random
+    end
+  end
+
+  def get_random_range(right, left) do
+    get_less_than_one_positive_random() * (right - left) + left
+  end
 end

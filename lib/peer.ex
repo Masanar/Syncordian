@@ -182,7 +182,7 @@ defmodule Syncordian.Peer do
           |> tick_individual_peer_clock
 
         current_vector_clock = peer(peer, :vector_clock)
-        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
+        # send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
@@ -292,7 +292,7 @@ defmodule Syncordian.Peer do
                     loop(peer)
 
                   {false, true} ->
-                    # IO.inspect("A line has reach the insertion attempts limit!")
+                    IO.inspect("A line has reach the insertion attempts limit!")
                     loop(peer)
                 end
 
@@ -326,7 +326,8 @@ defmodule Syncordian.Peer do
             end
 
           {_, _} ->
-            # debug_function.(2)
+            IO.inspect("Something happen")
+            # debug_function.("Something Happend")
             loop(peer)
         end
 

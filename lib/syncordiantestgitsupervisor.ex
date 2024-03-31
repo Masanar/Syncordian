@@ -1,4 +1,4 @@
-defmodule Syncordian.Test_Git_Supervisor do
+defmodule Test do
   @moduledoc """
     This module provides functionality for managing test edits in a Git repository.
 
@@ -46,8 +46,11 @@ defmodule Syncordian.Test_Git_Supervisor do
     Parses a list of edits and applies them to the specified peer.
   """
   def parse_edits(edits, peer_pid) do
+    count = 0
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
+      count = count + 1
+      IO.puts(count)
       Process.sleep(900)
     end)
   end
@@ -74,6 +77,7 @@ defmodule Syncordian.Test_Git_Supervisor do
 
   """
   def start_edits(commits, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
+    count = 0
     Enum.each(commits, fn commit_hash ->
       [commit_group] = Map.get(commit_group_map, commit_hash)
       author_id = Map.get(commit_group, :author_id)

@@ -82,14 +82,15 @@ defmodule Syncordian.Test_Git_Supervisor do
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
       parse_edits(position_changes, peer_pid)
     end)
+
     Process.sleep(2000)
-    print_content(Enum.at(pid_list_author_peers,0))
-    Process.sleep(400)
-    print_content(Enum.at(pid_list_author_peers,1))
-    Process.sleep(400)
-    print_content(Enum.at(pid_list_author_peers,2))
-    Process.sleep(400)
-    print_content(Enum.at(pid_list_author_peers,3))
+    # print_content(Enum.at(pid_list_author_peers,0))
+    # Process.sleep(400)
+    # print_content(Enum.at(pid_list_author_peers,1))
+    # Process.sleep(400)
+    # print_content(Enum.at(pid_list_author_peers,2))
+    # Process.sleep(400)
+    print_content(Enum.at(pid_list_author_peers, 3))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(400)
   end
@@ -141,14 +142,19 @@ defmodule Syncordian.Test_Git_Supervisor do
     ######## Temporary code to test the supervisor
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
+
     temp_authors_list = [
       Enum.at(authors_list, 0),
       Enum.at(authors_list, 1),
       Enum.at(authors_list, 2),
-      Enum.at(authors_list, 3)
+      Enum.at(authors_list, 17)
     ]
 
+    # IO.inspect(authors_list)
+    # IO.inspect(Enum.at(authors_list, 17))
+
     {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
+    # {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()

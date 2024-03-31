@@ -239,8 +239,8 @@ defmodule Syncordian.Peer do
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            debug_function.(1)
-            # send(self(), {:receive_insert_broadcast, line, incoming_vc})
+            # debug_function.(1)
+            send(self(), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
           {_, true} ->
@@ -280,17 +280,17 @@ defmodule Syncordian.Peer do
                     |> loop
 
                   {false, false} ->
-                    IO.inspect("A line has been requeued! \n")
+                    IO.puts("A line has been requeued! \n")
                     new_line = tick_line_insertion_attempts(line)
                     send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
                     IO.inspect("A line has reach the insertion attempts limit!")
-                    IO.inspect("peer: #{get_peer_id(peer)} \n")
-                    IO.puts("\n----------------------\n")
-                    IO.inspect(line)
-                    IO.puts("\n----------------------\n")
+                    IO.inspect("peer: #{get_peer_id(peer)}")
+                    # IO.puts("\n----------------------\n")
+                    # IO.inspect(line)
+                    # IO.puts("\n----------------------\n")
                     loop(peer)
                 end
 
@@ -324,7 +324,7 @@ defmodule Syncordian.Peer do
             end
 
           {_, _} ->
-            debug_function.(2)
+            # debug_function.(2)
             loop(peer)
         end
 

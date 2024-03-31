@@ -133,7 +133,10 @@ defmodule Syncordian.Line_Object do
     Update the commit_at list of the line with in the received peer id projection, setting
     the value to true.
   """
-  @spec update_line_commit_at(Syncordian.Line_Object.line(), received_peer_id ::  Syncordian.Basic_Type.peer_id()) ::
+  @spec update_line_commit_at(
+          Syncordian.Line_Object.line(),
+          received_peer_id :: Syncordian.Basic_Type.peer_id()
+        ) ::
           Syncordian.Line_Object.line()
   def update_line_commit_at(line, received_peer_id) do
     commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
@@ -172,46 +175,46 @@ defmodule Syncordian.Line do
         right_parent,
         peer_id
       ) do
-      left_parent_id = get_line_id(left_parent)
-      right_parent_id = get_line_id(right_parent)
-      network_size = length(get_commit_at(left_parent))
-      empty_commit_list = List.duplicate(false, network_size)
+    left_parent_id = get_line_id(left_parent)
+    right_parent_id = get_line_id(right_parent)
+    network_size = length(get_commit_at(left_parent))
+    empty_commit_list = List.duplicate(false, network_size)
 
-      case abs(left_parent_id - right_parent_id) do
+    random_range = fn right, left -> :rand.uniform(trunc(right) - trunc(left) - 1) end
+    distance = abs(left_parent_id - right_parent_id)
+
+    new_line_id =
+      case {distance == 1, distance > 1, distance < 1} do
         # TODO: (implementation) review this case! What really happens when the distance
         # is 1? Also, pending to review when the distance is less than 0
-        1.0 ->
-          IO.puts(
-            "The distance between the parents id is 1, this is yet to be implemented!!! line.ex"
-          )
+        {_, _, true} ->
+          decimal_part = fn number -> abs(number - trunc(number)) end
+          left_decimal = decimal_part.(left_parent_id)
+          right_decimal = decimal_part.(right_parent_id)
+          left_decimal + random_range.(right_decimal, left_decimal)
 
-          line(
-            line_id: 0.0,
-            content: content,
-            signature: "",
-            peer_id: peer_id
-          )
+        {true, _, _} ->
+          (left_parent_id + right_parent_id) / 2.0
 
-        _ ->
-          new_line_id =
-            :rand.uniform(round(right_parent_id) - round(left_parent_id) - 1) + left_parent_id
-
-          signature =
-            create_signature_insert(
-              get_signature(left_parent),
-              content,
-              get_signature(right_parent),
-              peer_id
-            )
-
-          line(
-            line_id: new_line_id,
-            content: content,
-            signature: signature,
-            peer_id: peer_id,
-            commit_at: update_list_value(empty_commit_list, peer_id, true)
-          )
+        {_, true, _} ->
+          random_range.(right_parent_id, left_parent_id)
       end
+
+    signature =
+      create_signature_insert(
+        get_signature(left_parent),
+        content,
+        get_signature(right_parent),
+        peer_id
+      )
+
+    line(
+      line_id: new_line_id,
+      content: content,
+      signature: signature,
+      peer_id: peer_id,
+      commit_at: update_list_value(empty_commit_list, peer_id, true)
+    )
   end
 
   @doc """

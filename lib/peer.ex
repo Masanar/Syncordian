@@ -98,6 +98,7 @@ defmodule Syncordian.Peer do
 
             line_deleted = get_document_line_by_index(document, index_position)
             line_deleted_id = line_deleted |> get_line_id
+            # IO.inspect("Line deleted: #{line_deleted_id} \n")
             [left_parent, right_parent] = get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
@@ -128,6 +129,7 @@ defmodule Syncordian.Peer do
 
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
+            # IO.inspect("Line deleted: #{line_deleted_id}")
             index_position = get_document_index_by_line_id(document, line_deleted_id)
 
             peer =
@@ -138,6 +140,7 @@ defmodule Syncordian.Peer do
             tick_peer_deleted_count(peer)
 
           {false, false} ->
+            IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
             send(
               self(),
               {:receive_delete_broadcast,

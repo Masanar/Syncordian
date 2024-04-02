@@ -299,6 +299,8 @@ defmodule Syncordian.Document do
 
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index.
+  # HERE: Need to modify this function to be relative to the :tombstone lines
+  # that is: the :tombstone lines are not considered in the parents of the line.
   @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
           list[Syncordian.Line_Object.line()]
   def get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]

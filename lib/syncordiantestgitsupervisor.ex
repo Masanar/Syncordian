@@ -35,23 +35,29 @@ defmodule Test do
       - `:index`: The index of the line to be deleted (required for `:delete` operation).
     - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
   """
-  def parse_edit(edit, peer_pid) do
+  def parse_edit(edit, peer_pid, acc) do
     case Map.get(edit, :op) do
-      :insert -> insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
+      :insert ->
+        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
+        0
       :delete ->
-        IO.inspect(edit)
-        delete_line(peer_pid, Map.get(edit, :index))
+        delete_line(peer_pid, Map.get(edit, :index) + acc)
+        1
     end
   end
 
   @doc """
     Parses a list of edits and applies them to the specified peer.
   """
-  def parse_edits(edits, peer_pid) do
-    Enum.each(edits, fn edit ->
-      parse_edit(edit, peer_pid)
+  def parse_edits(edits, peer_pid, acc_coming) do
+    Enum.reduce(edits, acc_coming, fn edit, acc ->
       Process.sleep(200)
+      parse_edit(edit, peer_pid, acc) + acc
     end)
+    # Enum.each(edits, fn edit ->
+    #   Process.sleep(200)
+    #   parse_edit(edit, peer_pid)
+    # end)
   end
 
   @doc """
@@ -76,18 +82,28 @@ defmodule Test do
 
   """
   def start_edits(commits, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
-    Enum.each(commits, fn commit_hash ->
+    Enum.reduce(commits, 0, fn commit_hash, acc ->
       [commit_group] = Map.get(commit_group_map, commit_hash)
       author_id = Map.get(commit_group, :author_id)
       position_changes = Map.get(commit_group, :position_changes)
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
-      parse_edits(position_changes, peer_pid)
+      parse_edits(position_changes, peer_pid, acc)
     end)
+    # Enum.each(commits, fn commit_hash ->
+    #   [commit_group] = Map.get(commit_group_map, commit_hash)
+    #   author_id = Map.get(commit_group, :author_id)
+    #   position_changes = Map.get(commit_group, :position_changes)
+    #   peer_id = Map.get(map_peer_id_authors, author_id)
+    #   peer_pid = Enum.at(pid_list_author_peers, peer_id)
+    #   parse_edits(position_changes, peer_pid)
+    # end)
 
-    Process.sleep(5000)
-    save_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    save_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    Process.sleep(2000)
+    save_content(Enum.at(pid_list_author_peers,:rand.uniform(22)))
+    Process.sleep(500)
+    save_content(Enum.at(pid_list_author_peers,:rand.uniform(15)))
+    # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(500)
   end
 

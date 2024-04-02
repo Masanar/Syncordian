@@ -37,6 +37,8 @@ defmodule Syncordian.Vector_Clock do
     end
   end
 
+  # Revisar receiving when initial distance
+
   @doc """
     Given two vector clocks, local_vc and incoming_vc, this function returns the distance
     between then. This distance is the distance between the local_vc and the incoming_vc

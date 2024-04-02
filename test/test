@@ -1,3 +1,58 @@
+commit 89048668bdf4231b27e8249352087d1ccb46d447
+Author: Robby Russell <robby@planetargon.com>
+Date:   Mon Sep 19 19:41:59 2016 -0700
+
+    Forgot a word in the footer
+
+diff --git a/README.md b/README.md
+index 581625fe..aab1af9f 100644
+--- a/README.md
++++ b/README.md
+@@ -216,4 +216,4 @@ Oh My Zsh is released under the [MIT license](LICENSE.txt).
+ 
+ ![Planet Argon](http://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
+ 
+-Oh My Zsh started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
++Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
+
+commit abe834d28ddb6c5d0d98addf7a77551b3e007cd5
+Author: Robby Russell <robby@planetargon.com>
+Date:   Mon Sep 19 19:40:38 2016 -0700
+
+    Adding a link to Planet Argon who manages the site/project/shop
+
+diff --git a/README.md b/README.md
+index 5f152e4d..581625fe 100644
+--- a/README.md
++++ b/README.md
+@@ -211,3 +211,9 @@ We have [stickers](http://shop.planetargon.com/products/ohmyzsh-stickers-set-of-
+ ## License
+ 
+ Oh My Zsh is released under the [MIT license](LICENSE.txt).
++
++## About Planet Argon
++
++![Planet Argon](http://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
++
++Oh My Zsh started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
+
+commit 2198ff05e3b26532865f91a9ac1bac5fc673c05b
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Thu May 12 13:52:13 2016 +0200
+
+    Rename license to LICENSE.txt for consistency
+
+diff --git a/README.md b/README.md
+index 0cbea72c..5f152e4d 100644
+--- a/README.md
++++ b/README.md
+@@ -210,4 +210,4 @@ We have [stickers](http://shop.planetargon.com/products/ohmyzsh-stickers-set-of-
+ 
+ ## License
+ 
+-Oh My Zsh is released under the [MIT license](MIT-LICENSE.txt).
++Oh My Zsh is released under the [MIT license](LICENSE.txt).
+
 commit 26a07b0ad87162805e69ce18c56627772a663aef
 Author: Marc Cornellà <marc.cornella@live.com>
 Date:   Sun Apr 12 00:37:35 2015 +0200
@@ -204,7 +259,7 @@ index 00000000..0cbea72c
 +
 +### Do NOT send us themes
 +
-+We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/robbyrussell/oh-my-zsh/wiki/E/xternal-themes) wiki page.
++We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/robbyrussell/oh-my-zsh/wiki/External-themes) wiki page.
 +
 +## Contributors
 +
@@ -223,3 +278,4 @@ index 00000000..0cbea72c
 +## License
 +
 +Oh My Zsh is released under the [MIT license](MIT-LICENSE.txt).
+

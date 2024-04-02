@@ -67,8 +67,8 @@ defmodule Syncordian.Line_Object do
     This function is a getter for the deleted field of a line record, this field is true
     when the line was marked as deleted false otherwise
   """
-  @spec get_status(Syncordian.Line_Object.line()) :: boolean()
-  def get_status(line),
+  @spec get_line_status(Syncordian.Line_Object.line()) :: Syncordian.Basic_Types.status()
+  def get_line_status(line),
     do: line(line, :status)
 
   @doc """
@@ -181,22 +181,15 @@ defmodule Syncordian.Line do
     right_parent_id = get_line_id(right_parent)
     network_size = length(get_commit_at(left_parent))
     empty_commit_list = List.duplicate(false, network_size)
-    distance = abs(left_parent_id - right_parent_id)
 
     new_line_id =
         get_random_range(right_parent_id, left_parent_id)
-    # case {distance > 100_000} do
-    #   {true} ->
-    #     (left_parent_id + right_parent_id) / 2.0
-    #   {_} ->
-    #     get_random_range(right_parent_id, left_parent_id)
-    # end
 
-    IO.puts("")
-    IO.inspect("Left parent id : #{left_parent_id}")
-    IO.inspect("New line id    : #{new_line_id}")
-    IO.inspect("Right parent id: #{right_parent_id}")
-    IO.puts("")
+    # IO.puts("")
+    # IO.inspect("Left parent id : #{left_parent_id}")
+    # IO.inspect("New line id    : #{new_line_id}")
+    # IO.inspect("Right parent id: #{right_parent_id}")
+    # IO.puts("")
 
     signature =
       create_signature_insert(

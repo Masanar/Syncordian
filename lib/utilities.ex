@@ -35,4 +35,11 @@ defmodule Syncordian.Utilities do
   def get_random_range(right, left) do
     get_less_than_one_positive_random() * (right - left) + left
   end
+
+  def remove_first_and_last([_head | []]), do: []
+  def remove_first_and_last([_head | tail]), do: remove_last(tail)
+
+  def remove_last([]), do: []
+  def remove_last([_head | []]), do: []
+  def remove_last([head | tail]), do: [head | remove_last(tail)]
 end

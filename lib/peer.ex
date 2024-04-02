@@ -45,6 +45,8 @@ defmodule Syncordian.Peer do
 
   def print_content(pid), do: send(pid, {:print_content, :document})
 
+  def save_content(pid), do: send(pid, {:save_content, :document})
+
   @doc """
     This function is used to delete a line at the given index in the current document of the
     peer by sending a message to the loop peer function.
@@ -182,7 +184,7 @@ defmodule Syncordian.Peer do
           |> tick_individual_peer_clock
 
         current_vector_clock = peer(peer, :vector_clock)
-        # send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
+        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
@@ -334,9 +336,12 @@ defmodule Syncordian.Peer do
       {:print, _} ->
         IO.inspect(peer)
         loop(peer)
-
       {:print_content, :document} ->
         print_document_content(peer(peer, :document), peer(peer, :peer_id))
+        loop(peer)
+
+      {:save_content, :document} ->
+        save_document_content(peer(peer, :document), peer(peer, :peer_id))
         loop(peer)
 
       {:save_pid, info} ->

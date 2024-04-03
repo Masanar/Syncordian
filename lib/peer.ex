@@ -82,41 +82,26 @@ defmodule Syncordian.Peer do
   def loop(peer) do
     receive do
       {:delete_line, index_position} ->
-
         document = peer(peer, :document)
         document_len = get_document_length(document)
 
         case document_len - 1 <= index_position or document_len < 0 do
           true ->
-            IO.puts("This line does not exist! ")
-            IO.inspect("Document length: #{document_len} ")
+            IO.puts("The to delete line does not exist! ")
             IO.inspect("Index position: #{index_position} ")
-            IO.puts("")
             loop(peer)
 
           _ ->
-
             peer =
               document
               |> update_document_line_status(index_position, :tombstone)
               |> update_peer_document(peer)
 
-
             line_deleted = get_document_line_by_index(document, index_position)
             line_deleted_id = line_deleted |> get_line_id
-            # IO.inspect("Line deleted: #{line_deleted_id} \n")
             [left_parent, right_parent] = get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
-
-            # IO.puts("\n***********************************")
-            # IO.puts("Deleting line")
-            # IO.inspect(index_position)
-            # IO.inspect(line_deleted)
-            # IO.inspect(left_parent)
-            # IO.inspect(right_parent)
-            # IO.inspect("Document length: #{document_len} ")
-            # IO.puts("*************************************\n")
 
             send(
               self(),
@@ -156,6 +141,7 @@ defmodule Syncordian.Peer do
 
           {false, false} ->
             IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
+
             send(
               self(),
               {:receive_delete_broadcast,
@@ -185,15 +171,8 @@ defmodule Syncordian.Peer do
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         peer_id = get_peer_id(peer)
-        if index_position == 215 do
-          IO.puts("###################215#########################")
-          IO.inspect("Peer Id: #{peer_id}")
-          IO.puts("###################215#########################")
-          IO.inspect(Enum.take(document, -6))
-          IO.puts("############################################")
-        end
-        document_len = get_document_length(document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
+
         new_line =
           create_line_between_two_lines(
             content,
@@ -210,15 +189,6 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
         send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
-
-        if index_position == 214 do
-          IO.puts("@@@@@@@@@@@@@@@@214@@@@@@@@@@@@@@@@@@@@")
-          IO.inspect(Enum.take(document,-6))
-          IO.puts("@@@@@@@@@@@@@@@@214@@@@@@@@@@@@@@@@@@@@")
-          IO.inspect(Enum.take(peer(peer, :document),-6))
-          IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        end
-
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
@@ -258,7 +228,6 @@ defmodule Syncordian.Peer do
             clock_distance_usual
           end
 
-
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
             # debug_function.(1)
@@ -279,19 +248,21 @@ defmodule Syncordian.Peer do
             debug_function = fn x ->
               local_peer_id = get_peer_id(peer)
               line_id = get_line_id(line)
-              file_name = "debug/local:#{local_peer_id}_"<>
-                          "#{line_id}_incoming:#{incoming_peer_id}"<>
-                          "_insertions:#{get_line_insertion_attempts(line)}"
+
+              file_name =
+                "debug/local:#{local_peer_id}_" <>
+                  "#{line_id}_incoming:#{incoming_peer_id}" <>
+                  "_insertions:#{get_line_insertion_attempts(line)}"
 
               file_content =
                 "Reason  : #{x}\n" <>
-                "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
-                "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
-                "Distance: #{clock_distance}\n" <>
-                "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
-                "Left line content : #{line_to_string(left_parent)}\n" <>
-                "Line content      : #{line_to_string(line)}\n" <>
-                "Right line content: #{line_to_string(right_parent)}"
+                  "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
+                  "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
+                  "Distance: #{clock_distance}\n" <>
+                  "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
+                  "Left line content : #{line_to_string(left_parent)}\n" <>
+                  "Line content      : #{line_to_string(line)}\n" <>
+                  "Right line content: #{line_to_string(right_parent)}"
 
               File.write!(file_name, file_content)
             end
@@ -370,6 +341,7 @@ defmodule Syncordian.Peer do
       {:print, _} ->
         IO.inspect(peer)
         loop(peer)
+
       {:print_content, :document} ->
         print_document_content(peer(peer, :document), peer(peer, :peer_id))
         loop(peer)

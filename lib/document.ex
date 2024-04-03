@@ -63,8 +63,7 @@ defmodule Syncordian.Document do
           line_id :: Syncordian.Type.line_id()
         ) :: integer()
   def get_document_index_by_line_id(document, line_id) do
-    index_temp = Enum.find_index(document, fn line -> get_line_id(line) == line_id end) || 1
-    index_temp + get_number_of_tombstones_before_index(document, index_temp)
+    Enum.find_index(document, fn line -> get_line_id(line) == line_id end) || 1
   end
 
   @doc """
@@ -276,20 +275,11 @@ defmodule Syncordian.Document do
 
   def get_parents_by_index(document, pos_index) do
     # old_pos_index = pos_index
-    pos_index = pos_index + 1 + get_number_of_tombstones_before_index(document, pos_index+1)
+    pos_index = pos_index + 1 + get_number_of_tombstones_before_index(document, pos_index + 1)
     len = get_document_length(document)
 
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
       {nil, _} ->
-        # previous = Enum.at(document, len - 2)
-        # next = Enum.at(document, len - 1)
-
-        # if get_line_id(next) == get_line_id(previous) do
-        #   IO.puts("\n\nSCREAM!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
-        #   IO.inspect(old_pos_index)
-        #   IO.inspect(Enum.take(document,-5))
-        #   IO.puts("\n\nSCREAM!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
-        # end
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
 
       {next, previous} ->
@@ -306,5 +296,4 @@ defmodule Syncordian.Document do
       end
     end)
   end
-
 end

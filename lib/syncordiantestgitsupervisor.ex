@@ -53,7 +53,7 @@ defmodule Test do
   def parse_edits(edits, peer_pid ) do
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
-      Process.sleep(100)
+      Process.sleep(50)
     end)
   end
 
@@ -88,7 +88,7 @@ defmodule Test do
       parse_edits(position_changes, peer_pid)
     end)
 
-    Process.sleep(2000)
+    # Process.sleep(2000)
     save_content(Enum.at(pid_list_author_peers,3))
     save_content(Enum.at(pid_list_author_peers,2))
     save_content(Enum.at(pid_list_author_peers,1))

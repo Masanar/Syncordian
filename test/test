@@ -1,3 +1,20 @@
+commit 89048668bdf4231b27e8249352087d1ccb46d447
+Author: Robby Russell <robby@planetargon.com>
+Date:   Mon Sep 19 19:41:59 2016 -0700
+
+    Forgot a word in the footer
+
+diff --git a/README.md b/README.md
+index 581625fe..aab1af9f 100644
+--- a/README.md
++++ b/README.md
+@@ -216,4 +216,4 @@ Oh My Zsh is released under the [MIT license](LICENSE.txt).
+ 
+ ![Planet Argon](http://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
+ 
+-Oh My Zsh started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
++Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
+
 commit abe834d28ddb6c5d0d98addf7a77551b3e007cd5
 Author: Robby Russell <robby@planetargon.com>
 Date:   Mon Sep 19 19:40:38 2016 -0700
@@ -12,11 +29,11 @@ index 5f152e4d..581625fe 100644
  ## License
  
  Oh My Zsh is released under the [MIT license](LICENSE.txt).
-+ 
++ a
 +## About Planet Argon
-+
++ b
 +![Planet Argon](http://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
-+
++ c
 +Oh My Zsh started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
 
 commit 2198ff05e3b26532865f91a9ac1bac5fc673c05b

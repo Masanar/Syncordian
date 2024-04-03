@@ -171,7 +171,10 @@ defmodule Syncordian.Peer do
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         peer_id = get_peer_id(peer)
-        [left_parent, right_parent] = get_parents_by_index(document, index_position)
+        shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position)
+
+        [left_parent, right_parent] =
+          get_parents_by_index(document, index_position + shift_due_to_tombstone)
 
         new_line =
           create_line_between_two_lines(
@@ -186,18 +189,6 @@ defmodule Syncordian.Peer do
           |> add_line_to_document(document)
           |> update_peer_document(peer)
           |> tick_individual_peer_clock
-
-        if peer_id == 0 do
-          IO.puts("")
-          IO.inspect("Line inserted: #{get_line_id(new_line)}")
-          IO.puts(">>>>>left")
-          IO.inspect(left_parent)
-          IO.puts(">>>>>new")
-          IO.inspect(new_line)
-          IO.puts(">>>>>right")
-          IO.inspect(right_parent)
-          IO.puts("")
-        end
 
         current_vector_clock = peer(peer, :vector_clock)
         send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
@@ -255,8 +246,8 @@ defmodule Syncordian.Peer do
 
             document = peer(peer, :document)
             line_index = get_document_new_index_by_incoming_line_id(line, document)
-            [left_parent, right_parent] = get_parents_by_index_broadcast(document, line_index)
-            # [left_parent, right_parent] = get_parents_by_index(document, line_index)
+            # [left_parent, right_parent] = get_parents_by_index_broadcast(document, line_index)
+            [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
             debug_function = fn x ->
               local_peer_id = get_peer_id(peer)

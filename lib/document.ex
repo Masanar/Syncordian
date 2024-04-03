@@ -275,22 +275,7 @@ defmodule Syncordian.Document do
 
   def get_parents_by_index(document, pos_index) do
     # old_pos_index = pos_index
-    pos_index = pos_index + 1 + get_number_of_tombstones_before_index(document, pos_index + 1)
-    len = get_document_length(document)
-
-    case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
-      {nil, _} ->
-        [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-
-      {next, previous} ->
-        [previous, next]
-    end
-  end
-
-  def get_parents_by_index_broadcast(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
-
-  def get_parents_by_index_broadcast(document, pos_index) do
-    # old_pos_index = pos_index
+    pos_index = pos_index + 1
     len = get_document_length(document)
 
     case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do

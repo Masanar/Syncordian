@@ -35,29 +35,24 @@ defmodule Test do
       - `:index`: The index of the line to be deleted (required for `:delete` operation).
     - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
   """
-  def parse_edit(edit, peer_pid, acc) do
+  def parse_edit(edit, peer_pid) do
     case Map.get(edit, :op) do
       :insert ->
-        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
-        0
+        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
       :delete ->
-        delete_line(peer_pid, Map.get(edit, :index) + acc)
-        1
+        IO.inspect(edit)
+        delete_line(peer_pid, Map.get(edit, :index))
     end
   end
 
   @doc """
     Parses a list of edits and applies them to the specified peer.
   """
-  def parse_edits(edits, peer_pid, acc_coming) do
-    Enum.reduce(edits, acc_coming, fn edit, acc ->
-      Process.sleep(200)
-      parse_edit(edit, peer_pid, acc) + acc
+  def parse_edits(edits, peer_pid ) do
+    Enum.each(edits, fn edit ->
+      parse_edit(edit, peer_pid)
+      Process.sleep(400)
     end)
-    # Enum.each(edits, fn edit ->
-    #   Process.sleep(200)
-    #   parse_edit(edit, peer_pid)
-    # end)
   end
 
   @doc """
@@ -82,29 +77,23 @@ defmodule Test do
 
   """
   def start_edits(commits, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
-    Enum.reduce(commits, 0, fn commit_hash, acc ->
+    Enum.each(commits, fn commit_hash ->
       [commit_group] = Map.get(commit_group_map, commit_hash)
       author_id = Map.get(commit_group, :author_id)
       position_changes = Map.get(commit_group, :position_changes)
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
-      parse_edits(position_changes, peer_pid, acc)
+      parse_edits(position_changes, peer_pid)
     end)
-    # Enum.each(commits, fn commit_hash ->
-    #   [commit_group] = Map.get(commit_group_map, commit_hash)
-    #   author_id = Map.get(commit_group, :author_id)
-    #   position_changes = Map.get(commit_group, :position_changes)
-    #   peer_id = Map.get(map_peer_id_authors, author_id)
-    #   peer_pid = Enum.at(pid_list_author_peers, peer_id)
-    #   parse_edits(position_changes, peer_pid)
-    # end)
 
     Process.sleep(2000)
-    save_content(Enum.at(pid_list_author_peers,:rand.uniform(22)))
-    Process.sleep(500)
-    save_content(Enum.at(pid_list_author_peers,:rand.uniform(15)))
+    save_content(Enum.at(pid_list_author_peers,3))
+    save_content(Enum.at(pid_list_author_peers,2))
+    save_content(Enum.at(pid_list_author_peers,1))
+    save_content(Enum.at(pid_list_author_peers,0))
+    # save_content(Enum.at(pid_list_author_peers,:rand.uniform(15)))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
-    Process.sleep(500)
+    Process.sleep(1000)
   end
 
   @doc """
@@ -112,7 +101,10 @@ defmodule Test do
 
     ## Parameters
 
-    - `authors_list`: A list of author IDs representing the authors in the system.
+    - `authors_list`: A    Enum.each(edits, fn edit ->
+      Process.sleep(200)
+      parse_edit(edit, peer_pid)
+    end) list of author IDs representing the authors in the system.
 
     ## Returns
 
@@ -154,19 +146,20 @@ defmodule Test do
     ######## Temporary code to test the supervisor
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
-    {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    # {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
-    # temp_authors_list = [
-    #   Enum.at(authors_list, 0),
-    #   Enum.at(authors_list, 1),
-    #   Enum.at(authors_list, 2),
-    #   Enum.at(authors_list, 17)
-    # ]
-    # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
+    temp_authors_list = [
+      Enum.at(authors_list, 25),
+      Enum.at(authors_list, 1),
+      Enum.at(authors_list, 2),
+      Enum.at(authors_list, 17)
+    ]
+    {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
 
 
 
     # IO.inspect(authors_list)
+    # IO.inspect(pid_list_author_peers)
     # IO.inspect(Enum.at(authors_list, 17))
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()

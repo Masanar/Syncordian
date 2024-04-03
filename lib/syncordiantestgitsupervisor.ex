@@ -38,9 +38,11 @@ defmodule Test do
   def parse_edit(edit, peer_pid) do
     case Map.get(edit, :op) do
       :insert ->
+        if Map.get(edit, :index) == 214 or Map.get(edit, :index) == 215 do
+          IO.inspect(edit)
+        end
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
       :delete ->
-        IO.inspect(edit)
         delete_line(peer_pid, Map.get(edit, :index))
     end
   end
@@ -51,7 +53,7 @@ defmodule Test do
   def parse_edits(edits, peer_pid ) do
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
-      Process.sleep(400)
+      Process.sleep(100)
     end)
   end
 

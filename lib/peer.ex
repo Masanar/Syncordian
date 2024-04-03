@@ -109,14 +109,14 @@ defmodule Syncordian.Peer do
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
-            IO.puts("\n***********************************")
-            IO.puts("Deleting line")
-            IO.inspect(index_position)
-            IO.inspect(line_deleted)
-            IO.inspect(left_parent)
-            IO.inspect(right_parent)
-            IO.inspect("Document length: #{document_len} ")
-            IO.puts("*************************************\n")
+            # IO.puts("\n***********************************")
+            # IO.puts("Deleting line")
+            # IO.inspect(index_position)
+            # IO.inspect(line_deleted)
+            # IO.inspect(left_parent)
+            # IO.inspect(right_parent)
+            # IO.inspect("Document length: #{document_len} ")
+            # IO.puts("*************************************\n")
 
             send(
               self(),
@@ -184,10 +184,16 @@ defmodule Syncordian.Peer do
       # This correspond to the insert process do it by the peer
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
-        document_len = get_document_length(document)
         peer_id = get_peer_id(peer)
+        if index_position == 215 do
+          IO.puts("###################215#########################")
+          IO.inspect("Peer Id: #{peer_id}")
+          IO.puts("###################215#########################")
+          IO.inspect(Enum.take(document, -6))
+          IO.puts("############################################")
+        end
+        document_len = get_document_length(document)
         [left_parent, right_parent] = get_parents_by_index(document, index_position)
-
         new_line =
           create_line_between_two_lines(
             content,
@@ -202,41 +208,17 @@ defmodule Syncordian.Peer do
           |> update_peer_document(peer)
           |> tick_individual_peer_clock
 
-        IO.puts("\n-----------------------------------")
-        IO.puts("Inserting line")
-        IO.puts(">>>>>Tombstone")
-        IO.inspect(get_number_of_tombstones_before_index(document, index_position))
-        IO.inspect("Index position: #{index_position}")
-        IO.puts(">>>>>left line")
-        IO.inspect(left_parent)
-        IO.puts(">>>>>new line")
-        IO.inspect(new_line)
-        IO.puts(">>>>>right line")
-        IO.inspect(right_parent)
-        IO.puts("#######################")
-        IO.inspect(Enum.at(document, index_position - 2))
-        IO.inspect(Enum.at(document, index_position - 1))
-        IO.inspect(Enum.at(document, index_position))
-        IO.inspect(Enum.at(document, index_position + 1))
-        IO.inspect(Enum.at(document, index_position + 2))
-        IO.puts("#######################")
-        document = add_line_to_document(new_line, document)
-        IO.puts("#######################")
-        IO.inspect(Enum.at(document, index_position - 2))
-        IO.inspect(Enum.at(document, index_position - 1))
-        IO.inspect(Enum.at(document, index_position))
-        IO.inspect(Enum.at(document, index_position + 1))
-        IO.inspect(Enum.at(document, index_position + 2))
-        IO.puts("#######################")
-        IO.inspect("Document length: #{document_len} ")
-        IO.puts("-----------------------------------\n")
+        current_vector_clock = peer(peer, :vector_clock)
+        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
 
         if index_position == 214 do
+          IO.puts("@@@@@@@@@@@@@@@@214@@@@@@@@@@@@@@@@@@@@")
+          IO.inspect(Enum.take(document,-6))
+          IO.puts("@@@@@@@@@@@@@@@@214@@@@@@@@@@@@@@@@@@@@")
+          IO.inspect(Enum.take(peer(peer, :document),-6))
+          IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         end
 
-        current_vector_clock = peer(peer, :vector_clock)
-
-        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->

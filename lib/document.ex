@@ -24,7 +24,8 @@ defmodule Syncordian.Document do
           integer
   def get_document_new_index_by_incoming_line_id(line, document) do
     line_id = get_line_id(line)
-    get_document_new_index_by_incoming_line_id_aux(line_id, document, -1)
+    # HERE
+    get_document_new_index_by_incoming_line_id_aux(line_id, document, 0) - 1
   end
 
   # This is an private recursive auxiliar function over the length of the document to get
@@ -189,6 +190,7 @@ defmodule Syncordian.Document do
 
     window_size = projection_distance(local_peer_vc, incoming_peer_vc)
     document_length = get_document_length(document) + 1
+    # HERE this was afected due to the changes marks as HERE
     window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
     new_document = add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
@@ -275,14 +277,16 @@ defmodule Syncordian.Document do
 
   def get_parents_by_index(document, pos_index) do
     # old_pos_index = pos_index
-    pos_index = pos_index + 1
+    # HERE
+    # pos_index = pos_index + 1
     len = get_document_length(document)
 
-    case {Enum.at(document, pos_index), Enum.at(document, pos_index - 1)} do
-      {nil, _} ->
+    # case {Enum.at(document, pos_index + 1),Enum.at(document, pos_index) } do
+    case {Enum.at(document, pos_index),Enum.at(document, pos_index + 1) } do
+      {_, nil} ->
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
 
-      {next, previous} ->
+      {previous, next} ->
         [previous, next]
     end
   end
@@ -301,7 +305,22 @@ defmodule Syncordian.Document do
   # TEST
   # 2
   def get_number_of_tombstones_before_index(document, index) do
-    Enum.reduce(Enum.take(document, index), 0, fn line, acc ->
+    # if index == 9 and length(document) > 200 do
+    #   IO.puts("----------------------------------------------------------")
+    #   IO.inspect(Enum.take(document,index))
+    #   IO.puts("----------------------------------------------------------")
+    #   IO.inspect(Enum.at(document,index))
+    # end
+    slide_document = if get_line_status(Enum.at(document,index)) == :tombstone do
+      #HERE
+      IO.inspect("INTRUTION")
+      IO.inspect(Enum.at(document,index))
+      Enum.take(document,index - 1)
+      # Enum.take(document,index)
+    else
+      Enum.take(document,index)
+    end
+    Enum.reduce(slide_document, 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else

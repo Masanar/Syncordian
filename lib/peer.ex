@@ -93,28 +93,11 @@ defmodule Syncordian.Peer do
 
           _ ->
             shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position)
-            document1 = document
-            # EL documento quizas se tenga que actualizar al final (?)
-            # document =
-            #   document
-            #   |> update_document_line_status(index_position, :tombstone)
-            # peer =
-            #   document
-            #   |> update_peer_document(peer)
 
             peer =
               document
               |> update_document_line_status(index_position, :tombstone)
               |> update_peer_document(peer)
-              # if index_position == 6 do
-              #   document
-              #   |> update_document_line_status(index_position, :tombstone, 1)
-              #   |> update_peer_document(peer)
-              # else
-              #   document
-              #   |> update_document_line_status(index_position, :tombstone)
-              #   |> update_peer_document(peer)
-              # end
 
 
             line_deleted =
@@ -123,32 +106,8 @@ defmodule Syncordian.Peer do
 
             [left_parent, right_parent] =
               get_document_line_fathers(document, line_deleted)
-            # if index_position == 6 do
-            #   get_document_line_fathers(document, line_deleted,6)
-            # else
-            #   get_document_line_fathers(document, line_deleted)
-            # end
-
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
-            # if index_position == 6 do
-            #   IO.puts("")
-            #   IO.puts("")
-            #   IO.inspect("----------------------------------------------------------------")
-            #   IO.inspect("Line to delete: #{index_position}")
-            #   IO.inspect(Enum.take(document1, 10))
-            #   IO.puts("")
-            #   IO.inspect("After")
-            #   IO.inspect(Enum.take(peer(peer, :document), 10))
-            #   IO.inspect("----------------------------------------------------------------")
-            #   IO.puts(">>>>>line deleted")
-            #   IO.inspect(line_deleted)
-            #   IO.puts(">>>>>line left")
-            #   IO.inspect(left_parent)
-            #   IO.puts(">>>>>line right")
-            #   IO.inspect(right_parent)
-            #   IO.puts("")
-            # end
 
             send(
               self(),
@@ -225,6 +184,11 @@ defmodule Syncordian.Peer do
         peer_id = get_peer_id(peer)
         shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position)
 
+        # shift_due_to_tombstone = if index_position < 20 and length(document) > 200 do shift_due_to_tombstone_
+        # else
+        #   shift_due_to_tombstone_
+        # end
+
         [left_parent, right_parent] =
           get_parents_by_index(document, index_position + shift_due_to_tombstone)
 
@@ -235,6 +199,24 @@ defmodule Syncordian.Peer do
             right_parent,
             peer_id
           )
+        # IO.puts("\n*********************************************************")
+        # IO.inspect(left_parent)
+        # IO.inspect(new_line)
+        # IO.inspect(right_parent)
+        # IO.puts("*********************************************************")
+        # IO.inspect(document)
+        # IO.puts("*********************************************************\n")
+        # if peer_id == 25 and length(document) > 200 do
+        #   IO.puts("\n*********************************************************")
+        #   IO.inspect(index_position)
+        #   IO.inspect(shift_due_to_tombstone)
+        #   IO.inspect(left_parent)
+        #   IO.inspect(new_line)
+        #   IO.inspect(right_parent)
+        #   IO.puts("*********************************************************")
+        #   # IO.inspect(Enum.take(document,15))
+        #   IO.puts("*********************************************************\n\n")
+        # end
 
         peer =
           new_line
@@ -297,6 +279,7 @@ defmodule Syncordian.Peer do
               )
 
             document = peer(peer, :document)
+            # HERE this function get_document_... was afected for HERE changes
             line_index = get_document_new_index_by_incoming_line_id(line, document)
             [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
@@ -314,6 +297,7 @@ defmodule Syncordian.Peer do
                   "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
                   "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
                   "Distance: #{clock_distance}\n" <>
+                  "Line index: #{line_index} \n" <>
                   "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
                   "Left line content : #{line_to_string(left_parent)}\n" <>
                   "Line content      : #{line_to_string(line)}\n" <>
@@ -349,12 +333,18 @@ defmodule Syncordian.Peer do
 
                   {false, false} ->
                     debug_function.("Requesting requeue")
-                    new_line = tick_line_insertion_attempts(line)
-                    send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
+                    if get_peer_id(peer) == 24 do
+                      IO.puts("\n----------------------------")
+                      IO.inspect(line)
+                      IO.inspect(Enum.take(document,8))
+                      IO.puts("----------------------------\n")
+                    end
+                    # new_line = tick_line_insertion_attempts(line)
+                    # send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
-                    IO.inspect("A line has reach the insertion attempts limit!")
+                    # IO.inspect("A line has reach the insertion attempts limit!")
                     loop(peer)
                 end
 

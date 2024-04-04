@@ -35,12 +35,14 @@ defmodule Test do
       - `:index`: The index of the line to be deleted (required for `:delete` operation).
     - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
   """
-  def parse_edit(edit, peer_pid) do
+  def parse_edit(edit, peer_pid, acc) do
     case Map.get(edit, :op) do
       :insert ->
-        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
+        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
+        0
       :delete ->
-        delete_line(peer_pid, Map.get(edit, :index))
+        delete_line(peer_pid, Map.get(edit, :index) + acc)
+        0
     end
   end
 
@@ -48,8 +50,9 @@ defmodule Test do
     Parses a list of edits and applies them to the specified peer.
   """
   def parse_edits(edits, peer_pid ) do
-    Enum.each(edits, fn edit ->
-      parse_edit(edit, peer_pid)
+    edits
+    |> Enum.reduce(0, fn edit, acc ->
+      parse_edit(edit, peer_pid, acc) + acc
     end)
   end
 
@@ -87,8 +90,8 @@ defmodule Test do
 
     # Process.sleep(2000)
     Process.sleep(1000)
-    save_content(Enum.at(pid_list_author_peers,7))
-    save_content(Enum.at(pid_list_author_peers,3))
+    save_content(Enum.at(pid_list_author_peers,17))
+    save_content(Enum.at(pid_list_author_peers,25))
     # save_content(Enum.at(pid_list_author_peers,:rand.uniform(7)))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(1000)
@@ -154,8 +157,8 @@ defmodule Test do
     #   Enum.at(authors_list, 17)
     # ]
     # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
-
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    IO.inspect map_peer_id_authors
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()
   end

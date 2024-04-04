@@ -287,8 +287,9 @@ defmodule Syncordian.Document do
     end
   end
 
+  # TODO: THE + 1 is really necessary? I think it is not, but I need to check it!!!!!
   def get_number_of_tombstones_before_index(document, index) do
-    Enum.reduce(Enum.take(document, index), 0, fn line, acc ->
+    Enum.reduce(Enum.take(document, index + 1 ), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else

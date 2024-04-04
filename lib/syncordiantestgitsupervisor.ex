@@ -38,11 +38,9 @@ defmodule Test do
   def parse_edit(edit, peer_pid) do
     case Map.get(edit, :op) do
       :insert ->
-        if Map.get(edit, :index) == 214 or Map.get(edit, :index) == 215 do
-          IO.inspect(edit)
-        end
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
       :delete ->
+        IO.inspect(edit)
         delete_line(peer_pid, Map.get(edit, :index))
     end
   end
@@ -53,7 +51,6 @@ defmodule Test do
   def parse_edits(edits, peer_pid ) do
     Enum.each(edits, fn edit ->
       parse_edit(edit, peer_pid)
-      Process.sleep(50)
     end)
   end
 
@@ -86,14 +83,13 @@ defmodule Test do
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
       parse_edits(position_changes, peer_pid)
+      Process.sleep(500)
     end)
 
     # Process.sleep(2000)
-    save_content(Enum.at(pid_list_author_peers,3))
-    save_content(Enum.at(pid_list_author_peers,2))
-    save_content(Enum.at(pid_list_author_peers,1))
-    save_content(Enum.at(pid_list_author_peers,0))
-    # save_content(Enum.at(pid_list_author_peers,:rand.uniform(15)))
+    Process.sleep(1000)
+    save_content(Enum.at(pid_list_author_peers,25))
+    save_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(1000)
   end
@@ -148,21 +144,22 @@ defmodule Test do
     ######## Temporary code to test the supervisor
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
-    # {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
-    temp_authors_list = [
-      Enum.at(authors_list, 25),
-      Enum.at(authors_list, 1),
-      Enum.at(authors_list, 2),
-      Enum.at(authors_list, 17)
-    ]
-    {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
+    # temp_authors_list = [
+    #   Enum.at(authors_list, 25),
+    #   Enum.at(authors_list, 1),
+    #   Enum.at(authors_list, 2),
+    #   Enum.at(authors_list, 17)
+    # ]
+    # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
 
 
 
     # IO.inspect(authors_list)
     # IO.inspect(pid_list_author_peers)
     # IO.inspect(Enum.at(authors_list, 17))
+    IO.inspect(map_peer_id_authors)
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()
   end

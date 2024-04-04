@@ -227,7 +227,6 @@ defmodule Syncordian.Test_Git do
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
     |> Enum.map(&parse_positional_change/1)
-    |> List.flatten()
   end
 
   @spec parse_line_to_map([String.t()]) :: map

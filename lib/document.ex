@@ -305,22 +305,22 @@ defmodule Syncordian.Document do
   # TEST
   # 2
   def get_number_of_tombstones_before_index(document, index) do
-    # if index == 9 and length(document) > 200 do
-    #   IO.puts("----------------------------------------------------------")
-    #   IO.inspect(Enum.take(document,index))
-    #   IO.puts("----------------------------------------------------------")
-    #   IO.inspect(Enum.at(document,index))
-    # end
-    slide_document = if get_line_status(Enum.at(document,index)) == :tombstone do
-      #HERE
-      IO.inspect("INTRUTION")
-      IO.inspect(Enum.at(document,index))
-      Enum.take(document,index - 1)
-      # Enum.take(document,index)
+    res = Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
+      if get_line_status(line) == :tombstone do
+        acc + 1
+      else
+        acc
+      end
+    end)
+    if res > 1 do
+      res - 1
     else
-      Enum.take(document,index)
+      res
     end
-    Enum.reduce(slide_document, 0, fn line, acc ->
+  end
+
+  def get_number_of_tombstones_before_index_delete(document, index) do
+    Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else
@@ -328,5 +328,6 @@ defmodule Syncordian.Document do
       end
     end)
   end
+
   #
 end

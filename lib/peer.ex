@@ -89,10 +89,12 @@ defmodule Syncordian.Peer do
           true ->
             IO.puts("The to delete line does not exist! ")
             IO.inspect("Index position: #{index_position} ")
+            IO.puts("Document length: #{document_len}")
+            IO.inspect(Enum.take(document,-5))
             loop(peer)
 
           _ ->
-            shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position)
+            shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position)
 
             peer =
               document
@@ -107,7 +109,6 @@ defmodule Syncordian.Peer do
             [left_parent, right_parent] =
               get_document_line_fathers(document, line_deleted)
             line_delete_signature = create_signature_delete(left_parent, right_parent)
-
 
             send(
               self(),
@@ -137,7 +138,7 @@ defmodule Syncordian.Peer do
           {true, false} ->
             # IO.inspect("Line deleted: #{line_deleted_id}")
             index_position_tmp = get_document_index_by_line_id(document, line_deleted_id)
-            shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp-1)
+            shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
             index_position = index_position_tmp - shift_due_to_tombstone
 
 
@@ -206,7 +207,7 @@ defmodule Syncordian.Peer do
         # IO.puts("*********************************************************")
         # IO.inspect(document)
         # IO.puts("*********************************************************\n")
-        # if peer_id == 25 and length(document) > 200 do
+        # if peer_id == 25 and length(document) > 219 do
         #   IO.puts("\n*********************************************************")
         #   IO.inspect(index_position)
         #   IO.inspect(shift_due_to_tombstone)
@@ -214,7 +215,7 @@ defmodule Syncordian.Peer do
         #   IO.inspect(new_line)
         #   IO.inspect(right_parent)
         #   IO.puts("*********************************************************")
-        #   # IO.inspect(Enum.take(document,15))
+        #   IO.inspect(Enum.take(document,15))
         #   IO.puts("*********************************************************\n\n")
         # end
 

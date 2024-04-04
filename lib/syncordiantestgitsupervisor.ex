@@ -39,10 +39,10 @@ defmodule Test do
     case Map.get(edit, :op) do
       :insert ->
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
-        0
+        1
       :delete ->
         delete_line(peer_pid, Map.get(edit, :index) + acc)
-        0
+        -1
     end
   end
 
@@ -51,8 +51,10 @@ defmodule Test do
   """
   def parse_edits(edits, peer_pid ) do
     edits
-    |> Enum.reduce(0, fn edit, acc ->
-      parse_edit(edit, peer_pid, acc) + acc
+    |> Enum.reduce(0, fn edit_list, acc_outer ->
+      Enum.reduce(edit_list, acc_outer, fn atom_edit, acc_inner ->
+        parse_edit(atom_edit, peer_pid, acc_outer) +  acc_inner
+      end )
     end)
   end
 
@@ -90,9 +92,13 @@ defmodule Test do
 
     # Process.sleep(2000)
     Process.sleep(1000)
-    save_content(Enum.at(pid_list_author_peers,17))
-    save_content(Enum.at(pid_list_author_peers,25))
-    # save_content(Enum.at(pid_list_author_peers,:rand.uniform(7)))
+    Enum.map(1..29,fn x ->
+    save_content(Enum.at(pid_list_author_peers,x))
+    end)
+    # save_content(Enum.at(pid_list_author_peers,25))
+    # save_content(Enum.at(pid_list_author_peers,12))
+    # save_content(Enum.at(pid_list_author_peers,1))
+    # save_content(Enum.at(pid_list_author_peers,7))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(1000)
   end
@@ -158,7 +164,6 @@ defmodule Test do
     # ]
     # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
-    IO.inspect map_peer_id_authors
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()
   end

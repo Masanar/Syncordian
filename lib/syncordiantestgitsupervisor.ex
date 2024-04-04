@@ -40,7 +40,6 @@ defmodule Test do
       :insert ->
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index))
       :delete ->
-        IO.inspect(edit)
         delete_line(peer_pid, Map.get(edit, :index))
     end
   end
@@ -88,8 +87,9 @@ defmodule Test do
 
     # Process.sleep(2000)
     Process.sleep(1000)
-    save_content(Enum.at(pid_list_author_peers,25))
-    save_content(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+    save_content(Enum.at(pid_list_author_peers,7))
+    save_content(Enum.at(pid_list_author_peers,3))
+    # save_content(Enum.at(pid_list_author_peers,:rand.uniform(7)))
     # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
     Process.sleep(1000)
   end
@@ -142,9 +142,10 @@ defmodule Test do
     commit_group_map = group_by_commit(parsed_git_log)
 
     ######## Temporary code to test the supervisor
+    # temporal_git_log = parser_git_log("test")
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
-    {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    # {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
     # temp_authors_list = [
     #   Enum.at(authors_list, 25),
@@ -154,12 +155,7 @@ defmodule Test do
     # ]
     # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
 
-
-
-    # IO.inspect(authors_list)
-    # IO.inspect(pid_list_author_peers)
-    # IO.inspect(Enum.at(authors_list, 17))
-    IO.inspect(map_peer_id_authors)
+    {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()
   end

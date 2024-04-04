@@ -169,20 +169,29 @@ defmodule Syncordian.Test_Git do
     global position, in the case of the example the global position is 88.
   """
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
+    # IO.inspect("******************************************************")
+    # IO.inspect(global_position)
+    # IO.puts("")
     context_lines
     |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
+      # IO.inspect(line)
+      # IO.inspect(index_position)
+      # IO.inspect(acc)
+      # IO.puts("")
+      # IO.puts("")
       case String.at(line, 0) do
         "-" ->
-          {index_position - 1, [%{op: :delete, index: index_position, content: ""} | acc]}
+          {index_position , [%{op: :delete, index: index_position, content: ""} | acc]}
 
         "+" ->
           case line do
             "+" <> content ->
               {index_position + 1,
-               [%{op: :insert, index: index_position, content: content} | acc]}
+                [%{op: :insert, index: index_position, content: content} | acc]}
 
             "+" ->
-              {index_position + 1, [%{op: :insert, index: index_position, content: "\n"} | acc]}
+              {index_position + 1,
+                [%{op: :insert, index: index_position, content: "\n"} | acc]}
           end
 
         _ ->
@@ -215,7 +224,6 @@ defmodule Syncordian.Test_Git do
     end
 
     [first_positions | new_changes] = changes
-
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
     |> Enum.map(&parse_positional_change/1)
@@ -252,8 +260,6 @@ defmodule Syncordian.Test_Git do
       acc -> {:cont, Enum.reverse(acc), []}
     end
     Path.join([File.cwd!(), "test", file_name])
-    # Path.join([File.cwd!(), "test", "test"])
-    # Path.join([File.cwd!(), "test", "ohmyzsh_README_git_log"])
     |>File.stream!()
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
@@ -262,7 +268,6 @@ defmodule Syncordian.Test_Git do
   end
 
   def get_list_of_commits(file_name) do
-    # Path.join([File.cwd!(), "test", "ohmyzsh_README_git_log"])
     Path.join([File.cwd!(), "test", file_name])
     |> File.stream!()
     |> Stream.filter(&is_commit_hash?/1)

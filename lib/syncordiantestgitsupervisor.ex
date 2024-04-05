@@ -87,7 +87,7 @@ defmodule Test do
       peer_id = Map.get(map_peer_id_authors, author_id)
       peer_pid = Enum.at(pid_list_author_peers, peer_id)
       parse_edits(position_changes, peer_pid)
-      Process.sleep(500)
+      Process.sleep(1000)
     end)
 
     # Process.sleep(2000)
@@ -149,21 +149,10 @@ defmodule Test do
     parsed_git_log = parser_git_log("test")
     list_of_commits = get_list_of_commits("test")
     commit_group_map = group_by_commit(parsed_git_log)
-
-    ######## Temporary code to test the supervisor
-    # temporal_git_log = parser_git_log("test")
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
-    # {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
-
-    # temp_authors_list = [
-    #   Enum.at(authors_list, 25),
-    #   Enum.at(authors_list, 1),
-    #   Enum.at(authors_list, 2),
-    #   Enum.at(authors_list, 17)
-    # ]
-    # {pid_list_author_peers, map_peer_id_authors} = init_peers(temp_authors_list)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+    IO.inspect(map_peer_id_authors)
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     kill()
   end

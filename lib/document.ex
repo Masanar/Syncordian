@@ -111,8 +111,13 @@ defmodule Syncordian.Document do
   @spec update_document_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
           Syncordian.Basic_Types.document()
   def update_document_line_status(document, index, new_value) do
-    index = index + get_number_of_tombstones_before_index(document, index)
+    # index = index + get_number_of_tombstones_before_index(document, index)
     line = Enum.at(document, index)
+    # if index == 25 and length(document) > 219 do
+    #   IO.inspect("DELETE STATUS")
+    #   IO.inspect(line)
+    #   IO.inspect("******************************")
+    # end
     updated_line = set_line_status(line, new_value)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
@@ -291,19 +296,6 @@ defmodule Syncordian.Document do
     end
   end
 
-  # TODO: THE + 1 is really necessary? I think it is not, but I need to check it!!!!!
-  # I remove it! case when inserted 1-2, I know what I am talking about... hope in
-  # the future I rememeber it
-  # incorrect:
-  # 1
-  # :tombstone
-  # 2
-  # TEST
-  # correct:
-  # 1
-  # :tombstone
-  # TEST
-  # 2
   def get_number_of_tombstones_before_index(document, index) do
     res = Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
@@ -320,7 +312,7 @@ defmodule Syncordian.Document do
   end
 
   def get_number_of_tombstones_before_index_delete(document, index) do
-    Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
+    Enum.reduce(Enum.take(document,index + 1), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else

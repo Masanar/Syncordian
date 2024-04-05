@@ -98,7 +98,7 @@ defmodule Syncordian.Peer do
 
             peer =
               document
-              |> update_document_line_status(index_position, :tombstone)
+              |> update_document_line_status(index_position + shift_due_to_tombstone, :tombstone)
               |> update_peer_document(peer)
 
 
@@ -109,6 +109,19 @@ defmodule Syncordian.Peer do
             [left_parent, right_parent] =
               get_document_line_fathers(document, line_deleted)
             line_delete_signature = create_signature_delete(left_parent, right_parent)
+
+            if get_peer_id(peer) == 5 do
+              IO.puts("-------------------------------------------------------")
+              IO.inspect(index_position)
+              IO.inspect(shift_due_to_tombstone)
+              IO.inspect(left_parent)
+              IO.inspect(line_deleted)
+              IO.inspect(right_parent)
+              IO.puts("-------------------------------------------------------")
+              IO.inspect(Enum.take(document,27))
+              IO.puts("-------------------------------------------------------")
+              IO.inspect(Enum.take(peer(peer,:document),27))
+            end
 
             send(
               self(),
@@ -138,9 +151,9 @@ defmodule Syncordian.Peer do
           {true, false} ->
             # IO.inspect("Line deleted: #{line_deleted_id}")
             index_position_tmp = get_document_index_by_line_id(document, line_deleted_id)
-            shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
-            index_position = index_position_tmp - shift_due_to_tombstone
-
+            # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
+            # index_position = index_position_tmp - shift_due_to_tombstone
+            index_position = index_position_tmp
 
             peer =
               document

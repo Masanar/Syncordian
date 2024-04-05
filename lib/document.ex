@@ -297,7 +297,8 @@ defmodule Syncordian.Document do
   end
 
   def get_number_of_tombstones_before_index(document, index) do
-    res = Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
+    res =
+    Enum.reduce(Enum.take(document,index), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else

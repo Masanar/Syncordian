@@ -94,7 +94,7 @@ defmodule Syncordian.Peer do
             loop(peer)
 
           _ ->
-            shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position)
+            shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position + 1)
 
             peer =
               document
@@ -110,18 +110,6 @@ defmodule Syncordian.Peer do
               get_document_line_fathers(document, line_deleted)
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
-            if get_peer_id(peer) == 5 do
-              IO.puts("-------------------------------------------------------")
-              IO.inspect(index_position)
-              IO.inspect(shift_due_to_tombstone)
-              IO.inspect(left_parent)
-              IO.inspect(line_deleted)
-              IO.inspect(right_parent)
-              IO.puts("-------------------------------------------------------")
-              IO.inspect(Enum.take(document,27))
-              IO.puts("-------------------------------------------------------")
-              IO.inspect(Enum.take(peer(peer,:document),27))
-            end
 
             send(
               self(),
@@ -213,24 +201,17 @@ defmodule Syncordian.Peer do
             right_parent,
             peer_id
           )
-        # IO.puts("\n*********************************************************")
-        # IO.inspect(left_parent)
-        # IO.inspect(new_line)
-        # IO.inspect(right_parent)
-        # IO.puts("*********************************************************")
-        # IO.inspect(document)
-        # IO.puts("*********************************************************\n")
-        # if peer_id == 25 and length(document) > 219 do
-        #   IO.puts("\n*********************************************************")
-        #   IO.inspect(index_position)
-        #   IO.inspect(shift_due_to_tombstone)
-        #   IO.inspect(left_parent)
-        #   IO.inspect(new_line)
-        #   IO.inspect(right_parent)
-        #   IO.puts("*********************************************************")
-        #   IO.inspect(Enum.take(document,15))
-        #   IO.puts("*********************************************************\n\n")
-        # end
+        if get_peer_id(peer) == 5 do
+          IO.puts("-------------------------------------------------------")
+          IO.inspect(index_position)
+          IO.inspect(shift_due_to_tombstone)
+          IO.inspect(left_parent)
+          IO.inspect(new_line)
+          IO.inspect(right_parent)
+          IO.puts("-------------------------------------------------------")
+          IO.inspect(Enum.take(peer(peer,:document),30))
+          IO.puts("-------------------------------------------------------")
+        end
 
         peer =
           new_line

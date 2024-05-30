@@ -238,7 +238,7 @@ defmodule Syncordian.Line do
     "#{get_line_id(line)}" <> ", " <>
     Integer.to_string(get_line_peer_id(line)) <> ", " <>
     get_content(line) <> ", " <>
-    get_signature(line)
+    get_signature(line) <> ", " <> "#{get_line_status(line)}"
   end
 
 end

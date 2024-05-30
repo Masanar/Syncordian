@@ -168,36 +168,132 @@ defmodule Syncordian.Test_Git do
     (delete). The index_position is the index position line in the context lines plus the
     global position, in the case of the example the global position is 88.
   """
+  # def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
+  #   temp =
+  #     context_lines
+  #     |> Enum.reduce({global_position, [], false, 0, false, false}, fn line,
+  #                                                                      {index_position,
+  #                                                                       acc,
+  #                                                                       deleted_before,
+  #                                                                       local_tombstones,
+  #                                                                       empty_space,
+  #                                                                       empty_space_found} ->
+  #       # if index_position < 12000 do
+  #       #   IO.inspect("index_position before: #{index_position}")
+  #       #   IO.puts("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+  #       #   IO.inspect("index_position: #{index_position}")
+  #       #   IO.inspect("local_tombstones: #{local_tombstones}")
+  #       #   IO.inspect("empty_space: #{empty_space}")
+  #       #   IO.inspect("line: #{line}")
+  #       #   IO.inspect(acc)
+  #       #   IO.puts("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
+  #       # end
+
+  #       case String.at(line, 0) do
+  #         "-" ->
+  #           index_position =
+  #             if empty_space, do: index_position + local_tombstones, else: index_position
+
+  #           case deleted_before do
+  #             true ->
+  #               {index_position + 1,
+  #                [
+  #                  %{
+  #                    op: :delete,
+  #                    index: index_position + 1,
+  #                    content: "",
+  #                    local_tombstones: local_tombstones,
+  #                    empty_space_found: empty_space_found
+  #                  }
+  #                  | acc
+  #                ], true, local_tombstones + 1, false, empty_space_found}
+
+  #             false ->
+  #               {index_position,
+  #                [
+  #                  %{
+  #                    op: :delete,
+  #                    index: index_position,
+  #                    content: "",
+  #                    local_tombstones: local_tombstones,
+  #                    empty_space_found: empty_space_found
+  #                  }
+  #                  | acc
+  #                ], true, local_tombstones + 1, false, empty_space_found}
+  #           end
+
+  #         "+" ->
+  #           index_position =
+  #             if empty_space, do: index_position + local_tombstones, else: index_position
+
+  #           # local_tombstones = local_tombstones + 1
+  #           case line do
+  #             "+" <> content ->
+  #               {index_position + 1,
+  #                [
+  #                  %{
+  #                    op: :insert,
+  #                    index: index_position,
+  #                    content: content,
+  #                    local_tombstones: local_tombstones,
+  #                    empty_space_found: empty_space_found
+  #                  }
+  #                  | acc
+  #                ], false, local_tombstones, false, empty_space_found}
+
+  #             "+" ->
+  #               {index_position + 1,
+  #                [
+  #                  %{
+  #                    op: :insert,
+  #                    index: index_position,
+  #                    content: "\n",
+  #                    local_tombstones: local_tombstones,
+  #                    empty_space_found: empty_space_found
+  #                  }
+  #                  | acc
+  #                ], false, local_tombstones, false, empty_space_found}
+  #           end
+
+  #         _ ->
+  #           # local_tombstones = local_tombstones - 1
+  #           {index_position + 1, acc, false, local_tombstones, true, true}
+  #       end
+  #     end)
+  #     |> elem(1)
+  #     |> Enum.reverse()
+
+  #   IO.inspect(temp)
+  #   temp
+  # end
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
+    # IO.inspect("******************************************************")
     # IO.inspect(global_position)
-    # IO.inspect(context_lines)
-    # IO.puts("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
+    # IO.puts("")
     context_lines
-    |> Enum.reduce({global_position, [], false}, fn line, {index_position, acc, deleted_before} ->
+    |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
+      # IO.inspect(line)
+      # IO.inspect(index_position)
+      # IO.inspect(acc)
+      # IO.puts("")
+      # IO.puts("")
       case String.at(line, 0) do
         "-" ->
-          case deleted_before do
-            true ->
-              {index_position + 1, [%{op: :delete, index: index_position + 1, content: ""} | acc],
-               true}
-
-            false ->
-              {index_position, [%{op: :delete, index: index_position, content: ""} | acc], true}
-          end
+          {index_position , [%{op: :delete, index: index_position, content: ""} | acc]}
 
         "+" ->
           case line do
             "+" <> content ->
               {index_position + 1,
-               [%{op: :insert, index: index_position, content: content} | acc], false}
+                [%{op: :insert, index: index_position, content: content} | acc]}
 
             "+" ->
-              {index_position + 1, [%{op: :insert, index: index_position, content: "\n"} | acc],
-               false}
+              {index_position + 1,
+                [%{op: :insert, index: index_position, content: "\n"} | acc]}
           end
 
         _ ->
-          {index_position + 1, acc, false}
+          {index_position + 1, acc}
       end
     end)
     |> elem(1)

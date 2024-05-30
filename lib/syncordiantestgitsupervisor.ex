@@ -41,12 +41,33 @@ defmodule Test do
       :insert ->
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
         1
-
       :delete ->
         delete_line(peer_pid, Map.get(edit, :index) + acc)
         -1
     end
   end
+  # def parse_edit(edit, peer_pid, acc) do
+  #   case Map.get(edit, :op) do
+  #     :insert ->
+  #       insert(
+  #         peer_pid,
+  #         Map.get(edit, :content),
+  #         Map.get(edit, :index) + acc,
+  #         Map.get(edit, :local_tombstones),
+  #         Map.get(edit, :empty_space_found)
+  #       )
+  #       1
+
+  #     :delete ->
+  #       delete_line(
+  #         peer_pid,
+  #         Map.get(edit, :index) + acc,
+  #         Map.get(edit, :local_tombstones),
+  #         Map.get(edit, :empty_space_found)
+  #       )
+  #       -1
+  #   end
+  # end
 
   @doc """
     Parses a list of edits and applies them to the specified peer.
@@ -157,6 +178,8 @@ defmodule Test do
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
+
+    IO.inspect(map_peer_id_authors)
 
     # Start the process of applying edits for each commit
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)

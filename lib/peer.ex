@@ -90,7 +90,6 @@ defmodule Syncordian.Peer do
             IO.puts("The to delete line does not exist! ")
             IO.inspect("Index position: #{index_position} ")
             IO.puts("Document length: #{document_len}")
-            IO.inspect(Enum.take(document,-5))
             loop(peer)
 
           _ ->
@@ -106,10 +105,18 @@ defmodule Syncordian.Peer do
               get_document_line_by_index(document, index_position + shift_due_to_tombstone)
             line_deleted_id = line_deleted |> get_line_id
 
+            if peer(peer, :peer_id) == 17 do
+              IO.puts("\n------")
+              IO.inspect("Peer 17 is trying to delete a line")
+              IO.inspect("Index position: #{index_position}")
+              IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
+              IO.inspect("Line deleted: #{line_to_string(line_deleted)}")
+              IO.puts("------\n")
+            end
+
             [left_parent, right_parent] =
               get_document_line_fathers(document, line_deleted)
             line_delete_signature = create_signature_delete(left_parent, right_parent)
-
 
             send(
               self(),
@@ -137,7 +144,6 @@ defmodule Syncordian.Peer do
 
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
-            # IO.inspect("Line deleted: #{line_deleted_id}")
             index_position_tmp = get_document_index_by_line_id(document, line_deleted_id)
             # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
             # index_position = index_position_tmp - shift_due_to_tombstone
@@ -186,11 +192,6 @@ defmodule Syncordian.Peer do
         peer_id = get_peer_id(peer)
         shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position)
 
-        # shift_due_to_tombstone = if index_position < 20 and length(document) > 200 do shift_due_to_tombstone_
-        # else
-        #   shift_due_to_tombstone_
-        # end
-
         [left_parent, right_parent] =
           get_parents_by_index(document, index_position + shift_due_to_tombstone)
 
@@ -201,17 +202,6 @@ defmodule Syncordian.Peer do
             right_parent,
             peer_id
           )
-        if get_peer_id(peer) == 5 do
-          IO.puts("-------------------------------------------------------")
-          IO.inspect(index_position)
-          IO.inspect(shift_due_to_tombstone)
-          IO.inspect(left_parent)
-          IO.inspect(new_line)
-          IO.inspect(right_parent)
-          IO.puts("-------------------------------------------------------")
-          IO.inspect(Enum.take(peer(peer,:document),30))
-          IO.puts("-------------------------------------------------------")
-        end
 
         peer =
           new_line
@@ -328,18 +318,11 @@ defmodule Syncordian.Peer do
 
                   {false, false} ->
                     debug_function.("Requesting requeue")
-                    if get_peer_id(peer) == 24 do
-                      IO.puts("\n----------------------------")
-                      IO.inspect(line)
-                      IO.inspect(Enum.take(document,8))
-                      IO.puts("----------------------------\n")
-                    end
                     # new_line = tick_line_insertion_attempts(line)
                     # send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
-                    # IO.inspect("A line has reach the insertion attempts limit!")
                     loop(peer)
                 end
 
@@ -352,7 +335,6 @@ defmodule Syncordian.Peer do
 
                 case valid_line? do
                   true ->
-                    IO.inspect("Stash process succeeded!!!")
                     # TODO: This is repeted code! Should be a function!
                     send_confirmation_line_insertion(
                       get_peer_id(peer),
@@ -374,7 +356,6 @@ defmodule Syncordian.Peer do
 
           {_, _} ->
             IO.inspect("Something happen")
-            # debug_function.("Something Happend")
             loop(peer)
         end
 

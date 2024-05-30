@@ -169,33 +169,35 @@ defmodule Syncordian.Test_Git do
     global position, in the case of the example the global position is 88.
   """
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
-    # IO.inspect("******************************************************")
     # IO.inspect(global_position)
-    # IO.puts("")
+    # IO.inspect(context_lines)
+    # IO.puts("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
     context_lines
-    |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
-      # IO.inspect(line)
-      # IO.inspect(index_position)
-      # IO.inspect(acc)
-      # IO.puts("")
-      # IO.puts("")
+    |> Enum.reduce({global_position, [], false}, fn line, {index_position, acc, deleted_before} ->
       case String.at(line, 0) do
         "-" ->
-          {index_position , [%{op: :delete, index: index_position, content: ""} | acc]}
+          case deleted_before do
+            true ->
+              {index_position + 1, [%{op: :delete, index: index_position + 1, content: ""} | acc],
+               true}
+
+            false ->
+              {index_position, [%{op: :delete, index: index_position, content: ""} | acc], true}
+          end
 
         "+" ->
           case line do
             "+" <> content ->
               {index_position + 1,
-                [%{op: :insert, index: index_position, content: content} | acc]}
+               [%{op: :insert, index: index_position, content: content} | acc], false}
 
             "+" ->
-              {index_position + 1,
-                [%{op: :insert, index: index_position, content: "\n"} | acc]}
+              {index_position + 1, [%{op: :insert, index: index_position, content: "\n"} | acc],
+               false}
           end
 
         _ ->
-          {index_position + 1, acc}
+          {index_position + 1, acc, false}
       end
     end)
     |> elem(1)
@@ -224,6 +226,7 @@ defmodule Syncordian.Test_Git do
     end
 
     [first_positions | new_changes] = changes
+
     new_changes
     |> Enum.chunk_while([first_positions], reduce_function, after_fun)
     |> Enum.map(&parse_positional_change/1)
@@ -258,8 +261,9 @@ defmodule Syncordian.Test_Git do
       {_, acc} -> {:cont, Enum.reverse(acc), []}
       acc -> {:cont, Enum.reverse(acc), []}
     end
+
     Path.join([File.cwd!(), "test", file_name])
-    |>File.stream!()
+    |> File.stream!()
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
@@ -282,12 +286,11 @@ defmodule Syncordian.Test_Git do
   end
 
   def group_by_author(parsed_log) do
-    authors_group_map = parsed_log
-    |> Enum.to_list()
-    |> Enum.group_by(&Map.get(&1, :author_id))
+    authors_group_map =
+      parsed_log
+      |> Enum.to_list()
+      |> Enum.group_by(&Map.get(&1, :author_id))
 
-    {authors_group_map, authors_group_map|> Map.keys()}
+    {authors_group_map, authors_group_map |> Map.keys()}
   end
-
-
 end

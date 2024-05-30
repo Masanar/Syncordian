@@ -22,6 +22,7 @@ defmodule Test do
   """
   import Syncordian.Peer
   import Syncordian.Test_Git
+  import Syncordian.Utilities
 
   @doc """
     Parses a single edit and applies it to the specified peer.
@@ -40,6 +41,7 @@ defmodule Test do
       :insert ->
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
         1
+
       :delete ->
         delete_line(peer_pid, Map.get(edit, :index) + acc)
         -1
@@ -49,12 +51,12 @@ defmodule Test do
   @doc """
     Parses a list of edits and applies them to the specified peer.
   """
-  def parse_edits(edits, peer_pid ) do
+  def parse_edits(edits, peer_pid) do
     edits
     |> Enum.reduce(0, fn edit_list, acc_outer ->
       Enum.reduce(edit_list, acc_outer, fn atom_edit, acc_inner ->
-        parse_edit(atom_edit, peer_pid, acc_outer) +  acc_inner
-      end )
+        parse_edit(atom_edit, peer_pid, acc_outer) + acc_inner
+      end)
     end)
   end
 
@@ -92,14 +94,11 @@ defmodule Test do
 
     # Process.sleep(2000)
     Process.sleep(1000)
-    Enum.map(1..29,fn x ->
-    save_content(Enum.at(pid_list_author_peers,x))
+
+    Enum.map(1..29, fn x ->
+      save_content(Enum.at(pid_list_author_peers, x))
     end)
-    # save_content(Enum.at(pid_list_author_peers,25))
-    # save_content(Enum.at(pid_list_author_peers,12))
-    # save_content(Enum.at(pid_list_author_peers,1))
-    # save_content(Enum.at(pid_list_author_peers,7))
-    # raw_print(Enum.at(pid_list_author_peers,:rand.uniform(29)))
+
     Process.sleep(1000)
   end
 
@@ -146,14 +145,23 @@ defmodule Test do
 
   """
   def init() do
+    # Delete the all the files of the debug directory
+    delete_contents("debug")
+
+    # Load the git log and the list of commits of the test files
     parsed_git_log = parser_git_log("test")
     list_of_commits = get_list_of_commits("test")
     commit_group_map = group_by_commit(parsed_git_log)
+
+    # Instance all the 30 peers independent  the number of commits in the test file
     temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
-    IO.inspect(map_peer_id_authors)
+
+    # Start the process of applying edits for each commit
     start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+
+    # Terminate all the processes started by the supervisor
     kill()
   end
 

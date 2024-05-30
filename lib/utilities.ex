@@ -42,4 +42,23 @@ defmodule Syncordian.Utilities do
   def remove_last([]), do: []
   def remove_last([_head | []]), do: []
   def remove_last([head | tail]), do: [head | remove_last(tail)]
+
+  def delete_contents(directory) do
+    directory
+    |> Path.expand()
+    |> File.ls!()
+    |> Enum.each(&delete_entry(Path.join(directory, &1)))
+  end
+
+  defp delete_entry(path) do
+    case File.stat!(path) do
+      %File.Stat{type: :directory} ->
+        File.ls!(path)
+        |> Enum.each(&delete_entry(Path.join(path, &1)))
+        File.rmdir!(path)
+      _ ->
+        File.rm!(path)
+    end
+  end
+
 end

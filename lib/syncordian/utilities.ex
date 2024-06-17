@@ -61,4 +61,11 @@ defmodule Syncordian.Utilities do
     end
   end
 
+  @doc """
+    Terminates all the processes
+  """
+  def kill do
+    :global.registered_names()
+    |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
+  end
 end

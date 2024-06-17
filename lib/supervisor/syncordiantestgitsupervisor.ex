@@ -46,28 +46,6 @@ defmodule Test do
         -1
     end
   end
-  # def parse_edit(edit, peer_pid, acc) do
-  #   case Map.get(edit, :op) do
-  #     :insert ->
-  #       insert(
-  #         peer_pid,
-  #         Map.get(edit, :content),
-  #         Map.get(edit, :index) + acc,
-  #         Map.get(edit, :local_tombstones),
-  #         Map.get(edit, :empty_space_found)
-  #       )
-  #       1
-
-  #     :delete ->
-  #       delete_line(
-  #         peer_pid,
-  #         Map.get(edit, :index) + acc,
-  #         Map.get(edit, :local_tombstones),
-  #         Map.get(edit, :empty_space_found)
-  #       )
-  #       -1
-  #   end
-  # end
 
   @doc """
     Parses a list of edits and applies them to the specified peer.
@@ -179,20 +157,17 @@ defmodule Test do
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
-    IO.inspect(map_peer_id_authors)
+    # IO.inspect(map_peer_id_authors)
 
+    IO.inspect(list_of_commits)
+    IO.inspect(commit_group_map)
+    IO.inspect(pid_list_author_peers)
+    IO.inspect(map_peer_id_authors)
     # Start the process of applying edits for each commit
-    start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+    # start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
 
     # Terminate all the processes started by the supervisor
     kill()
   end
 
-  @doc """
-    Terminates all the processes started by the supervisor.
-  """
-  def kill do
-    :global.registered_names()
-    |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
-  end
 end

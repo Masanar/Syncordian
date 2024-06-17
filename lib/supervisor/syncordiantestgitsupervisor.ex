@@ -1,4 +1,4 @@
-defmodule Test do
+defmodule Syncordian.Supervisor do
   @moduledoc """
     This module provides functionality for managing test edits in a Git repository.
 
@@ -12,17 +12,26 @@ defmodule Test do
 
     ## Functions
 
-    - `parse_edit/2`: Parses a single edit and applies it to the specified peer.
+    - `parse_edit/2` : Parses a single edit and applies it to the specified peer.
     - `parse_edits/2`: Parses a list of edits and applies them to the specified peer.
-    - `start_edits/4`: Starts the process of applying edits for a list of commits.
-    - `init_peers/1`: Initializes the peers based on the list of authors.
-    - `init/0`: Initializes the supervisor and starts the process of applying edits.
-    - `kill/0`: Terminates all the processes started by the supervisor.
+    - `start_edit/4` : ...
+    - `start_edit/3` : ...
+    - `init_peers/1` : Initializes the peers based on the list of authors.
+    - `init/0`       : Initializes the supervisor and starts the process of applying edits.
 
   """
+  require Record
   import Syncordian.Peer
   import Syncordian.Test_Git
   import Syncordian.Utilities
+
+  Record.defrecord(:supervisor,
+    list_of_commits: [],
+    commit_group_map: %{},
+    pid_list_author_peers: [],
+    map_peer_id_authors: %{},
+    commit_counter: 0
+  )
 
   @doc """
     Parses a single edit and applies it to the specified peer.
@@ -41,6 +50,7 @@ defmodule Test do
       :insert ->
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
         1
+
       :delete ->
         delete_line(peer_pid, Map.get(edit, :index) + acc)
         -1
@@ -80,25 +90,37 @@ defmodule Test do
     function.
 
   """
-  def start_edits(commits, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
-    Enum.each(commits, fn commit_hash ->
-      [commit_group] = Map.get(commit_group_map, commit_hash)
-      author_id = Map.get(commit_group, :author_id)
-      position_changes = Map.get(commit_group, :position_changes)
-      peer_id = Map.get(map_peer_id_authors, author_id)
-      peer_pid = Enum.at(pid_list_author_peers, peer_id)
-      parse_edits(position_changes, peer_pid)
-      Process.sleep(500)
-    end)
+  def start_edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
 
-    # Process.sleep(2000)
-    Process.sleep(1000)
+    [commit_group] = Map.get(commit_group_map, commit_hash)
+    author_id = Map.get(commit_group, :author_id)
+    position_changes = Map.get(commit_group, :position_changes)
+    peer_id = Map.get(map_peer_id_authors, author_id)
+    peer_pid = Enum.at(pid_list_author_peers, peer_id)
+    parse_edits(position_changes, peer_pid)
+    Process.sleep(500)
+    # # Process.sleep(2000)
+    # Process.sleep(1000)
+    # Enum.map(1..29, fn x ->
+    #   save_content(Enum.at(pid_list_author_peers, x))
+    # end)
+    # Process.sleep(1000)
+    author_id
+  end
 
-    Enum.map(1..29, fn x ->
-      save_content(Enum.at(pid_list_author_peers, x))
-    end)
+  def start_edit(commit_count, supervisor, live_view_pid) do
+    list_of_commits = supervisor(supervisor, :list_of_commits)
+    commit_group_map = supervisor(supervisor, :commit_group_map)
+    map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
+    pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
 
-    Process.sleep(1000)
+    if commit_count < length(list_of_commits) do
+      commit_hash = Enum.at(list_of_commits, commit_count)
+      author_id = start_edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+      send(live_view_pid, {:commit_inserted, {commit_hash,author_id}})
+    else
+      IO.puts("All commits processed")
+    end
   end
 
   @doc """
@@ -157,17 +179,33 @@ defmodule Test do
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
-    # IO.inspect(map_peer_id_authors)
+    supervisor =
+      supervisor(
+        list_of_commits: list_of_commits,
+        commit_group_map: commit_group_map,
+        pid_list_author_peers: pid_list_author_peers,
+        map_peer_id_authors: map_peer_id_authors
+      )
 
-    IO.inspect(list_of_commits)
-    IO.inspect(commit_group_map)
-    IO.inspect(pid_list_author_peers)
-    IO.inspect(map_peer_id_authors)
-    # Start the process of applying edits for each commit
-    # start_edits(list_of_commits, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+    pid = spawn(__MODULE__, :supervisor_loop, [supervisor])
+    :global.register_name(:supervisor, pid)
+    pid
+  end
 
-    # Terminate all the processes started by the supervisor
-    kill()
+  def supervisor_loop(supervisor) do
+    receive do
+      {:send_next_commit, live_view_pid} ->
+        supervisor_counter = supervisor(supervisor, :commit_counter)
+        start_edit(supervisor_counter, supervisor, live_view_pid)
+        supervisor_loop(supervisor(commit_counter: supervisor_counter + 1))
+
+      {:kill} ->
+        kill()
+
+      {_} ->
+        IO.puts("Unknown message")
+        supervisor_loop(supervisor)
+    end
   end
 
 end

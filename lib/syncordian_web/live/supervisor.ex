@@ -3,15 +3,11 @@ defmodule SyncordianWeb.Supervisor do
   import Syncordian.Supervisor
 
   def mount(_params, _session, socket) do
-    logs = [
-      %{author: "me", hash: "hash"}
-    ]
-
     {
       :ok,
       assign(
         socket,
-        logs: logs,
+        logs: [],
         launched: false,
         supervisor_pid: ""
       )
@@ -24,11 +20,10 @@ defmodule SyncordianWeb.Supervisor do
     socket =
       if launched? do
         IO.inspect("Supervisor already launched")
-        socket
       else
         IO.inspect("launching")
         supervisor_pid = Syncordian.Supervisor.init()
-        assign(socket, launched: true, supervisor_pid: supervisor_pid)
+        assign(socket, launched: true, supervisor_pid: supervisor_pid, logs: [])
       end
 
     IO.inspect("launched")
@@ -77,20 +72,13 @@ defmodule SyncordianWeb.Supervisor do
   def handle_info({:commit_inserted, value}, socket) do
     IO.inspect("update_logs")
     IO.inspect(value)
-    # logs = [%{author: value.author, hash: value.hash} | socket.assigns.logs]
-    # {:noreply, assign(socket, logs: logs)}
-    {:noreply, socket}
+    logs = [%{author: value.author, hash: value.hash} | socket.assigns.logs]
+    {:noreply, assign(socket, logs: logs)}
   end
 
-  def handle_info({:limit_reached, value}, socket) do
+  def handle_info({:limit_reached, _value}, socket) do
     IO.inspect("Limit reached")
     {:noreply, socket}
   end
-  # receive do
-  #   {:commit_inserted, state} ->
-  #     IO.inspect("Commit inserted :) ")
-  #     # I would like to call handle_event("update_logs", value, socket) here but I do not
-  #     # have access to the socket variable
-  # end
 
 end

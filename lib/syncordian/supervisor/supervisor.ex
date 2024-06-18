@@ -22,7 +22,7 @@ defmodule Syncordian.Supervisor do
   """
   require Record
   import Syncordian.Peer
-  import Syncordian.Test_Git
+  import Syncordian.GitParser
   import Syncordian.Utilities
 
   Record.defrecord(:supervisor,
@@ -96,6 +96,8 @@ defmodule Syncordian.Supervisor do
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
+    IO.inspect("This are the positional changes")
+    IO.inspect(position_changes)
     # parse_edits(position_changes, peer_pid)
     Process.sleep(500)
     # # Process.sleep(2000)
@@ -184,6 +186,7 @@ defmodule Syncordian.Supervisor do
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
     IO.inspect(list_of_commits)
+    IO.inspect(pid_list_author_peers)
 
     supervisor =
       supervisor(

@@ -8,7 +8,7 @@
 </h2>
 
 <div class="container">
- <div class="button-container">
+  <div class="button-container">
     <button class="button-89" role="button" phx-click="next_commit">Load next commit</button>
     <div class="button-right">
       <button class="button-89" role="button" phx-click="launch">Launch Supervisor</button>
@@ -27,9 +27,9 @@
           </th>
         </tr>
       </thead>
-      <tbody id="lines" phx-hook="InfinityScroll">
+      <tbody id="lines" phx-update="replace">
         <%= for log <- @logs do %>
-          <tr id={"log-#{log.author}"}>
+          <tr id={"log-#{log.hash}"}>
             <td><%= log.author %></td>
             <td><%= log.hash %></td>
           </tr>

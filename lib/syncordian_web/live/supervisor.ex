@@ -20,9 +20,10 @@ defmodule SyncordianWeb.Supervisor do
     socket =
       if launched? do
         IO.inspect("Supervisor already launched")
+        socket
       else
         IO.inspect("launching")
-        supervisor_pid = Syncordian.Supervisor.init()
+        supervisor_pid = init()
         assign(socket, launched: true, supervisor_pid: supervisor_pid, logs: [])
       end
 
@@ -63,15 +64,8 @@ defmodule SyncordianWeb.Supervisor do
     {:noreply, socket}
   end
 
-  def handle_event("update_logs", data, socket) do
-    IO.inspect("update_logs")
-    {:noreply, socket}
-
-  end
-
   def handle_info({:commit_inserted, value}, socket) do
     IO.inspect("update_logs")
-    IO.inspect(value)
     logs = [%{author: value.author, hash: value.hash} | socket.assigns.logs]
     {:noreply, assign(socket, logs: logs)}
   end

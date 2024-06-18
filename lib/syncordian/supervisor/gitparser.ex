@@ -1,4 +1,4 @@
-defmodule Syncordian.Test_Git do
+defmodule Syncordian.GitParser do
   @moduledoc """
   This module contains functions for parsing and manipulating git log data. So far the
   structure of a commit is something like this:

@@ -83,6 +83,8 @@
 .container {
   width: 80%;
   margin: 0 auto;
+  background-color: #1F2739;
+  color: #A7A1AE;
 }
 
 /* CSS */
@@ -241,4 +243,10 @@ h2 a {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px; /* Adds space between buttons and table */
+}
+
+pre {
+  white-space: pre-wrap;       /* Wraps long lines */
+  word-wrap: break-word;       /* Breaks long words */
+  overflow-wrap: break-word;   /* Breaks long words */
 }

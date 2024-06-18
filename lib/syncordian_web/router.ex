@@ -20,6 +20,7 @@ defmodule SyncordianWeb.Router do
     get "/", PageController, :home
     live "/node", Node
     live "/supervisor", Supervisor
+    live "/readmelog", ReadmeLog
   end
 
   # Other scopes may use custom stacks.

@@ -358,7 +358,7 @@ defmodule Syncordian.Test_Git do
       acc -> {:cont, Enum.reverse(acc), []}
     end
 
-    Path.join([File.cwd!(), "test", file_name])
+    Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
@@ -367,7 +367,7 @@ defmodule Syncordian.Test_Git do
   end
 
   def get_list_of_commits(file_name) do
-    Path.join([File.cwd!(), "test", file_name])
+    Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
     |> Stream.filter(&is_commit_hash?/1)
     |> Stream.map(&find_commit_hash/1)

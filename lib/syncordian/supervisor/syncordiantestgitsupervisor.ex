@@ -90,14 +90,13 @@ defmodule Syncordian.Supervisor do
     function.
 
   """
-  def start_edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
-
+  def edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
     [commit_group] = Map.get(commit_group_map, commit_hash)
     author_id = Map.get(commit_group, :author_id)
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
-    parse_edits(position_changes, peer_pid)
+    # parse_edits(position_changes, peer_pid)
     Process.sleep(500)
     # # Process.sleep(2000)
     # Process.sleep(1000)
@@ -116,10 +115,11 @@ defmodule Syncordian.Supervisor do
 
     if commit_count < length(list_of_commits) do
       commit_hash = Enum.at(list_of_commits, commit_count)
-      author_id = start_edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
-      send(live_view_pid, {:commit_inserted, {commit_hash,author_id}})
+      author_id = edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+      send(live_view_pid, {:commit_inserted, {commit_hash, author_id}})
     else
       IO.puts("All commits processed")
+      send(live_view_pid, {:limit_reached, "All commits processed"})
     end
   end
 
@@ -196,10 +196,12 @@ defmodule Syncordian.Supervisor do
     receive do
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
+        IO.inspect("Sending next commit, current counter:  #{supervisor_counter}")
         start_edit(supervisor_counter, supervisor, live_view_pid)
         supervisor_loop(supervisor(commit_counter: supervisor_counter + 1))
 
       {:kill} ->
+        IO.inspect("Receive killing supervisor")
         kill()
 
       {_} ->
@@ -207,5 +209,4 @@ defmodule Syncordian.Supervisor do
         supervisor_loop(supervisor)
     end
   end
-
 end

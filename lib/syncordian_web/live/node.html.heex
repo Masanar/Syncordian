@@ -1,0 +1,49 @@
+<h1>
+  <span class="blue">&lt;</span>Node<span class="blue">&gt;</span>
+  <span class="yellow">Syncordian</span>
+</h1>
+<h2>
+  Implemented with love by
+  <a href="https://github.com/pablorgarcia" target="_blank">Mateo Sanabria</a>
+</h2>
+
+<div class="container">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <h1>Line ID</h1>
+          </th>
+          <th>
+            <h1>Content</h1>
+          </th>
+          <th>
+            <h1>Signature</h1>
+          </th>
+          <th>
+            <h1>Peer ID</h1>
+          </th>
+          <th>
+            <h1>Status</h1>
+          </th>
+          <th>
+            <h1>Insertions Attempts</h1>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="lines" phx-hook="InfinityScroll">
+        <%= for line <- @lines do %>
+          <tr id={"line-#{line.line_id}"}>
+            <td><%= line.line_id %></td>
+            <td><%= line.content %></td>
+            <td><%= line.signature %></td>
+            <td><%= line.peer_id %></td>
+            <td><%= line.status %></td>
+            <td><%= line.insertion_attempts %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

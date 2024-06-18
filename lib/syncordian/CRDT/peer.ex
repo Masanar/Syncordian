@@ -89,7 +89,6 @@ defmodule Syncordian.Peer do
   @spec insert(pid, String.t(), integer) :: any
   def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
 
-
   @doc """
     This function starts a peer with the given peer_id and registers it in the global registry.
     The returned content is the pid of the peer. The pid is the corresponding content of the
@@ -102,6 +101,8 @@ defmodule Syncordian.Peer do
     save_peer_pid(pid, network_size, peer_id)
     pid
   end
+
+  defp get_peer_pid(peer), do: peer(peer, :pid)
 
   @doc """
     This function is the main loop of the peer, it receives messages and calls the
@@ -124,20 +125,22 @@ defmodule Syncordian.Peer do
 
           _ ->
             # shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position) - local_tombstones
-            shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position)
+            shift_due_to_tombstone =
+              get_number_of_tombstones_before_index_delete(document, index_position)
 
             peer =
               document
               |> update_document_line_status(index_position + shift_due_to_tombstone, :tombstone)
               |> update_peer_document(peer)
 
-
             line_deleted =
               get_document_line_by_index(document, index_position + shift_due_to_tombstone)
+
             line_deleted_id = line_deleted |> get_line_id
 
             [left_parent, right_parent] =
               get_document_line_fathers(document, line_deleted)
+
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
             # if peer(peer, :peer_id) == 25 and index_position < 15 do
@@ -153,7 +156,7 @@ defmodule Syncordian.Peer do
             # end
 
             send(
-              self(),
+              get_peer_id(peer),
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
 
@@ -179,6 +182,7 @@ defmodule Syncordian.Peer do
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
             index_position_tmp = get_document_index_by_line_id(document, line_deleted_id)
+
             # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
             # index_position = index_position_tmp - shift_due_to_tombstone
             index_position = index_position_tmp
@@ -188,15 +192,13 @@ defmodule Syncordian.Peer do
               |> update_document_line_status(index_position, :tombstone)
               |> update_peer_document(peer)
 
-
-
             tick_peer_deleted_count(peer)
 
           {false, false} ->
             IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
 
             send(
-              self(),
+              get_peer_pid(peer),
               {:receive_delete_broadcast,
                {line_deleted_id, line_delete_signature, attempt_count + 1}}
             )
@@ -212,11 +214,12 @@ defmodule Syncordian.Peer do
         end
 
       {:send_delete_broadcast, delete_line_info} ->
-        :global.registered_names()
-        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x ->
-          send(x |> :global.whereis_name(), {:receive_delete_broadcast, delete_line_info})
-        end)
+        perform_broadcast(peer, {:receive_delete_broadcast, delete_line_info})
+        # :global.registered_names()
+        # |> Enum.filter(fn x -> get_peer_pid(peer) != :global.whereis_name(x) end)
+        # |> Enum.map(fn x ->
+        #   send(x |> :global.whereis_name(), {:receive_delete_broadcast, delete_line_info})
+        # end)
 
         loop(peer)
 
@@ -225,8 +228,10 @@ defmodule Syncordian.Peer do
       {:insert, [content, index_position]} ->
         document = peer(peer, :document)
         peer_id = get_peer_id(peer)
+
         # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position) - local_tombstones
-        shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position) - 0
+        shift_due_to_tombstone =
+          get_number_of_tombstones_before_index(document, index_position) - 0
 
         [left_parent, right_parent] =
           get_parents_by_index(document, index_position + shift_due_to_tombstone)
@@ -258,19 +263,23 @@ defmodule Syncordian.Peer do
         #   IO.puts("--------------------------------------------------------")
         # end
 
-        send(self(), {:send_insert_broadcast, {new_line, current_vector_clock}})
+        send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
-        :global.registered_names()
-        |> Enum.filter(fn x -> self() != :global.whereis_name(x) end)
-        |> Enum.map(fn x ->
-          send(
-            x |> :global.whereis_name(),
-            {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
-          )
-        end)
+        perform_broadcast(
+          peer,
+          {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
+        )
 
+        # :global.registered_names()
+        # |> Enum.filter(fn x -> get_peer_pid(peer) != :global.whereis_name(x) end)
+        # |> Enum.map(fn x ->
+        #   send(
+        #     x |> :global.whereis_name(),
+        #     {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
+        #   )
+        # end)
         loop(peer)
 
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
@@ -301,7 +310,7 @@ defmodule Syncordian.Peer do
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
             # debug_function.(1)
-            send(self(), {:receive_insert_broadcast, line, incoming_vc})
+            send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
           {_, true} ->
@@ -367,7 +376,7 @@ defmodule Syncordian.Peer do
                   {false, false} ->
                     debug_function.("Requesting requeue")
                     # new_line = tick_line_insertion_attempts(line)
-                    # send(self(), {:receive_insert_broadcast, new_line, incoming_vc})
+                    # send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->
@@ -446,6 +455,26 @@ defmodule Syncordian.Peer do
       _ ->
         loop(peer)
     end
+  end
+
+  defp should_filter_out?(name, peer_pid) do
+    pid = :global.whereis_name(name)
+
+    pid == peer_pid or
+      pid == :global.whereis_name(:supervisor) or
+      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
+  end
+
+  # Function to perform the filtering and sending messages
+  defp perform_broadcast(peer, message) do
+    peer_pid = get_peer_pid(peer)
+
+    :global.registered_names()
+    |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
+    |> Enum.each(fn name ->
+      pid = :global.whereis_name(name)
+      send(pid, message)
+    end)
   end
 
   # Getter for the current vector clock of the peer

@@ -98,7 +98,7 @@ defmodule Syncordian.Supervisor do
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     IO.inspect("This are the positional changes")
     IO.inspect(position_changes)
-    # parse_edits(position_changes, peer_pid)
+    parse_edits(position_changes, peer_pid)
     Process.sleep(500)
     # # Process.sleep(2000)
     # Process.sleep(1000)

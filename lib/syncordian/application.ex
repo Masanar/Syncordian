@@ -7,6 +7,8 @@ defmodule Syncordian.Application do
 
   @impl true
   def start(_type, _args) do
+    import Supervisor.Spec, warn: false
+    :ets.new(:session, [:named_table, :public, read_concurrency: true])
     children = [
       SyncordianWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:syncordian, :dns_cluster_query) || :ignore},

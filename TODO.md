@@ -4,8 +4,8 @@ Check list to track the progress and current working on
 
 ## Woking on
 
-Cuando hay varios edits en el mismos commit hay el supervisor debe acumular las lineas
-nuevas (deletes tambien?) que se han insertado para que se los pase al siguiente
+Keeping the state when changing live view pages, the supervisor process now has a new entry
+that keeps the logs, the idea is tho required that info.
 
 ## Pending
 
@@ -23,5 +23,4 @@ nuevas (deletes tambien?) que se han insertado para que se los pase al siguiente
 ## Ideas
 
     - Using the sucsefully inserted message we can update receiving peer clock??
-
 

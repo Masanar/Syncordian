@@ -55,7 +55,8 @@ defmodule Syncordian.MixProject do
       {:gettext, "~> 0.20"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.2"}
+      {:bandit, "~> 1.2"},
+      {:phoenix_live_session, "~> 0.1"}
     ]
   end
 

@@ -30,7 +30,8 @@ defmodule Syncordian.Supervisor do
     commit_group_map: %{},
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
-    commit_counter: 0
+    commit_counter: 0,
+    live_vie_logs: []
   )
 
   @doc """
@@ -109,8 +110,7 @@ defmodule Syncordian.Supervisor do
     author_id
   end
 
-  def start_edit(commit_count, supervisor, live_view_pid) do
-    list_of_commits = supervisor(supervisor, :list_of_commits)
+  def start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
     commit_group_map = supervisor(supervisor, :commit_group_map)
     map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
     pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
@@ -119,14 +119,10 @@ defmodule Syncordian.Supervisor do
       "Starting edit for commit: #{commit_count}, total commits: #{length(list_of_commits)}"
     )
 
-    if commit_count <= length(list_of_commits) do
-      commit_hash = Enum.at(list_of_commits, commit_count)
-      author_id = edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
-      send(live_view_pid, {:commit_inserted, %{hash: commit_hash, author: author_id}})
-    else
-      IO.puts("All commits processed")
-      send(live_view_pid, {:limit_reached, "All commits processed"})
-    end
+    commit_hash = Enum.at(list_of_commits, commit_count)
+    author_id = edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+    response = {:commit_inserted, %{hash: commit_hash, author: author_id}}
+    send(live_view_pid, response)
   end
 
   @doc """
@@ -205,9 +201,19 @@ defmodule Syncordian.Supervisor do
     receive do
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
-        IO.inspect("Sending next commit, current counter:  #{supervisor_counter}")
-        start_edit(supervisor_counter, supervisor, live_view_pid)
-        supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
+        list_of_commits = supervisor(supervisor, :list_of_commits)
+
+        if supervisor_counter <= length(list_of_commits) do
+          IO.inspect("Sending next commit, current counter:  #{supervisor_counter}")
+          start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
+
+          supervisor_loop(
+            supervisor(supervisor, commit_counter: supervisor_counter + 1, live_vie_logs: logs)
+          )
+        else
+          IO.puts("All commits processed")
+          send(live_view_pid, {:limit_reached, "All commits processed"})
+        end
 
       {:kill} ->
         IO.inspect("Receive killing supervisor")

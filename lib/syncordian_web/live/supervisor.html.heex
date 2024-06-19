@@ -3,8 +3,7 @@
   <span class="yellow">Syncordian</span>
 </h1>
 <h2>
-  Implemented with love by
-  <a href="https://github.com/masanar" target="_blank">Mateo Sanabria</a>
+  Implemented with love by <a href="https://github.com/masanar" target="_blank">Mateo Sanabria</a>
 </h2>
 
 <div class="container">
@@ -13,8 +12,8 @@
     <div class="button-right">
       <button class="button-89" role="button" phx-click="launch">Launch Supervisor</button>
       <button class="button-89" role="button" phx-click="kill">Kill Supervisor</button>
-    </div> 
-  </div> 
+    </div>
+  </div>
   <div class="table-wrapper">
     <table>
       <thead>
@@ -27,11 +26,16 @@
           </th>
         </tr>
       </thead>
-      <tbody id="lines" phx-update="replace">
+      <tbody id="lines" phx-update="replace" phx-hook="InfinityScroll">
         <%= for log <- @logs do %>
           <tr id={"log-#{log.hash}"}>
             <td><%= log.author %></td>
-            <td><%= log.hash %></td>
+            <td>
+              <a href={"/readmelog?commit=#{log.hash}"} class="commit-link">
+                <%= log.hash %>
+              </a>
+              <%!-- <%= log.hash %> --%>
+            </td>
           </tr>
         <% end %>
       </tbody>

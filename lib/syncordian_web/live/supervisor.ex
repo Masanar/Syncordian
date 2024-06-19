@@ -16,7 +16,6 @@ defmodule SyncordianWeb.Supervisor do
 
   def handle_event("launch", _data, socket) do
     launched? = socket.assigns.launched
-
     socket =
       if launched? do
         IO.inspect("Supervisor already launched")
@@ -52,15 +51,17 @@ defmodule SyncordianWeb.Supervisor do
   def handle_event("next_commit", _data, socket) do
     IO.inspect("next_commit")
     # put_flash(socket, :info, "It worked!")
-    socket = if socket.assigns.launched do
-      supervisor_pid = socket.assigns.supervisor_pid
-      send(supervisor_pid, {:send_next_commit, self()})
-      IO.inspect("Sending next commit")
-      socket
-    else
-      IO.inspect("Supervisor not launched")
-      socket
-    end
+    socket =
+      if socket.assigns.launched do
+        supervisor_pid = socket.assigns.supervisor_pid
+        send(supervisor_pid, {:send_next_commit, self()})
+        IO.inspect("Sending next commit")
+        socket
+      else
+        IO.inspect("Supervisor not launched")
+        socket
+      end
+
     {:noreply, socket}
   end
 
@@ -75,4 +76,9 @@ defmodule SyncordianWeb.Supervisor do
     {:noreply, socket}
   end
 
+  # def terminate(reason, socket) do
+  #   conn = PhoenixLiveSession.put_session(socket, :message, "new stuff we just set in the session")
+  #   message = PhoenixLiveSession.get_session(socket, :message)
+  #   # PhoenixLiveSession.put_session(socket, %{})
+  # end
 end

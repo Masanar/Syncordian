@@ -5,10 +5,12 @@ defmodule SyncordianWeb.Endpoint do
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
   @session_options [
-    store: :cookie,
+    store: PhoenixLiveSession,
+    pub_sub: Syncordian.PubSub,
     key: "_syncordian_key",
     signing_salt: "VluhCIYz",
-    same_site: "Lax"
+    same_site: "Lax",
+    table: :session
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

@@ -30,7 +30,7 @@ defmodule Syncordian.Supervisor do
     commit_group_map: %{},
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
-    commit_counter: 0,
+    commit_counter: 0
   )
 
   @doc """

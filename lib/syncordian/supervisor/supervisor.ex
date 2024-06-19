@@ -31,7 +31,6 @@ defmodule Syncordian.Supervisor do
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
     commit_counter: 0,
-    live_vie_logs: []
   )
 
   @doc """
@@ -208,7 +207,7 @@ defmodule Syncordian.Supervisor do
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
 
           supervisor_loop(
-            supervisor(supervisor, commit_counter: supervisor_counter + 1, live_vie_logs: logs)
+            supervisor(supervisor, commit_counter: supervisor_counter + 1)
           )
         else
           IO.puts("All commits processed")

@@ -36,7 +36,6 @@ syncordian-*.tar
 # /assets/node_modules/
 /_build
 /cover
-/debug
 /deps
 /.fetch
 erl_crash.dump

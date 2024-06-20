@@ -2,20 +2,18 @@ defmodule SyncordianWeb.Supervisor do
   use SyncordianWeb, :live_view
   import Syncordian.Supervisor
 
-  def mount(_params, _session, socket) do
-    {
-      :ok,
-      assign(
-        socket,
-        logs: [],
-        launched: false,
-        supervisor_pid: ""
-      )
-    }
+  def mount(_params, session, socket) do
+    socket =
+      socket
+      |> PhoenixLiveSession.maybe_subscribe(session)
+      |> put_session_assigns(session)
+
+    {:ok, socket}
   end
 
   def handle_event("launch", _data, socket) do
     launched? = socket.assigns.launched
+
     socket =
       if launched? do
         IO.inspect("Supervisor already launched")
@@ -23,7 +21,10 @@ defmodule SyncordianWeb.Supervisor do
       else
         IO.inspect("launching")
         supervisor_pid = init()
-        assign(socket, launched: true, supervisor_pid: supervisor_pid, logs: [])
+        PhoenixLiveSession.put_session(socket, "launched", true)
+        PhoenixLiveSession.put_session(socket, "supervisor_pid", supervisor_pid)
+        PhoenixLiveSession.put_session(socket, "logs", [])
+        # assign(socket, launched: true, supervisor_pid: supervisor_pid, logs: [])
       end
 
     IO.inspect("launched")
@@ -39,7 +40,10 @@ defmodule SyncordianWeb.Supervisor do
       if launched? do
         IO.inspect("Killing supervisor")
         send(supervisor_pid, {:kill})
-        assign(socket, launched: false, supervisor_pid: "")
+        PhoenixLiveSession.put_session(socket, "launched", false)
+        PhoenixLiveSession.put_session(socket, "supervisor_pid", "")
+        PhoenixLiveSession.put_session(socket, "logs", [])
+        # assign(socket, launched: false, supervisor_pid: "")
       else
         IO.inspect("Supervisor not launched")
         socket
@@ -68,6 +72,7 @@ defmodule SyncordianWeb.Supervisor do
   def handle_info({:commit_inserted, value}, socket) do
     IO.inspect("update_logs")
     logs = [%{author: value.author, hash: value.hash} | socket.assigns.logs]
+    PhoenixLiveSession.put_session(socket, "logs", logs)
     {:noreply, assign(socket, logs: logs)}
   end
 
@@ -76,9 +81,14 @@ defmodule SyncordianWeb.Supervisor do
     {:noreply, socket}
   end
 
-  # def terminate(reason, socket) do
-  #   conn = PhoenixLiveSession.put_session(socket, :message, "new stuff we just set in the session")
-  #   message = PhoenixLiveSession.get_session(socket, :message)
-  #   # PhoenixLiveSession.put_session(socket, %{})
-  # end
+  def handle_info({:live_session_updated, session}, socket) do
+    {:noreply, put_session_assigns(socket, session)}
+  end
+
+  def put_session_assigns(socket, session) do
+    socket
+    |> assign(:logs, Map.get(session, "logs", []))
+    |> assign(:launched, Map.get(session, "launched", false))
+    |> assign(:supervisor_pid, Map.get(session, "supervisor_pid", ""))
+  end
 end

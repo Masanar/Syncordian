@@ -96,9 +96,7 @@ defmodule Syncordian.Supervisor do
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
-    IO.inspect("This are the positional changes")
-    IO.inspect(position_changes)
-    parse_edits(position_changes, peer_pid)
+    # parse_edits(position_changes, peer_pid)
     Process.sleep(500)
     # # Process.sleep(2000)
     # Process.sleep(1000)
@@ -113,11 +111,6 @@ defmodule Syncordian.Supervisor do
     commit_group_map = supervisor(supervisor, :commit_group_map)
     map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
     pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
-
-    IO.inspect(
-      "Starting edit for commit: #{commit_count}, total commits: #{length(list_of_commits)}"
-    )
-
     commit_hash = Enum.at(list_of_commits, commit_count)
     author_id = edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
     response = {:commit_inserted, %{hash: commit_hash, author: author_id}}
@@ -201,9 +194,10 @@ defmodule Syncordian.Supervisor do
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
         list_of_commits = supervisor(supervisor, :list_of_commits)
+        length_of_commits = length(list_of_commits)
 
         if supervisor_counter <= length(list_of_commits) do
-          IO.inspect("Sending next commit, current counter:  #{supervisor_counter}")
+          IO.inspect("Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}")
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
 
           supervisor_loop(

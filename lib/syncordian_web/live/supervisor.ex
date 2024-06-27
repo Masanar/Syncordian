@@ -70,7 +70,6 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_info({:commit_inserted, value}, socket) do
-    IO.inspect("update_logs")
     logs = [%{author: value.author, hash: value.hash} | socket.assigns.logs]
     PhoenixLiveSession.put_session(socket, "logs", logs)
     {:noreply, assign(socket, logs: logs)}

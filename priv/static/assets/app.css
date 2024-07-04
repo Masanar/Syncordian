@@ -1862,8 +1862,10 @@ h2 a {
 .button-container {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
-  /* Adds space between buttons and table */
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 0px;
 }
 
 pre {
@@ -1927,6 +1929,18 @@ pre {
     align-items: center;
     /* Center align buttons */
   }
+}
+
+.button-left {
+  display: flex;
+  justify-content: flex-start;
+  flex: 1;
+}
+
+.button-right {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
 }
 
 /* @import "./global.css"; */

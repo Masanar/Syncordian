@@ -11,6 +11,15 @@ defmodule SyncordianWeb.Supervisor do
     {:ok, socket}
   end
 
+  def handle_event("write", _data, socket) do
+    #  the write_current_peers_document message is written but committed
+    IO.inspect(
+      "Pending, here send (write_current_peers_document) message to supevisor if the supervisor is running"
+    )
+
+    {:noreply, socket}
+  end
+
   def handle_event("launch", _data, socket) do
     launched? = socket.assigns.launched
 

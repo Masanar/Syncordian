@@ -8,6 +8,12 @@
 </h2>
 
 <div class="container">
+  <div class="button-container">
+    <button class="button-89" role="button" phx-click="node_id">Node selector</button>
+    <div class="button-right">
+      <button class="button-89" role="button" phx-click="refresh">Refresh document</button>
+    </div>
+  </div>
   <div class="table-wrapper">
     <table>
       <thead>
@@ -32,7 +38,7 @@
           </th>
         </tr>
       </thead>
-      <tbody id="lines" phx-hook="InfinityScroll">
+      <tbody id="lines" phx-hook="InfinityScroll" phx-update="replace">
         <%= for line <- @lines do %>
           <tr id={"line-#{line.line_id}"}>
             <td><%= line.line_id %></td>

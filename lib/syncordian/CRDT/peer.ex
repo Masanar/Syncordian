@@ -47,10 +47,8 @@ defmodule Syncordian.Peer do
 
   def save_content(pid), do: send(pid, {:save_content, :document})
 
-  @doc """
-    This function is used to delete a line at the given index in the current document of the
-    peer by sending a message to the loop peer function.
-  """
+  # This function is used to delete a line at the given index in the current document of the
+  # peer by sending a message to the loop peer function.
   # def delete_line(pid, index_position, local_tombstones, empty_found) do
   #   case empty_found do
   #     true ->
@@ -428,12 +426,16 @@ defmodule Syncordian.Peer do
         save_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
+      {:request_live_view_document, live_view_pid} ->
+        send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
+        loop(peer)
+
       {:save_pid, info} ->
         info
         |> update_peer_pid(peer)
         |> loop
 
-      {_, _} ->
+      _ ->
         IO.puts("Wrong message")
         loop(peer)
     end

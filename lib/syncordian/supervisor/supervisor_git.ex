@@ -96,15 +96,19 @@ defmodule Syncordian.Supervisor do
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
-    # parse_edits(position_changes, peer_pid)
-    Process.sleep(500)
-    # # Process.sleep(2000)
-    # Process.sleep(1000)
-    # Enum.map(1..29, fn x ->
-    #   save_content(Enum.at(pid_list_author_peers, x))
-    # end)
-    # Process.sleep(1000)
+    parse_edits(position_changes, peer_pid)
+    Process.sleep(1000)
     author_id
+  end
+
+  def save_current_documents(pid_list_author_peers) do
+    Process.sleep(1000)
+
+    Enum.map(1..29, fn x ->
+      save_content(Enum.at(pid_list_author_peers, x))
+    end)
+
+    Process.sleep(1000)
   end
 
   def start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
@@ -191,18 +195,22 @@ defmodule Syncordian.Supervisor do
 
   def supervisor_loop(supervisor) do
     receive do
+      # {:write_current_peers_document} ->
+      #   save_current_documents(supervisor(supervisor, :pid_list_author_peers))
+
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
         if supervisor_counter <= length(list_of_commits) do
-          IO.inspect("Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}")
+          IO.inspect(
+            "Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}"
+          )
+
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
 
-          supervisor_loop(
-            supervisor(supervisor, commit_counter: supervisor_counter + 1)
-          )
+          supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")
           send(live_view_pid, {:limit_reached, "All commits processed"})

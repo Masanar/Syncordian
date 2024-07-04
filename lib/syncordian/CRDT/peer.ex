@@ -113,7 +113,7 @@ defmodule Syncordian.Peer do
     receive do
       # {:delete_line, index_position, local_tombstones} ->
       {:delete_line, index_position} ->
-        document = peer(peer, :document)
+        document = get_peer_document(peer)
         document_len = get_document_length(document)
 
         case document_len - 1 <= index_position or document_len < 0 do
@@ -150,7 +150,7 @@ defmodule Syncordian.Peer do
             #   IO.inspect("local tombstones: #{local_tombstones}")
             #   IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
             #   IO.inspect("Line deleted: #{line_to_string(line_deleted)}")
-            #   document = peer(peer, :document) |> Enum.slice(index_position..index_position + 5)
+            #   document = get_peer_document(peer) |> Enum.slice(index_position..index_position + 5)
             #   IO.inspect(document)
             #   IO.puts("--------------------------------------------------------")
             # end
@@ -165,7 +165,7 @@ defmodule Syncordian.Peer do
 
       {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, attempt_count}} ->
         # TODO: (question) Should we keep the delete attempt count? I think that YES
-        document = peer(peer, :document)
+        document = get_peer_document(peer)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
         [left_parent, right_parent] = get_document_line_fathers(document, current_document_line)
@@ -226,7 +226,7 @@ defmodule Syncordian.Peer do
       # This correspond to the insert process do it by the peer
       # {:insert, content, index_position, local_tombstones} ->
       {:insert, [content, index_position]} ->
-        document = peer(peer, :document)
+        document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
         # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position) - local_tombstones
@@ -258,7 +258,7 @@ defmodule Syncordian.Peer do
         #   IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
         #   IO.inspect("New line: #{line_to_string(new_line)}")
         #   IO.puts("")
-        #   document = peer(peer, :document) |> Enum.take(12)
+        #   document = get_peer_document(peer) |> Enum.take(12)
         #   IO.inspect(document)
         #   IO.puts("--------------------------------------------------------")
         # end
@@ -283,7 +283,7 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
-        peer(peer, :document)
+        get_peer_document(peer)
         |> update_document_line_commit_at(inserted_line_id, received_peer_id)
         |> update_peer_document(peer)
         |> loop
@@ -320,7 +320,7 @@ defmodule Syncordian.Peer do
                 incoming_vc
               )
 
-            document = peer(peer, :document)
+            document = get_peer_document(peer)
             # HERE this function get_document_... was afected for HERE changes
             line_index = get_document_new_index_by_incoming_line_id(line, document)
             [left_parent, right_parent] = get_parents_by_index(document, line_index)
@@ -421,11 +421,11 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       {:print_content, :document} ->
-        print_document_content(peer(peer, :document), peer(peer, :peer_id))
+        print_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
       {:save_content, :document} ->
-        save_document_content(peer(peer, :document), peer(peer, :peer_id))
+        save_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
       {:save_pid, info} ->
@@ -505,6 +505,8 @@ defmodule Syncordian.Peer do
       )
 
   defp get_peer_id(peer), do: peer(peer, :peer_id)
+
+  defp get_peer_document(peer), do: peer(peer, :document)
 
   # This is a private function used to save the pid of the peer in the record.
   @spec save_peer_pid(pid, integer, integer) :: any

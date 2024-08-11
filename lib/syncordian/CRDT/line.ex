@@ -137,7 +137,7 @@ defmodule Syncordian.Line_Object do
   """
   @spec update_line_commit_at(
           Syncordian.Line_Object.line(),
-          received_peer_id :: Syncordian.Basic_Type.peer_id()
+          received_peer_id :: Syncordian.Basic_Types.peer_id()
         ) ::
           Syncordian.Line_Object.line()
   def update_line_commit_at(line, received_peer_id) do

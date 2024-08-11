@@ -5,6 +5,7 @@ defmodule Syncordian.Document do
   import Syncordian.Vector_Clock
   import Syncordian.Byzantine
   import Syncordian.Utilities
+  import Syncordian.Basic_Types
 
   @doc """
     This is a function used to get the index (position in the document i.e. list)
@@ -61,7 +62,7 @@ defmodule Syncordian.Document do
   """
   @spec get_document_index_by_line_id(
           document :: Syncordian.Basic_Types.document(),
-          line_id :: Syncordian.Type.line_id()
+          line_id :: Syncordian.Basic_Types.line_id()
         ) :: integer()
   def get_document_index_by_line_id(document, line_id) do
     Enum.find_index(document, fn line -> get_line_id(line) == line_id end) || 1
@@ -155,7 +156,7 @@ defmodule Syncordian.Document do
   @spec update_document_line_commit_at(
           document :: Syncordian.Basic_Types.document(),
           line_id :: Syncordian.Basic_Types.line_id(),
-          received_peer_id :: Syncordian.Basic_types.peer_id()
+          received_peer_id :: Syncordian.Basic_Types.peer_id()
         ) ::
           Syncordian.Basic_Types.document()
   def update_document_line_commit_at(document, line_id, received_peer_id) do
@@ -178,8 +179,8 @@ defmodule Syncordian.Document do
   @spec stash_document_lines(
           document :: Syncordian.Basic_Types.document(),
           incoming_line :: Syncordian.Line_Object.line(),
-          local_peer_vc :: Syncordian.Basic_Types.clock(),
-          incoming_peer_vc :: Syncordian.Basic_Types.clock()
+          local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
+          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
         ) :: {boolean(), {integer(), integer()}}
   def stash_document_lines(document, incoming_line, local_peer_vc, incoming_peer_vc) do
     # TODO: There are things here that are borrables(translate this word)

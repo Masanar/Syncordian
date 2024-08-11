@@ -439,7 +439,7 @@ defmodule Syncordian.Peer do
   end
 
   # Getter for the current vector clock of the peer
-  @spec get_local_vector_clock(peer()) :: list[integer]
+  @spec get_local_vector_clock(peer()) :: [integer]
   defp get_local_vector_clock(peer), do: peer(peer, :vector_clock)
 
   # This is a private function used to get the number of marked as deleted lines of the

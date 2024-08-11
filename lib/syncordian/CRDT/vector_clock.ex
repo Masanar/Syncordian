@@ -50,7 +50,7 @@ defmodule Syncordian.Vector_Clock do
       distance_between_vector_clocks([1, 2, 0], [0, 3, 0], 1) 1
   """
   @spec distance_between_vector_clocks(
-          local_vc :: Syncordinan.Basic_Types.vector_clock(),
+          local_vc :: Syncordian.Basic_Types.vector_clock(),
           incoming_vc :: Syncordian.Basic_Types.vector_clock(),
           incoming_peer_position :: integer
         ) :: integer

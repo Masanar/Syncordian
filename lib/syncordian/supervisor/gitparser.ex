@@ -259,7 +259,6 @@ defmodule Syncordian.GitParser do
       {_, acc} -> {:cont, Enum.reverse(acc), []}
       acc -> {:cont, Enum.reverse(acc), []}
     end
-
     Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
     |> Stream.map(&String.trim_trailing/1)

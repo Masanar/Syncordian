@@ -7,7 +7,7 @@ defmodule Syncordian.Peer do
     - info(pid) : prints the document of the peer
     - raw_print(pid) : prints the document of the peer without the peer structure
   """
-  use TypeCheck
+  # use TypeCheck
   require Record
   import Syncordian.Info
   import Syncordian.Line

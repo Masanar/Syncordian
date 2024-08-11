@@ -2,7 +2,7 @@ defmodule Syncordian.Line_Object do
   @moduledoc """
     This module provides the line object and its basic operations
   """
-  use TypeCheck
+  # use TypeCheck
   require Record
   import Syncordian.Utilities
   @min_float 130.0
@@ -150,7 +150,7 @@ defmodule Syncordian.Line do
   @moduledoc """
     This module provides complex features for the line object
   """
-  use TypeCheck
+  # use TypeCheck
   import Syncordian.Utilities
   import Syncordian.Byzantine
   import Syncordian.Line_Object

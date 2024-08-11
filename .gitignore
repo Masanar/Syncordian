@@ -45,6 +45,8 @@ erl_crash.dump
 .elixir_ls/
 !/.g
 /.vscode
+.devcontainer
+.github
 # TODO.md
 # test.*
 

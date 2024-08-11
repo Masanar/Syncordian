@@ -5,7 +5,8 @@ defmodule Syncordian.MixProject do
     [
       app: :syncordian,
       version: "0.1.0",
-      elixir: "~> 1.14",
+      # elixir: "~> 1.14",
+      elixir: "~> 1.17.0",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -32,7 +33,7 @@ defmodule Syncordian.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:type_check, "~> 0.13.3"},
+      # {:type_check, "~> 0.13.3"},
       {:phoenix, "~> 1.7.12"},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},

@@ -1,5 +1,5 @@
 defmodule Syncordian.Info do
-  use TypeCheck
+  # use TypeCheck
   import Syncordian.Line_Object
   import Syncordian.Utilities
 

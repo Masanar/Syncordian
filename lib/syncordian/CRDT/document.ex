@@ -1,5 +1,5 @@
 defmodule Syncordian.Document do
-  use TypeCheck
+  # use TypeCheck
   import Syncordian.Line_Object
   import Syncordian.Line
   import Syncordian.Vector_Clock

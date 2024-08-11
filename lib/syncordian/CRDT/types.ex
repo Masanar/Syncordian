@@ -2,7 +2,7 @@ defmodule Syncordian.Basic_Types do
   @moduledoc """
       This module provides the types used in the Syncordian implementation
   """
-  use TypeCheck
+#   use TypeCheck
 
   @typedoc """
     Type that represents the status of a Syncordian document line, those are: -

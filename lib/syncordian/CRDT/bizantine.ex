@@ -1,5 +1,5 @@
 defmodule Syncordian.Byzantine do
-  use TypeCheck
+  # use TypeCheck
 
   @moduledoc """
     This module is responsible for the byzantine operations aiming to provide the features

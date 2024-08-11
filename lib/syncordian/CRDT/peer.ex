@@ -33,7 +33,7 @@ defmodule Syncordian.Peer do
             pid: pid(),
             deleted_count: integer(),
             deleted_limit: integer(),
-            vector_clock: list[integer]
+            vector_clock: [integer]
           )
 
   @doc """
@@ -47,32 +47,6 @@ defmodule Syncordian.Peer do
 
   def save_content(pid), do: send(pid, {:save_content, :document})
 
-  # This function is used to delete a line at the given index in the current document of the
-  # peer by sending a message to the loop peer function.
-  # def delete_line(pid, index_position, local_tombstones, empty_found) do
-  #   case empty_found do
-  #     true ->
-  #       send(pid, {:delete_line, index_position, local_tombstones})
-  #     false ->
-  #       send(pid, {:delete_line, index_position, 0})
-  #   end
-  # end
-
-  # @doc """
-  #   This function inserts a content at the given index and a pid by sending a message to the
-  #   loop peer function. The messages uses the following format:
-  #   {:insert,[content,index]}
-  # """
-  # # @spec insert(pid, String.t(), integer, integer) :: any
-  # def insert(pid, content, index_position, local_tombstones,empty_found) do
-  #   case empty_found do
-  #     true ->
-  #       send(pid, {:insert, content, index_position, local_tombstones})
-  #     false ->
-  #       send(pid, {:insert, content, index_position, 0})
-  #   end
-
-  # end
   @doc """
     This function is used to delete a line at the given index in the current document of the
     peer by sending a message to the loop peer function.
@@ -213,12 +187,6 @@ defmodule Syncordian.Peer do
 
       {:send_delete_broadcast, delete_line_info} ->
         perform_broadcast(peer, {:receive_delete_broadcast, delete_line_info})
-        # :global.registered_names()
-        # |> Enum.filter(fn x -> get_peer_pid(peer) != :global.whereis_name(x) end)
-        # |> Enum.map(fn x ->
-        #   send(x |> :global.whereis_name(), {:receive_delete_broadcast, delete_line_info})
-        # end)
-
         loop(peer)
 
       # This correspond to the insert process do it by the peer
@@ -269,15 +237,6 @@ defmodule Syncordian.Peer do
           peer,
           {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
         )
-
-        # :global.registered_names()
-        # |> Enum.filter(fn x -> get_peer_pid(peer) != :global.whereis_name(x) end)
-        # |> Enum.map(fn x ->
-        #   send(
-        #     x |> :global.whereis_name(),
-        #     {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
-        #   )
-        # end)
         loop(peer)
 
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->

@@ -277,7 +277,7 @@ defmodule Syncordian.Document do
   # HERE: Need to modify this function to be relative to the :tombstone lines
   # that is: the :tombstone lines are not considered in the parents of the line.
   @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
-          list[Syncordian.Line_Object.line()]
+          [Syncordian.Line_Object.line()]
   def get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
   def get_parents_by_index(document, pos_index) do

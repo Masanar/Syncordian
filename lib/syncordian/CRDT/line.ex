@@ -185,12 +185,6 @@ defmodule Syncordian.Line do
     new_line_id =
         get_random_range(right_parent_id, left_parent_id)
 
-    # IO.puts("")
-    # IO.inspect("Left parent id : #{left_parent_id}")
-    # IO.inspect("New line id    : #{new_line_id}")
-    # IO.inspect("Right parent id: #{right_parent_id}")
-    # IO.puts("")
-
     signature =
       create_signature_insert(
         get_signature(left_parent),

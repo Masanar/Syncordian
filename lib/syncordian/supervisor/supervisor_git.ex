@@ -102,13 +102,9 @@ defmodule Syncordian.Supervisor do
   end
 
   def save_current_documents(pid_list_author_peers) do
-    Process.sleep(1000)
-
     Enum.map(1..29, fn x ->
       save_content(Enum.at(pid_list_author_peers, x))
     end)
-
-    Process.sleep(1000)
   end
 
   def start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
@@ -195,8 +191,8 @@ defmodule Syncordian.Supervisor do
 
   def supervisor_loop(supervisor) do
     receive do
-      # {:write_current_peers_document} ->
-      #   save_current_documents(supervisor(supervisor, :pid_list_author_peers))
+      {:write_current_peers_document} ->
+        save_current_documents(supervisor(supervisor, :pid_list_author_peers))
 
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)

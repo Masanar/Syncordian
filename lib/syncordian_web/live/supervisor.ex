@@ -1,6 +1,7 @@
 defmodule SyncordianWeb.Supervisor do
   use SyncordianWeb, :live_view
   import Syncordian.Supervisor
+  @commit_button_disabled_time 8_000
 
   def mount(_params, session, socket) do
     socket =
@@ -11,12 +12,8 @@ defmodule SyncordianWeb.Supervisor do
     {:ok, socket}
   end
 
-  def handle_event("write", _data, socket) do
-    #  the write_current_peers_document message is written but committed
-    IO.inspect(
-      "Pending, here send (write_current_peers_document) message to supevisor if the supervisor is running"
-    )
-
+  def handle_event("write_current_peers_document", _data, socket) do
+    send(socket.assigns.supervisor_pid, {:write_current_peers_document})
     {:noreply, socket}
   end
 
@@ -33,11 +30,8 @@ defmodule SyncordianWeb.Supervisor do
         PhoenixLiveSession.put_session(socket, "launched", true)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", supervisor_pid)
         PhoenixLiveSession.put_session(socket, "logs", [])
-        # assign(socket, launched: true, supervisor_pid: supervisor_pid, logs: [])
       end
 
-    IO.inspect("launched")
-    IO.inspect(socket.assigns.supervisor_pid)
     {:noreply, socket}
   end
 
@@ -52,7 +46,6 @@ defmodule SyncordianWeb.Supervisor do
         PhoenixLiveSession.put_session(socket, "launched", false)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", "")
         PhoenixLiveSession.put_session(socket, "logs", [])
-        # assign(socket, launched: false, supervisor_pid: "")
       else
         IO.inspect("Supervisor not launched")
         socket
@@ -62,19 +55,29 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_event("next_commit", _data, socket) do
-    IO.inspect("next_commit")
-    # put_flash(socket, :info, "It worked!")
     socket =
       if socket.assigns.launched do
-        supervisor_pid = socket.assigns.supervisor_pid
-        send(supervisor_pid, {:send_next_commit, self()})
-        IO.inspect("Sending next commit")
-        socket
+        if socket.assigns.disable_next_commit do
+          IO.inspect("Next commit disabled")
+          socket
+        else
+          IO.inspect("Sending next commit")
+          supervisor_pid = socket.assigns.supervisor_pid
+          send(supervisor_pid, {:send_next_commit, self()})
+          PhoenixLiveSession.put_session(socket, "disable_next_commit", true)
+          Process.send_after(self(), :enable_button, @commit_button_disabled_time)
+          socket
+        end
       else
         IO.inspect("Supervisor not launched")
         socket
       end
 
+    {:noreply, socket}
+  end
+
+  def handle_info(:enable_button, socket) do
+    PhoenixLiveSession.put_session(socket, "disable_next_commit", false)
     {:noreply, socket}
   end
 
@@ -98,5 +101,6 @@ defmodule SyncordianWeb.Supervisor do
     |> assign(:logs, Map.get(session, "logs", []))
     |> assign(:launched, Map.get(session, "launched", false))
     |> assign(:supervisor_pid, Map.get(session, "supervisor_pid", ""))
+    |> assign(:disable_next_commit, Map.get(session, "disable_next_commit", false))
   end
 end

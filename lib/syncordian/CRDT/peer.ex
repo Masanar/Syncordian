@@ -128,7 +128,7 @@ defmodule Syncordian.Peer do
             # end
 
             send(
-              get_peer_id(peer),
+              get_peer_pid(peer),
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
 

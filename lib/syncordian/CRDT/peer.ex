@@ -218,16 +218,16 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        # if peer(peer, :peer_id) == 25 and index_position < 15 do
-        #   IO.puts("--------------------------------------------------------")
-        #   IO.inspect("Index position: #{index_position} ")
-        #   IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-        #   IO.inspect("New line: #{line_to_string(new_line)}")
-        #   IO.puts("")
-        #   document = get_peer_document(peer) |> Enum.take(12)
-        #   IO.inspect(document)
-        #   IO.puts("--------------------------------------------------------")
-        # end
+        if peer(peer, :peer_id) == 25 and index_position < 15 do
+          IO.puts("--------------------------------------------------------")
+          IO.inspect("Index position: #{index_position} ")
+          IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
+          IO.inspect("New line: #{line_to_string(new_line)}")
+          IO.puts("")
+          # document = get_peer_document(peer) |> Enum.take(12)
+          # IO.inspect(document)
+          IO.puts("--------------------------------------------------------")
+        end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)

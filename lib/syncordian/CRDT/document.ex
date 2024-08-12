@@ -69,8 +69,8 @@ defmodule Syncordian.Document do
   end
 
   @doc """
-    Given the document and the line_id, this function search through the document to find the
-    line with the given line_id. If not found returns nil.
+    Given the document and the line_id, this function search through the document to find
+    the line with the given line_id. If not found returns nil.
   """
   @spec get_document_line_by_line_id(
           Syncordian.Basic_Types.document(),
@@ -112,13 +112,7 @@ defmodule Syncordian.Document do
   @spec update_document_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
           Syncordian.Basic_Types.document()
   def update_document_line_status(document, index, new_value) do
-    # index = index + get_number_of_tombstones_before_index(document, index)
     line = Enum.at(document, index)
-    # if index == 25 and length(document) > 219 do
-    #   IO.inspect("DELETE STATUS")
-    #   IO.inspect(line)
-    #   IO.inspect("******************************")
-    # end
     updated_line = set_line_status(line, new_value)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
@@ -267,38 +261,51 @@ defmodule Syncordian.Document do
 
           {false, true} ->
             result_right
-            # This match may never happen, if so, it is a bug in the code or in the idea :/
-            # {true, true} -> ...
+
+          # This match may never happen, if so, it is a bug in the code
+          # {true, true} -> ...
+          _ ->
+            IO.inspect("Error in the window_stash_check_signature")
+            result_right
         end
     end
   end
 
   # Given a document and a position index, this function returns the previous and next
-  # parents of the given index.
-  # HERE: Need to modify this function to be relative to the :tombstone lines
-  # that is: the :tombstone lines are not considered in the parents of the line.
-  @spec get_parents_by_index(Syncordian.Basic_Types.document(), integer) ::
+  # parents of the given index. The line_pos_index_status is the status of the line in the
+  # original index i.e. the index with out the shift due to the previous tombstones.
+  @spec get_parents_by_index(
+          Syncordian.Basic_Types.document(),
+          integer,
+          Syncordian.Basic_Types.status()
+        ) ::
           [Syncordian.Line_Object.line()]
-  def get_parents_by_index(document, 0), do: [Enum.at(document, 0), Enum.at(document, 1)]
+  def get_parents_by_index(document, 0, _), do: [Enum.at(document, 0), Enum.at(document, 1)]
 
-  def get_parents_by_index(document, pos_index) do
-    # old_pos_index = pos_index
-    # HERE
-    # pos_index = pos_index + 1
+  def get_parents_by_index(document, pos_index, line_pos_index_status) do
     len = get_document_length(document)
 
-    # case {Enum.at(document, pos_index + 1),Enum.at(document, pos_index) } do
-    case {Enum.at(document, pos_index),Enum.at(document, pos_index + 1) } do
-      {_, nil} ->
+    case {Enum.at(document, pos_index), Enum.at(document, pos_index + 1), line_pos_index_status} do
+      {_, nil, _} ->
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
 
-      {previous, next} ->
+      {_, _, :tombstone} ->
+        IO.inspect("****************************************************")
+        IO.inspect("****************************************************")
+        IO.inspect(line_to_string(Enum.at(document, pos_index - 1 )))
+        IO.inspect(line_to_string(Enum.at(document, pos_index)))
+        IO.inspect("****************************************************")
+        IO.inspect("****************************************************")
+
+        [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
+
+      {previous, next, _} ->
         [previous, next]
     end
   end
 
   def get_number_of_tombstones_before_index(document, index) do
-    Enum.reduce(Enum.take(document,index + 1), 0, fn line, acc ->
+    Enum.reduce(Enum.take(document, index + 1), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else
@@ -308,7 +315,7 @@ defmodule Syncordian.Document do
   end
 
   def get_number_of_tombstones_before_index_delete(document, index) do
-    Enum.reduce(Enum.take(document,index + 1), 0, fn line, acc ->
+    Enum.reduce(Enum.take(document, index + 1), 0, fn line, acc ->
       if get_line_status(line) == :tombstone do
         acc + 1
       else

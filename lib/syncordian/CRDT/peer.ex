@@ -199,8 +199,14 @@ defmodule Syncordian.Peer do
         shift_due_to_tombstone =
           get_number_of_tombstones_before_index(document, index_position) - 0
 
+        index_line_status = get_line_status(Enum.at(document, index_position))
+
         [left_parent, right_parent] =
-          get_parents_by_index(document, index_position + shift_due_to_tombstone)
+          get_parents_by_index(
+            document,
+            index_position + shift_due_to_tombstone,
+            index_line_status
+          )
 
         new_line =
           create_line_between_two_lines(
@@ -220,8 +226,12 @@ defmodule Syncordian.Peer do
 
         if peer(peer, :peer_id) == 25 and index_position < 15 do
           IO.puts("--------------------------------------------------------")
-          IO.inspect("Index position: #{index_position} ")
+          IO.inspect("Index position: #{index_position}")
+          IO.inspect(line_to_string(Enum.at(document, index_position)))
+          IO.puts("")
           IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
+          IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
+          IO.puts("")
           IO.inspect("New line: #{line_to_string(new_line)}")
           IO.puts("")
           # document = get_peer_document(peer) |> Enum.take(12)
@@ -237,6 +247,7 @@ defmodule Syncordian.Peer do
           peer,
           {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
         )
+
         loop(peer)
 
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
@@ -278,9 +289,8 @@ defmodule Syncordian.Peer do
               )
 
             document = get_peer_document(peer)
-            # HERE this function get_document_... was afected for HERE changes
             line_index = get_document_new_index_by_incoming_line_id(line, document)
-            [left_parent, right_parent] = get_parents_by_index(document, line_index)
+            [left_parent, right_parent] = get_parents_by_index(document, line_index, :aurora)
 
             debug_function = fn x ->
               local_peer_id = get_peer_id(peer)

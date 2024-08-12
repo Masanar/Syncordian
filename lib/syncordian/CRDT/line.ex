@@ -111,6 +111,7 @@ defmodule Syncordian.Line_Object do
         line_id: @min_float,
         content: "Infimum",
         signature: "Infimum",
+        status: :settled,
         peer_id: peer_id,
         commit_at: List.duplicate(true, network_size)
       )
@@ -127,6 +128,7 @@ defmodule Syncordian.Line_Object do
         line_id: @max_float,
         content: "Supremum",
         signature: "Supremum",
+        status: :settled,
         peer_id: peer_id,
         commit_at: List.duplicate(true, network_size)
       )

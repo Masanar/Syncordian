@@ -48,12 +48,17 @@ defmodule Syncordian.Supervisor do
   def parse_edit(edit, peer_pid, acc) do
     case Map.get(edit, :op) do
       :insert ->
+        # if Map.get(edit, :index) == 9 do
+        #   IO.inspect(edit)
+        # end
         insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
         1
+        # 0
 
       :delete ->
         delete_line(peer_pid, Map.get(edit, :index) + acc)
         -1
+        # 0
     end
   end
 
@@ -189,10 +194,22 @@ defmodule Syncordian.Supervisor do
     pid
   end
 
+  # def init_test() do
+  #   # Delete the all the files of the debug directory
+  #   delete_contents("debug")
+
+  #   # Load the git log and the list of commits of the test files
+  #   parsed_git_log = parser_git_log("test_index")
+  #   list_of_commits = get_list_of_commits("test_index")
+  #   commit_group_map = group_by_commit(parsed_git_log)
+  # end
+
+
   def supervisor_loop(supervisor) do
     receive do
       {:write_current_peers_document} ->
         save_current_documents(supervisor(supervisor, :pid_list_author_peers))
+        supervisor_loop(supervisor)
 
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)

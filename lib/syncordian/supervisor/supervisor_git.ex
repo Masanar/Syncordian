@@ -46,19 +46,29 @@ defmodule Syncordian.Supervisor do
     - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
   """
   def parse_edit(edit, peer_pid, acc) do
+    # TODO: This function must be refactored within the refactorization of the parse_edits
     case Map.get(edit, :op) do
       :insert ->
-        # if Map.get(edit, :index) == 9 do
-        #   IO.inspect(edit)
-        # end
-        insert(peer_pid, Map.get(edit, :content), Map.get(edit, :index) + acc)
-        1
-        # 0
+        insert(
+          peer_pid,
+          Map.get(edit, :content),
+          Map.get(edit, :index) + acc,
+          Map.get(edit, :global_position)
+        )
+
+        # 1
+        0
 
       :delete ->
-        delete_line(peer_pid, Map.get(edit, :index) + acc)
-        -1
-        # 0
+        IO.inspect(edit)
+        delete_line(
+          peer_pid,
+          Map.get(edit, :index) + acc,
+          Map.get(edit, :global_position)
+        )
+
+        # -1
+        0
     end
   end
 
@@ -66,6 +76,8 @@ defmodule Syncordian.Supervisor do
     Parses a list of edits and applies them to the specified peer.
   """
   def parse_edits(edits, peer_pid) do
+    # TODO: as the function parse_edit now returns always 0, we can refactor this function
+    # maybe using just one reduce. Yeah this is useless, please change it
     edits
     |> Enum.reduce(0, fn edit_list, acc_outer ->
       Enum.reduce(edit_list, acc_outer, fn atom_edit, acc_inner ->
@@ -178,9 +190,6 @@ defmodule Syncordian.Supervisor do
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
-    IO.inspect(list_of_commits)
-    IO.inspect(pid_list_author_peers)
-
     supervisor =
       supervisor(
         list_of_commits: list_of_commits,
@@ -194,16 +203,11 @@ defmodule Syncordian.Supervisor do
     pid
   end
 
-  # def init_test() do
-  #   # Delete the all the files of the debug directory
-  #   delete_contents("debug")
-
-  #   # Load the git log and the list of commits of the test files
-  #   parsed_git_log = parser_git_log("test_index")
-  #   list_of_commits = get_list_of_commits("test_index")
-  #   commit_group_map = group_by_commit(parsed_git_log)
-  # end
-
+  def test_init() do
+    parsed_git_log = parser_git_log("test_index")
+    _list_of_commits = get_list_of_commits("test_index")
+    _commit_group_map = group_by_commit(parsed_git_log)
+  end
 
   def supervisor_loop(supervisor) do
     receive do

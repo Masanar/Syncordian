@@ -48,18 +48,31 @@ defmodule Syncordian.Peer do
   def save_content(pid), do: send(pid, {:save_content, :document})
 
   @doc """
-    This function is used to delete a line at the given index in the current document of the
-    peer by sending a message to the loop peer function.
+    This function is use to delete a line at the given index in the current document of
+    the peer by sending a message to the loop peer function. Where:
+      - pid: the pid of the peer
+      - index_position: the index position of the line to be deleted
+      - global_position: the global position of the current commit, in other words the
+        beginning position of the line in the context lines.
   """
-  def delete_line(pid, index_position), do: send(pid, {:delete_line, index_position})
+  @spec delete_line(pid, integer, integer) :: any
+  def delete_line(pid, index_position, global_position),
+    do: send(pid, {:delete_line, [index_position, global_position]})
 
   @doc """
-    This function inserts a content at the given index and a pid by sending a message to the
-    loop peer function. The messages uses the following format:
-    {:insert,[content,index]}
+    This function inserts a content at the given index and a pid by sending a message to
+    the loop peer function. The messages uses the following format:
+    {:insert,[content,index, global_position] }
+    where:
+      - content: the content to be inserted in the peers local document
+      - index_position: the index position where the content will be inserted
+      - global_position: the global position of the current commit, in other words the
+        beginning position of the line in the context lines.
+
   """
-  @spec insert(pid, String.t(), integer) :: any
-  def insert(pid, content, index_position), do: send(pid, {:insert, [content, index_position]})
+  @spec insert(pid, String.t(), integer, integer) :: any
+  def insert(pid, content, index_position, global_position),
+    do: send(pid, {:insert, [content, index_position, global_position]})
 
   @doc """
     This function starts a peer with the given peer_id and registers it in the global registry.
@@ -83,8 +96,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      # {:delete_line, index_position, local_tombstones} ->
-      {:delete_line, index_position} ->
+      {:delete_line, [index_position,global_position]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
 
@@ -98,7 +110,7 @@ defmodule Syncordian.Peer do
           _ ->
             # shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position) - local_tombstones
             shift_due_to_tombstone =
-              get_number_of_tombstones_before_index_delete(document, index_position)
+              get_number_of_tombstones_before_index_delete(document, global_position)
 
             peer =
               document
@@ -115,22 +127,18 @@ defmodule Syncordian.Peer do
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
-            # if peer(peer, :peer_id) == 25 and index_position < 15 do
-            # if peer(peer, :peer_id) == 27  do
-            #   IO.puts("--------------------------------------------------------")
-            #   IO.inspect("Index position: #{index_position} ")
-            #   IO.inspect("local tombstones: #{local_tombstones}")
-            #   IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-            #   IO.inspect("Line deleted: #{line_to_string(line_deleted)}")
-            #   document = get_peer_document(peer) |> Enum.slice(index_position..index_position + 5)
-            #   IO.inspect(document)
-            #   IO.puts("--------------------------------------------------------")
-            # end
-
             send(
               get_peer_pid(peer),
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
+            # IO.puts("---------------------------DELETE: #{global_position}--------------------------------")
+            # IO.inspect("Index position: #{index_position}")
+            # IO.inspect(line_to_string(Enum.at(document, index_position)))
+            # IO.puts("")
+            # IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
+            # IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
+            # IO.puts("")
+            # IO.puts("------------------------------------------------------------------------------------")
 
             tick_peer_deleted_count(peer)
         end
@@ -190,14 +198,14 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      # {:insert, content, index_position, local_tombstones} ->
-      {:insert, [content, index_position]} ->
+      # {:insert, content, index_position, global_position} ->
+      {:insert, [content, index_position, global_position]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
         # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position) - local_tombstones
         shift_due_to_tombstone =
-          get_number_of_tombstones_before_index(document, index_position) - 0
+          get_number_of_tombstones_before_index(document, global_position)
 
         index_line_status = get_line_status(Enum.at(document, index_position))
 
@@ -224,8 +232,8 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        if peer(peer, :peer_id) == 25 and index_position < 15 do
-          IO.puts("--------------------------------------------------------")
+        if peer(peer, :peer_id) == 25 and index_position < 8 do
+          IO.inspect("---------------------Global Position: #{global_position}-----------------------------------")
           IO.inspect("Index position: #{index_position}")
           IO.inspect(line_to_string(Enum.at(document, index_position)))
           IO.puts("")

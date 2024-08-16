@@ -4,8 +4,10 @@ Check list to track the progress and current working on
 
 ## Woking on
 
-The nodes pages currently display a fixed (peer id: 16) node' document I need to do 
-something to show the new lines when refreshing the document.
+- Currently I modify the parse of commits to count in each insertion/deletion within the 
+index of the Syncordian edit. Additionally a new parameter was added to such edits, 
+the global_position, it is used to search tombtones from the begining of the document 
+until that index.
 
 ## Pending
 

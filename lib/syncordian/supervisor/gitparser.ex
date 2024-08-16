@@ -169,33 +169,53 @@ defmodule Syncordian.GitParser do
     global position, in the case of the example the global position is 88.
   """
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
-    # IO.inspect("******************************************************")
-    # IO.inspect(global_position)
-    # IO.puts("")
+    # TODO: the structure %{op:....} could be the type of this module, it does?
     context_lines
     |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
-      # IO.inspect(line)
-      # IO.inspect(index_position)
-      # IO.inspect(acc)
-      # IO.puts("")
-      # IO.puts("")
+      new_index_position = index_position + 1
+
       case String.at(line, 0) do
         "-" ->
-          {index_position , [%{op: :delete, index: index_position, content: ""} | acc]}
+          {new_index_position,
+           [
+             %{
+               op: :delete,
+               index: index_position,
+               content: "",
+               global_position: global_position
+             }
+             | acc
+           ]}
 
         "+" ->
           case line do
             "+" <> content ->
-              {index_position + 1,
-                [%{op: :insert, index: index_position, content: content} | acc]}
+              {new_index_position,
+               [
+                 %{
+                   op: :insert,
+                   index: index_position,
+                   content: content,
+                   global_position: global_position
+                 }
+                 | acc
+               ]}
 
             "+" ->
-              {index_position + 1,
-                [%{op: :insert, index: index_position, content: "\n"} | acc]}
+              {new_index_position,
+               [
+                 %{
+                   op: :insert,
+                   index: index_position,
+                   content: "\n",
+                   global_position: global_position
+                 }
+                 | acc
+               ]}
           end
 
         _ ->
-          {index_position + 1, acc}
+          {new_index_position, acc}
       end
     end)
     |> elem(1)
@@ -259,6 +279,7 @@ defmodule Syncordian.GitParser do
       {_, acc} -> {:cont, Enum.reverse(acc), []}
       acc -> {:cont, Enum.reverse(acc), []}
     end
+
     Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
     |> Stream.map(&String.trim_trailing/1)

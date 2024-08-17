@@ -204,7 +204,6 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      # {:insert, content, index_position, global_position} ->
       {:insert, [content, index_position, global_position]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
@@ -264,6 +263,8 @@ defmodule Syncordian.Peer do
           IO.inspect("Global position: #{global_position}")
           IO.puts("")
           IO.inspect("Index position: #{index_position}")
+          IO.inspect("Shift Index: #{shift_due_to_tombstone}")
+          IO.puts("")
           IO.inspect(line_to_string(Enum.at(document, index_position)))
           IO.inspect("New line: #{line_to_string(new_line)}")
           IO.puts("")
@@ -311,6 +312,7 @@ defmodule Syncordian.Peer do
             clock_distance_usual
           end
         # if peer(peer, :peer_id) == 16 and clock_distance < 5 do
+        # if peer(peer, :peer_id) == 16 and incoming_peer_id == 25 do
         #   IO.inspect("---------------------Clock Distance #{clock_distance}------------------------------")
         #   IO.inspect("Insert line")
         #   IO.inspect(line)
@@ -349,7 +351,7 @@ defmodule Syncordian.Peer do
                 "Reason  : #{x}\n" <>
                   "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
                   "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
-                  "Distance: #{clock_distance}\n" <>
+                  "Clock Distance: #{clock_distance}\n" <>
                   "Line index: #{line_index} \n" <>
                   "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
                   "Left line content : #{line_to_string(left_parent)}\n" <>

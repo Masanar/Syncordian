@@ -25,13 +25,11 @@ defmodule Syncordian.Document do
           integer
   def get_document_new_index_by_incoming_line_id(line, document) do
     line_id = get_line_id(line)
-    # HERE
-    get_document_new_index_by_incoming_line_id_aux(line_id, document, 0) - 1
+    get_document_new_index_by_incoming_line_id_aux(line_id, document, 0)
   end
 
   # This is an private recursive auxiliar function over the length of the document to get
   # the index of the line by its line_id.
-
   # NOTE: It is important to keep the precondition of not having any line ID greater than
   # the @max_float defined at Syncordian.Line module! or else this function will get to an
   # empty document and will return an error. I define a case for this situation, but it is
@@ -304,15 +302,6 @@ defmodule Syncordian.Document do
         IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
     end
-    # case {Enum.at(document, pos_index), Enum.at(document, pos_index + 1), line_pos_index_status} do
-    # # case {Enum.at(document, pos_index-1), Enum.at(document, pos_index), line_pos_index_status} do
-    #   {_, nil, _} ->
-    #     [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-    #   {_, _, :tombstone} ->
-    #     [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
-    #   {previous, next, _} ->
-    #     [previous, next]
-    # end
   end
 
   def get_number_of_tombstones_before_index(document, index) do

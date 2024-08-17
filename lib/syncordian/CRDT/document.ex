@@ -286,16 +286,11 @@ defmodule Syncordian.Document do
     len = get_document_length(document)
 
     case {Enum.at(document, pos_index), Enum.at(document, pos_index + 1), line_pos_index_status} do
+    # case {Enum.at(document, pos_index-1), Enum.at(document, pos_index), line_pos_index_status} do
       {_, nil, _} ->
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
 
       {_, _, :tombstone} ->
-        IO.inspect("****************************************************")
-        IO.inspect("****************************************************")
-        IO.inspect(line_to_string(Enum.at(document, pos_index - 1 )))
-        IO.inspect(line_to_string(Enum.at(document, pos_index)))
-        IO.inspect("****************************************************")
-        IO.inspect("****************************************************")
 
         [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
 

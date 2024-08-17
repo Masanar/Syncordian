@@ -51,7 +51,6 @@ defmodule Syncordian.Supervisor do
     # the parse_edits function just below.
     case Map.get(edit, :op) do
       :insert ->
-        # IO.inspect("Inserting #{Map.get(edit, :content)} at -> #{Map.get(edit, :index) + acc}")
         insert(
           peer_pid,
           Map.get(edit, :content),
@@ -60,7 +59,6 @@ defmodule Syncordian.Supervisor do
         )
         1
       :delete ->
-        # IO.inspect("Deleting line at #{Map.get(edit, :index) + acc}")
         delete_line(
           peer_pid,
           Map.get(edit, :index) + acc,

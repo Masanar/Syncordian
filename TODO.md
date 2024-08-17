@@ -4,10 +4,14 @@ Check list to track the progress and current working on
 
 ## Woking on
 
-- Currently I modify the parse of commits to count in each insertion/deletion within the 
-index of the Syncordian edit. Additionally a new parameter was added to such edits, 
-the global_position, it is used to search tombtones from the begining of the document 
+- Currently I modify the parse of commits to count in each insertion/deletion within the
+index of the Syncordian edit. Additionally a new parameter was added to such edits,
+the global_position, it is used to search tombstones from the beginning of the document
 until that index.
+
+- Theory: I think that the insertion must be dynamic, if we are adding a line in the last
+part of the document we must pick [i,i+1] else [i-1,i] in the function get_parents_by_index
+
 
 ## Pending
 

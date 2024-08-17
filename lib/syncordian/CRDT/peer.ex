@@ -131,15 +131,21 @@ defmodule Syncordian.Peer do
               get_peer_pid(peer),
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
-            # IO.puts("---------------------------DELETE: #{global_position}--------------------------------")
-            # IO.inspect("Index position: #{index_position}")
-            # IO.inspect(line_to_string(Enum.at(document, index_position)))
-            # IO.puts("")
-            # IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-            # IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
-            # IO.puts("")
-            # IO.puts("------------------------------------------------------------------------------------")
-
+            if peer(peer, :peer_id) == 25 do
+              IO.puts("")
+              IO.puts("------------------------------------DELETE------------------------------------------------")
+              IO.puts("")
+              IO.inspect("Global position: #{global_position}")
+              IO.puts("")
+              IO.inspect("Index position: #{index_position}")
+              IO.inspect(line_to_string(Enum.at(document, index_position)))
+              IO.puts("")
+              IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
+              IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
+              IO.puts("")
+              IO.puts("------------------------------------------------------------------------------------")
+              IO.puts("")
+            end
             tick_peer_deleted_count(peer)
         end
 
@@ -232,19 +238,22 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        if peer(peer, :peer_id) == 25 and index_position < 8 do
-          IO.inspect("---------------------Global Position: #{global_position}-----------------------------------")
+        if peer(peer, :peer_id) == 25 and index_position < 10 do
+          IO.puts("")
+          IO.puts("----------------------INSERT----------------------------------")
+          IO.puts("")
+          IO.inspect("Global position: #{global_position}")
+          IO.puts("")
           IO.inspect("Index position: #{index_position}")
           IO.inspect(line_to_string(Enum.at(document, index_position)))
-          IO.puts("")
-          IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-          IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
-          IO.puts("")
           IO.inspect("New line: #{line_to_string(new_line)}")
           IO.puts("")
-          # document = get_peer_document(peer) |> Enum.take(12)
-          # IO.inspect(document)
+          IO.inspect("Left parent: #{line_to_string(left_parent)}")
+          IO.puts("")
+          IO.inspect("Right parent: #{line_to_string(right_parent)}")
+          # get_peer_document(peer) |> IO.inspect
           IO.puts("--------------------------------------------------------")
+          IO.puts("")
         end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
@@ -282,6 +291,14 @@ defmodule Syncordian.Peer do
           else
             clock_distance_usual
           end
+        # if peer(peer, :peer_id) == 16 and clock_distance < 5 do
+        #   IO.inspect("---------------------Clock Distance #{clock_distance}------------------------------")
+        #   IO.inspect("Insert line")
+        #   IO.inspect(line)
+        #   IO.puts("")
+        #   IO.puts("--------------------------------------------------------")
+        # end
+
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
@@ -323,6 +340,21 @@ defmodule Syncordian.Peer do
               File.write!(file_name, file_content)
             end
 
+            # if peer(peer, :peer_id) == 16 and get_line_insertion_attempts(line)==0 do
+            #   IO.inspect("---------------------Line index #{line_index}-----------------------------------")
+            #   IO.inspect("Left parent")
+            #   IO.inspect(line_to_string(left_parent))
+            #   IO.puts("")
+            #   IO.inspect("Right parent")
+            #   IO.inspect(line_to_string(right_parent))
+            #   IO.puts("")
+            #   IO.inspect("Insert line")
+            #   IO.inspect(line)
+            #   IO.puts("")
+            #   IO.puts("--------------------------------------------------------")
+            # end
+
+
             case order_vc do
               # local_vc < incoming_vc
               true ->
@@ -349,6 +381,7 @@ defmodule Syncordian.Peer do
                     |> loop
 
                   {false, false} ->
+                    # TODO: Nothing is happening here
                     debug_function.("Requesting requeue")
                     # new_line = tick_line_insertion_attempts(line)
                     # send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})

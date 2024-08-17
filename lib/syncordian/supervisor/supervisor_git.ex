@@ -46,29 +46,27 @@ defmodule Syncordian.Supervisor do
     - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
   """
   def parse_edit(edit, peer_pid, acc) do
-    # TODO: This function must be refactored within the refactorization of the parse_edits
+    # If want to know why the acc is reduced by 1 in the case of a delete operation and
+    # increase by 1 in the case of an insert operation, please read the comets of
+    # the parse_edits function just below.
     case Map.get(edit, :op) do
       :insert ->
+        # IO.inspect("Inserting #{Map.get(edit, :content)} at -> #{Map.get(edit, :index) + acc}")
         insert(
           peer_pid,
           Map.get(edit, :content),
           Map.get(edit, :index) + acc,
           Map.get(edit, :global_position)
         )
-
-        # 1
-        0
-
+        1
       :delete ->
-        IO.inspect(edit)
+        # IO.inspect("Deleting line at #{Map.get(edit, :index) + acc}")
         delete_line(
           peer_pid,
           Map.get(edit, :index) + acc,
           Map.get(edit, :global_position)
         )
-
-        # -1
-        0
+        -1
     end
   end
 
@@ -76,8 +74,18 @@ defmodule Syncordian.Supervisor do
     Parses a list of edits and applies them to the specified peer.
   """
   def parse_edits(edits, peer_pid) do
-    # TODO: as the function parse_edit now returns always 0, we can refactor this function
-    # maybe using just one reduce. Yeah this is useless, please change it
+    # For you to remember, just in case:
+    # The first reduce goes through the list of edits, remember that a commit may have
+    # several edits, that is several of the form @@ a,b c,d @. Further, the edits in the
+    # edits list come in increasing order by its global position.
+    #
+    # Les't assume that we have a commit with 2 edits, the first edit must keep the index
+    # of the operations  unaffected but the second one must shift the index only by the
+    # number of inserts accumulated by previous edits, in this case just the first one.
+    # This is the case because the tombstone are calculated based on the global position
+    # then we must take into account just the inserts otherwise some tombstones will be
+    # counted twice. That is why in parse_edit the acc gets reduced by 1 in the case of
+    # a delete operation.
     edits
     |> Enum.reduce(0, fn edit_list, acc_outer ->
       Enum.reduce(edit_list, acc_outer, fn atom_edit, acc_inner ->

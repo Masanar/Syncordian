@@ -284,19 +284,35 @@ defmodule Syncordian.Document do
 
   def get_parents_by_index(document, pos_index, line_pos_index_status) do
     len = get_document_length(document)
-
-    case {Enum.at(document, pos_index), Enum.at(document, pos_index + 1), line_pos_index_status} do
-    # case {Enum.at(document, pos_index-1), Enum.at(document, pos_index), line_pos_index_status} do
-      {_, nil, _} ->
+    distance = len - pos_index
+    case {distance > 0, distance} do
+      {true, 1} ->
+        # Case where the insert is at the end of the document after a tombstone that
+        # was made in the same edit see commit: 2198ff05e3b26532865f91a9ac1bac5fc673c05b
         [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-
-      {_, _, :tombstone} ->
-
+      {true, 2} ->
+        # Case where the insert behaves like an 'append' i.e. insert at the end
+        # see any insert of the first commit: 26a07b0ad87162805e69ce18c56627772a663aef
+        [Enum.at(document, pos_index), Enum.at(document, pos_index + 1)]
+      {true, _} ->
+        # Case where the insert is within any line inside the document
         [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
-
-      {previous, next, _} ->
-        [previous, next]
+      {_, _} ->
+        # This return is just to make the compiler (completeness) happy, if this ever
+        # happens the code has a huge error.
+        IO.puts("Error in the get_parents_by_index")
+        IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
+        [Enum.at(document, len - 2), Enum.at(document, len - 1)]
     end
+    # case {Enum.at(document, pos_index), Enum.at(document, pos_index + 1), line_pos_index_status} do
+    # # case {Enum.at(document, pos_index-1), Enum.at(document, pos_index), line_pos_index_status} do
+    #   {_, nil, _} ->
+    #     [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+    #   {_, _, :tombstone} ->
+    #     [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
+    #   {previous, next, _} ->
+    #     [previous, next]
+    # end
   end
 
   def get_number_of_tombstones_before_index(document, index) do

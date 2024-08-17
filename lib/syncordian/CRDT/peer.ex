@@ -238,6 +238,25 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
+        # len = get_document_length(document)
+        # new_index = index_position + shift_due_to_tombstone
+        # if (new_index == len - 2 or new_index == len - 1)  and peer(peer, :peer_id) == 25 do
+        #   IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        #   IO.inspect("HERE IS HAPPENING:  #{new_index}")
+        #   IO.inspect("Index position: #{index_position}  Shift: #{shift_due_to_tombstone} length: #{len} Distance: #{len - new_index} ")
+        #   IO.inspect(get_content(new_line))
+        #   IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        #   IO.puts("")
+        # else
+        #   if peer(peer, :peer_id) == 25 do
+        #     IO.puts("--------------------------------------------------------")
+        #     IO.puts("THERE IS SOMETHING STRANGE HERE!!")
+        #     IO.inspect("Index position: #{index_position}  Shift: #{shift_due_to_tombstone} length: #{len} Distance: #{len - new_index} ")
+        #     IO.inspect(line_to_string(new_line))
+        #     IO.puts("--------------------------------------------------------")
+        #     IO.puts("")
+        #   end
+        # end
         if peer(peer, :peer_id) == 25 and index_position < 10 do
           IO.puts("")
           IO.puts("----------------------INSERT----------------------------------")

@@ -1,0 +1,35 @@
+commit 2198ff05e3b26532865f91a9ac1bac5fc673c05b
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Thu May 12 13:52:13 2016 +0200
+
+    Rename license to LICENSE.txt for consistency
+
+diff --git a/README.md b/README.md
+index 0cbea72c..5f152e4d 100644
+--- a/README.md
++++ b/README.md
+@@ -1,15 +1,10 @@ We have [stickers](http://shop.planetargon.com/products/ohmyzsh-stickers-set-of-
+ 
+ ## License
+
+-_mateo 
+-Oh My Zsh is released under the [MIT license](MIT-LICENSE.txt).
++Oh My Zsh is released under the [MIT license](LICENSE.txt).
++Oh My Zsh is released under the [MIT license](LICENSE.txt).
+-aaaaaaaaaaaaaaaa
++bbbbbbbbbbbbbbbb
++cccccccccccccccc
+
+
+
+
+
+
+
+
+
+
+
+
+
+

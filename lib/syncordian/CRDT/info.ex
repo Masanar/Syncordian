@@ -4,7 +4,7 @@ defmodule Syncordian.Info do
   import Syncordian.Utilities
 
   def save_document_content(document, peer_id) do
-    File.write!("debug/document_peer_#{peer_id}", string_document_content(document))
+    File.write!("debug/documents/document_peer_#{peer_id}", string_document_content(document))
   end
 
   def string_document_content(document),

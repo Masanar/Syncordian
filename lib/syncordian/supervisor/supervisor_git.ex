@@ -184,7 +184,7 @@ defmodule Syncordian.Supervisor do
   """
   def init() do
     # Delete the all the files of the debug directory
-    delete_contents("debug")
+    delete_contents("debug/documents")
 
     # Load the git log and the list of commits of the test files
     parsed_git_log = parser_git_log("test")

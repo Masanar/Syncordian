@@ -110,7 +110,7 @@ defmodule Syncordian.Document do
   @spec update_document_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
           Syncordian.Basic_Types.document()
   def update_document_line_status(document, index, new_value) do
-    line = Enum.at(document, index)
+    line = get_document_line_by_index(document, index)
     updated_line = set_line_status(line, new_value)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
@@ -278,29 +278,38 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.status()
         ) ::
           [Syncordian.Line_Object.line()]
-  def get_parents_by_index(document, 0, _), do: [Enum.at(document, 0), Enum.at(document, 1)]
+  def get_parents_by_index(document, 0, _),
+    do: [get_document_index_by_line_id(document, 0), get_document_line_by_index(document, 1)]
 
   def get_parents_by_index(document, pos_index, line_pos_index_status) do
     len = get_document_length(document)
     distance = len - pos_index
+
     case {distance > 0, distance} do
       {true, 1} ->
         # Case where the insert is at the end of the document after a tombstone that
         # was made in the same edit see commit: 2198ff05e3b26532865f91a9ac1bac5fc673c05b
-        [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+        # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+        [get_document_line_by_index(document, len - 2), get_document_line_by_index(document, len - 1)]
+
       {true, 2} ->
         # Case where the insert behaves like an 'append' i.e. insert at the end
         # see any insert of the first commit: 26a07b0ad87162805e69ce18c56627772a663aef
-        [Enum.at(document, pos_index), Enum.at(document, pos_index + 1)]
+        # [Enum.at(document, pos_index), Enum.at(document, pos_index + 1)]
+        [get_document_line_by_index(document, pos_index), get_document_line_by_index(document, pos_index + 1)]
+
       {true, _} ->
         # Case where the insert is within any line inside the document
-        [Enum.at(document, pos_index-1), Enum.at(document, pos_index)]
+        # [Enum.at(document, pos_index - 1), Enum.at(document, pos_index)]
+        [get_document_line_by_index(document, pos_index - 1), get_document_line_by_index(document, pos_index)]
+
       {_, _} ->
         # This return is just to make the compiler (completeness) happy, if this ever
         # happens the code has a huge error.
         IO.puts("Error in the get_parents_by_index")
         IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
-        [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+        # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
+        [get_document_line_by_index(document, len - 2), get_document_line_by_index(document, len - 1)]
     end
   end
 

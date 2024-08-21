@@ -138,10 +138,10 @@ defmodule Syncordian.Peer do
               IO.inspect("Global position: #{global_position}")
               IO.puts("")
               IO.inspect("Index position: #{index_position}")
-              IO.inspect(line_to_string(Enum.at(document, index_position)))
+              IO.inspect(line_to_string( get_document_line_by_index(document, index_position) ))
               IO.puts("")
               IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-              IO.inspect(line_to_string(Enum.at(document, index_position + shift_due_to_tombstone)))
+              IO.inspect(line_to_string(get_document_line_by_index(document, index_position + shift_due_to_tombstone)))
               IO.puts("")
               IO.puts("------------------------------------------------------------------------------------")
               IO.puts("")
@@ -212,7 +212,10 @@ defmodule Syncordian.Peer do
         shift_due_to_tombstone =
           get_number_of_tombstones_before_index(document, global_position)
 
-        index_line_status = get_line_status(Enum.at(document, index_position))
+        #get_line_status(Enum.at(document, index_position))
+        index_line_status =
+          get_document_line_by_index(document,index_position)
+          |> get_line_status
 
         [left_parent, right_parent] =
           get_parents_by_index(
@@ -265,7 +268,7 @@ defmodule Syncordian.Peer do
           IO.inspect("Index position: #{index_position}")
           IO.inspect("Shift Index: #{shift_due_to_tombstone}")
           IO.puts("")
-          IO.inspect(line_to_string(Enum.at(document, index_position)))
+          IO.inspect(line_to_string(get_document_line_by_index(document, index_position)))
           IO.inspect("New line: #{line_to_string(new_line)}")
           IO.puts("")
           IO.inspect("Left parent: #{line_to_string(left_parent)}")

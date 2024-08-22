@@ -368,31 +368,21 @@ defmodule Syncordian.Document do
     end
   end
 
-  @spec get_number_of_tombstones_due_other_peers(
-          document :: Syncordian.Basic_Types.document(),
-          global_position :: Syncordian.Basic_Types.git_document_index(),
-          current_index :: Syncordian.Basic_Types.git_document_index(),
-          current_peer_id :: Syncordian.Basic_Types.peer_id()
-        ) :: Syncordian.Basic_Types.git_document_index()
   def get_number_of_tombstones_due_other_peers(
         document,
         global_position,
-        current_index,
-        current_peer_id
+        current_index
       ) do
-    if global_position == 208 do
-      IO.inspect(Enum.slice(document,global_position..current_index))
-    end
     document
     |> Enum.slice(global_position..current_index)
     |> Enum.reduce(0, fn current_line, acc ->
-      if get_line_peer_id(current_line) != current_peer_id and
-           get_line_status(current_line) == :tombstone do
+      if get_line_status(current_line) == :tombstone do
         acc + 1
       else
         acc
       end
     end)
   end
+
 
 end

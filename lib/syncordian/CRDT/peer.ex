@@ -117,14 +117,12 @@ defmodule Syncordian.Peer do
               get_number_of_tombstones_due_other_peers(
                 document,
                 global_position,
-                index_position + shift_due_to_tombstone,
-                peer_id
+                index_position + shift_due_to_tombstone
               )
 
             new_index_position =
               index_position + shift_due_to_tombstone +
-                (shift_due_other_peers_tombstones)
-                # (shift_due_other_peers_tombstones - current_delete_ops)
+                (shift_due_other_peers_tombstones - current_delete_ops)
 
             # check_until_no_tombstone(document, index_position + shift_due_to_tombstone)
 
@@ -146,11 +144,11 @@ defmodule Syncordian.Peer do
 
             if get_peer_id(peer) == 26 do
               IO.puts("--------------------------------------------------------")
+              IO.puts("Index global position: #{global_position}")
               IO.puts("Index position: #{index_position}")
               IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
               IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
               IO.puts("Curren delete Ops: #{current_delete_ops}")
-              IO.puts("Index global position: #{global_position}")
               IO.puts("Shifted index: #{new_index_position}")
               IO.puts("Left parent: #{line_to_string(left_parent)}")
               IO.puts("Line deleted: #{line_to_string(line_deleted)}")
@@ -230,14 +228,13 @@ defmodule Syncordian.Peer do
           get_number_of_tombstones_due_other_peers(
             document,
             global_position,
-            index_position + shift_due_to_tombstone,
-            peer_id
+            index_position + shift_due_to_tombstone
           )
 
         new_index =
           index_position + shift_due_to_tombstone +
-            # (shift_due_other_peers_tombstones - current_delete_ops)
-            (shift_due_other_peers_tombstones)
+            (shift_due_other_peers_tombstones - current_delete_ops)
+            # (shift_due_other_peers_tombstones)
 
         [left_parent, right_parent] =
           get_parents_by_index(

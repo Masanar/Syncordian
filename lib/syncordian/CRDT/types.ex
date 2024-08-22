@@ -83,4 +83,6 @@ defmodule Syncordian.Basic_Types do
   #           deleted_limit: integer(),
   #           vector_clock: vector_clock()
   #         }
+
+  @type git_document_index :: integer()
 end

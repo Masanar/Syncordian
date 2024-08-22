@@ -107,7 +107,11 @@ defmodule Syncordian.Document do
     Given a document and a index, this function change the status of the line at the given
     index, returning the updated document.
   """
-  @spec update_document_line_status(Syncordian.Basic_Types.document(), integer(), boolean()) ::
+  @spec update_document_line_status(
+          Syncordian.Basic_Types.document(),
+          integer(),
+          Syncordian.Basic_Types.status()
+        ) ::
           Syncordian.Basic_Types.document()
   def update_document_line_status(document, index, new_value) do
     line = get_document_line_by_index(document, index)
@@ -158,13 +162,29 @@ defmodule Syncordian.Document do
   end
 
   @spec update_document_line_by_line(
-          Syncordian.Basic_Types.document(),
-          Syncordian.Line_Object.line()
+          Syncordian.Line_Object.line(),
+          Syncordian.Basic_Types.document()
         ) ::
           Syncordian.Basic_Types.document()
   def update_document_line_by_line(updated_line, document) do
     line_id = get_line_id(updated_line)
     index = get_document_index_by_line_id(document, line_id)
+    Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  end
+
+  @doc """
+    Given a document and a index, this function change the status of the line at the given
+    index, returning the updated document.
+  """
+  @spec update_document_line_peer_id(
+          Syncordian.Basic_Types.document(),
+          integer(),
+          Syncordian.Basic_Types.peer_id()
+        ) ::
+          Syncordian.Basic_Types.document()
+  def update_document_line_peer_id(document, index, new_peer_id) do
+    line = get_document_line_by_index(document, index)
+    updated_line = set_line_peer_id(line, new_peer_id)
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
 
@@ -273,15 +293,14 @@ defmodule Syncordian.Document do
   # parents of the given index. The line_pos_index_status is the status of the line in the
   # original index i.e. the index with out the shift due to the previous tombstones.
   @spec get_parents_by_index(
-          Syncordian.Basic_Types.document(),
-          integer,
-          Syncordian.Basic_Types.status()
+          document :: Syncordian.Basic_Types.document(),
+          index    :: Syncordian.Basic_Types.git_document_index()
         ) ::
           [Syncordian.Line_Object.line()]
-  def get_parents_by_index(document, 0, _),
-    do: [get_document_index_by_line_id(document, 0), get_document_line_by_index(document, 1)]
+  def get_parents_by_index(document, 0),
+    do: [get_document_line_by_index(document, 0), get_document_line_by_index(document, 1)]
 
-  def get_parents_by_index(document, pos_index, line_pos_index_status) do
+  def get_parents_by_index(document, pos_index) do
     len = get_document_length(document)
     distance = len - pos_index
 
@@ -290,18 +309,27 @@ defmodule Syncordian.Document do
         # Case where the insert is at the end of the document after a tombstone that
         # was made in the same edit see commit: 2198ff05e3b26532865f91a9ac1bac5fc673c05b
         # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-        [get_document_line_by_index(document, len - 2), get_document_line_by_index(document, len - 1)]
+        [
+          get_document_line_by_index(document, len - 2),
+          get_document_line_by_index(document, len - 1)
+        ]
 
       {true, 2} ->
         # Case where the insert behaves like an 'append' i.e. insert at the end
         # see any insert of the first commit: 26a07b0ad87162805e69ce18c56627772a663aef
         # [Enum.at(document, pos_index), Enum.at(document, pos_index + 1)]
-        [get_document_line_by_index(document, pos_index), get_document_line_by_index(document, pos_index + 1)]
+        [
+          get_document_line_by_index(document, pos_index),
+          get_document_line_by_index(document, pos_index + 1)
+        ]
 
       {true, _} ->
         # Case where the insert is within any line inside the document
         # [Enum.at(document, pos_index - 1), Enum.at(document, pos_index)]
-        [get_document_line_by_index(document, pos_index - 1), get_document_line_by_index(document, pos_index)]
+        [
+          get_document_line_by_index(document, pos_index - 1),
+          get_document_line_by_index(document, pos_index)
+        ]
 
       {_, _} ->
         # This return is just to make the compiler (completeness) happy, if this ever
@@ -309,7 +337,10 @@ defmodule Syncordian.Document do
         IO.puts("Error in the get_parents_by_index")
         IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
         # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-        [get_document_line_by_index(document, len - 2), get_document_line_by_index(document, len - 1)]
+        [
+          get_document_line_by_index(document, len - 2),
+          get_document_line_by_index(document, len - 1)
+        ]
     end
   end
 
@@ -323,9 +354,40 @@ defmodule Syncordian.Document do
     end)
   end
 
-  def get_number_of_tombstones_before_index_delete(document, index) do
-    Enum.reduce(Enum.take(document, index + 1), 0, fn line, acc ->
-      if get_line_status(line) == :tombstone do
+  def check_until_no_tombstone(document, index) do
+    check_until_no_tombstone_aux(Enum.drop(document, index), index)
+  end
+
+  defp check_until_no_tombstone_aux([head | tail], index) do
+    case get_line_status(head) do
+      :tombstone ->
+        check_until_no_tombstone_aux(tail, index + 1)
+
+      _ ->
+        index
+    end
+  end
+
+  @spec get_number_of_tombstones_due_other_peers(
+          document :: Syncordian.Basic_Types.document(),
+          global_position :: Syncordian.Basic_Types.git_document_index(),
+          current_index :: Syncordian.Basic_Types.git_document_index(),
+          current_peer_id :: Syncordian.Basic_Types.peer_id()
+        ) :: Syncordian.Basic_Types.git_document_index()
+  def get_number_of_tombstones_due_other_peers(
+        document,
+        global_position,
+        current_index,
+        current_peer_id
+      ) do
+    if global_position == 208 do
+      IO.inspect(Enum.slice(document,global_position..current_index))
+    end
+    document
+    |> Enum.slice(global_position..current_index)
+    |> Enum.reduce(0, fn current_line, acc ->
+      if get_line_peer_id(current_line) != current_peer_id and
+           get_line_status(current_line) == :tombstone do
         acc + 1
       else
         acc
@@ -333,5 +395,4 @@ defmodule Syncordian.Document do
     end)
   end
 
-  #
 end

@@ -171,18 +171,20 @@ defmodule Syncordian.GitParser do
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
     # TODO: the structure %{op:....} could be the type of this module, it does?
     context_lines
-    |> Enum.reduce({global_position, []}, fn line, {index_position, acc} ->
+    |> Enum.reduce({global_position,0, []}, fn line, {index_position, current_delete_ops, acc} ->
       new_index_position = index_position + 1
 
       case String.at(line, 0) do
         "-" ->
           {new_index_position,
+          current_delete_ops + 1,
            [
              %{
                op: :delete,
                index: index_position,
                content: "",
-               global_position: global_position
+               global_position: global_position,
+               current_delete_ops: current_delete_ops
              }
              | acc
            ]}
@@ -191,34 +193,38 @@ defmodule Syncordian.GitParser do
           case line do
             "+" <> content ->
               {new_index_position,
+              current_delete_ops,
                [
                  %{
                    op: :insert,
                    index: index_position,
                    content: content,
-                   global_position: global_position
+                   global_position: global_position,
+                   current_delete_ops: current_delete_ops
                  }
                  | acc
                ]}
 
             "+" ->
               {new_index_position,
+              current_delete_ops,
                [
                  %{
                    op: :insert,
                    index: index_position,
                    content: "\n",
-                   global_position: global_position
+                   global_position: global_position,
+                   current_delete_ops: current_delete_ops
                  }
                  | acc
                ]}
           end
 
         _ ->
-          {new_index_position, acc}
+          {new_index_position, current_delete_ops, acc}
       end
     end)
-    |> elem(1)
+    |> elem(2)
     |> Enum.reverse()
   end
 

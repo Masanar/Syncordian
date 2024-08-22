@@ -55,9 +55,9 @@ defmodule Syncordian.Peer do
       - global_position: the global position of the current commit, in other words the
         beginning position of the line in the context lines.
   """
-  @spec delete_line(pid, integer, integer) :: any
-  def delete_line(pid, index_position, global_position),
-    do: send(pid, {:delete_line, [index_position, global_position]})
+  @spec delete_line(pid, integer, integer, integer) :: any
+  def delete_line(pid, index_position, global_position, current_delete_ops),
+    do: send(pid, {:delete_line, [index_position, global_position, current_delete_ops]})
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to
@@ -70,9 +70,9 @@ defmodule Syncordian.Peer do
         beginning position of the line in the context lines.
 
   """
-  @spec insert(pid, String.t(), integer, integer) :: any
-  def insert(pid, content, index_position, global_position),
-    do: send(pid, {:insert, [content, index_position, global_position]})
+  @spec insert(pid, String.t(), integer, integer, integer) :: any
+  def insert(pid, content, index_position, global_position, current_delete_ops),
+    do: send(pid, {:insert, [content, index_position, global_position, current_delete_ops]})
 
   @doc """
     This function starts a peer with the given peer_id and registers it in the global registry.
@@ -96,7 +96,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      {:delete_line, [index_position,global_position]} ->
+      {:delete_line, [index_position, global_position, current_delete_ops]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
 
@@ -108,17 +108,34 @@ defmodule Syncordian.Peer do
             loop(peer)
 
           _ ->
-            # shift_due_to_tombstone = get_number_of_tombstones_before_index_delete(document, index_position) - local_tombstones
+            peer_id = get_peer_id(peer)
+
             shift_due_to_tombstone =
-              get_number_of_tombstones_before_index_delete(document, global_position)
+              get_number_of_tombstones_before_index(document, global_position)
+
+            shift_due_other_peers_tombstones =
+              get_number_of_tombstones_due_other_peers(
+                document,
+                global_position,
+                index_position + shift_due_to_tombstone,
+                peer_id
+              )
+
+            new_index_position =
+              index_position + shift_due_to_tombstone +
+                (shift_due_other_peers_tombstones)
+                # (shift_due_other_peers_tombstones - current_delete_ops)
+
+            # check_until_no_tombstone(document, index_position + shift_due_to_tombstone)
 
             peer =
               document
-              |> update_document_line_status(index_position + shift_due_to_tombstone, :tombstone)
+              |> update_document_line_status(new_index_position, :tombstone)
+              |> update_document_line_peer_id(new_index_position, peer_id)
               |> update_peer_document(peer)
 
             line_deleted =
-              get_document_line_by_index(document, index_position + shift_due_to_tombstone)
+              get_document_line_by_index(document, new_index_position)
 
             line_deleted_id = line_deleted |> get_line_id
 
@@ -127,25 +144,25 @@ defmodule Syncordian.Peer do
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
+            if get_peer_id(peer) == 26 do
+              IO.puts("--------------------------------------------------------")
+              IO.puts("Index position: #{index_position}")
+              IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
+              IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
+              IO.puts("Curren delete Ops: #{current_delete_ops}")
+              IO.puts("Index global position: #{global_position}")
+              IO.puts("Shifted index: #{new_index_position}")
+              IO.puts("Left parent: #{line_to_string(left_parent)}")
+              IO.puts("Line deleted: #{line_to_string(line_deleted)}")
+              IO.puts("Right parent: #{line_to_string(right_parent)}")
+              IO.puts("--------------------------------------------------------")
+            end
+
             send(
               get_peer_pid(peer),
               {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
             )
-            if peer(peer, :peer_id) == 25 do
-              IO.puts("")
-              IO.puts("------------------------------------DELETE------------------------------------------------")
-              IO.puts("")
-              IO.inspect("Global position: #{global_position}")
-              IO.puts("")
-              IO.inspect("Index position: #{index_position}")
-              IO.inspect(line_to_string( get_document_line_by_index(document, index_position) ))
-              IO.puts("")
-              IO.inspect("Shift due to tombstone: #{shift_due_to_tombstone}")
-              IO.inspect(line_to_string(get_document_line_by_index(document, index_position + shift_due_to_tombstone)))
-              IO.puts("")
-              IO.puts("------------------------------------------------------------------------------------")
-              IO.puts("")
-            end
+
             tick_peer_deleted_count(peer)
         end
 
@@ -167,15 +184,13 @@ defmodule Syncordian.Peer do
 
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
-            index_position_tmp = get_document_index_by_line_id(document, line_deleted_id)
-
-            # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position_tmp)
-            # index_position = index_position_tmp - shift_due_to_tombstone
-            index_position = index_position_tmp
+            index_position = get_document_index_by_line_id(document, line_deleted_id)
+            peer_id = get_peer_id(peer)
 
             peer =
               document
               |> update_document_line_status(index_position, :tombstone)
+              |> update_document_line_peer_id(index_position, peer_id)
               |> update_peer_document(peer)
 
             tick_peer_deleted_count(peer)
@@ -204,24 +219,30 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      {:insert, [content, index_position, global_position]} ->
+      {:insert, [content, index_position, global_position, current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
-        # shift_due_to_tombstone = get_number_of_tombstones_before_index(document, index_position) - local_tombstones
         shift_due_to_tombstone =
           get_number_of_tombstones_before_index(document, global_position)
 
-        #get_line_status(Enum.at(document, index_position))
-        index_line_status =
-          get_document_line_by_index(document,index_position)
-          |> get_line_status
+        shift_due_other_peers_tombstones =
+          get_number_of_tombstones_due_other_peers(
+            document,
+            global_position,
+            index_position + shift_due_to_tombstone,
+            peer_id
+          )
+
+        new_index =
+          index_position + shift_due_to_tombstone +
+            # (shift_due_other_peers_tombstones - current_delete_ops)
+            (shift_due_other_peers_tombstones)
 
         [left_parent, right_parent] =
           get_parents_by_index(
             document,
-            index_position + shift_due_to_tombstone,
-            index_line_status
+            new_index
           )
 
         new_line =
@@ -240,14 +261,23 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        # len = get_document_length(document)
-        # new_index = index_position + shift_due_to_tombstone
-        # if (new_index == len - 2 or new_index == len - 1)  and peer(peer, :peer_id) == 25 do
-        #   IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        #   IO.inspect("HERE IS HAPPENING:  #{new_index}")
-        #   IO.inspect("Index position: #{index_position}  Shift: #{shift_due_to_tombstone} length: #{len} Distance: #{len - new_index} ")
-        #   IO.inspect(get_content(new_line))
-        #   IO.puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # if peer(peer, :peer_id) == 25 and index_position < 10 do
+        #   IO.puts("")
+        #   IO.puts("----------------------INSERT----------------------------------")
+        #   IO.puts("")
+        #   IO.inspect("Global position: #{global_position}")
+        #   IO.puts("")
+        #   IO.inspect("Index position: #{index_position}")
+        #   IO.inspect("Shift Index: #{shift_due_to_tombstone}")
+        #   IO.puts("")
+        #   IO.inspect(line_to_string(Enum.at(document, index_position)))
+        #   IO.inspect("New line: #{line_to_string(new_line)}")
+        #   IO.puts("")
+        #   IO.inspect("Left parent: #{line_to_string(left_parent)}")
+        #   IO.puts("")
+        #   IO.inspect("Right parent: #{line_to_string(right_parent)}")
+        #   # get_peer_document(peer) |> IO.inspect
+        #   IO.puts("--------------------------------------------------------")
         #   IO.puts("")
         # else
         #   if peer(peer, :peer_id) == 25 do
@@ -314,15 +344,6 @@ defmodule Syncordian.Peer do
           else
             clock_distance_usual
           end
-        # if peer(peer, :peer_id) == 16 and clock_distance < 5 do
-        # if peer(peer, :peer_id) == 16 and incoming_peer_id == 25 do
-        #   IO.inspect("---------------------Clock Distance #{clock_distance}------------------------------")
-        #   IO.inspect("Insert line")
-        #   IO.inspect(line)
-        #   IO.puts("")
-        #   IO.puts("--------------------------------------------------------")
-        # end
-
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
@@ -339,7 +360,7 @@ defmodule Syncordian.Peer do
 
             document = get_peer_document(peer)
             line_index = get_document_new_index_by_incoming_line_id(line, document)
-            [left_parent, right_parent] = get_parents_by_index(document, line_index, :aurora)
+            [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
             debug_function = fn x ->
               local_peer_id = get_peer_id(peer)
@@ -377,7 +398,6 @@ defmodule Syncordian.Peer do
             #   IO.puts("")
             #   IO.puts("--------------------------------------------------------")
             # end
-
 
             case order_vc do
               # local_vc < incoming_vc

@@ -7,7 +7,7 @@ defmodule SyncordianWeb.Node do
       :ok,
       assign(
         socket,
-        peer_id: 16,
+        peer_id: 26,
         lines: []
       )
     }

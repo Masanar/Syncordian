@@ -1,7 +1,7 @@
 defmodule SyncordianWeb.Supervisor do
   use SyncordianWeb, :live_view
   import Syncordian.Supervisor
-  @commit_button_disabled_time 8_000
+  # @commit_button_disabled_time 8_000
 
   def mount(_params, session, socket) do
     socket =

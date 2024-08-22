@@ -100,6 +100,14 @@ defmodule Syncordian.Line_Object do
     do: line(line, :peer_id)
 
   @doc """
+    This function is a setter for the peer_id field of a line record
+  """
+  @spec set_line_peer_id(line(), new_peer_id :: Syncordian.Basic_Types.peer_id()) :: line()
+  def set_line_peer_id(line, new_peer_id) do
+    line(line, peer_id: new_peer_id)
+  end
+
+  @doc """
     This function creates the infimum line for the given peer id
     that is the absolute first line within peer's document
   """

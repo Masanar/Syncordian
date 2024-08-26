@@ -110,6 +110,7 @@ defmodule Syncordian.Peer do
           _ ->
             peer_id = get_peer_id(peer)
             IO.inspect("Peer id: #{peer_id}")
+
             shift_due_to_tombstone =
               get_number_of_tombstones_before_index(document, global_position)
 
@@ -120,12 +121,27 @@ defmodule Syncordian.Peer do
                 index_position + shift_due_to_tombstone
               )
 
-            new_index_position =
-              check_until_no_tombstone(document,
+            no_check_until_no_tombstones =
               index_position + shift_due_to_tombstone +
-                (shift_due_other_peers_tombstones - current_delete_ops))
+                (shift_due_other_peers_tombstones - current_delete_ops)
 
-            # check_until_no_tombstone(document, index_position + shift_due_to_tombstone)
+            temp_new_index_position =
+              check_until_no_tombstone(document, no_check_until_no_tombstones)
+
+            # TODO: This seems to work, maybe need the same for the :insertion
+            # also, code looks ugly find a way to refactor it
+            new_index_position =
+              if no_check_until_no_tombstones < temp_new_index_position do
+                case shift_due_other_peers_tombstones do
+                  0 ->
+                    temp_new_index_position
+
+                  _ ->
+                    temp_new_index_position + (shift_due_other_peers_tombstones - 1)
+                end
+              else
+                temp_new_index_position
+              end
 
             peer =
               document
@@ -142,20 +158,6 @@ defmodule Syncordian.Peer do
               get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
-
-            # if get_peer_id(peer) == 17 do
-            #   IO.puts("--------------------------------------------------------")
-            #   IO.puts("Index global position: #{global_position}")
-            #   IO.puts("Index position: #{index_position}")
-            #   IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
-            #   IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
-            #   IO.puts("Curren delete Ops: #{current_delete_ops}")
-            #   IO.puts("Shifted index: #{new_index_position}")
-            #   IO.puts("Left parent: #{line_to_string(left_parent)}")
-            #   IO.puts("Line deleted: #{line_to_string(line_deleted)}")
-            #   IO.puts("Right parent: #{line_to_string(right_parent)}")
-            #   IO.puts("--------------------------------------------------------")
-            # end
 
             send(
               get_peer_pid(peer),
@@ -234,9 +236,11 @@ defmodule Syncordian.Peer do
           )
 
         new_index =
-          check_until_no_tombstone(document,
-          index_position + shift_due_to_tombstone +
-            (shift_due_other_peers_tombstones - current_delete_ops))
+          check_until_no_tombstone(
+            document,
+            index_position + shift_due_to_tombstone +
+              (shift_due_other_peers_tombstones - current_delete_ops)
+          )
 
         [left_parent, right_parent] =
           get_parents_by_index(
@@ -259,6 +263,20 @@ defmodule Syncordian.Peer do
           |> tick_individual_peer_clock
 
         current_vector_clock = peer(peer, :vector_clock)
+
+        if get_peer_id(peer) == 6 do
+          IO.puts("--------------------------------------------------------")
+          IO.puts("Index global position: #{global_position}")
+          IO.puts("Index position: #{index_position}")
+          IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
+          IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
+          IO.puts("Curren delete Ops: #{current_delete_ops}")
+          IO.puts("Left parent: #{line_to_string(left_parent)}")
+          IO.puts("Line inserted: #{line_to_string(new_line)}")
+          IO.puts("Right parent: #{line_to_string(right_parent)}")
+          IO.puts("--------------------------------------------------------")
+        end
+
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)

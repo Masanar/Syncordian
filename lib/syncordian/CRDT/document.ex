@@ -294,7 +294,7 @@ defmodule Syncordian.Document do
   # original index i.e. the index with out the shift due to the previous tombstones.
   @spec get_parents_by_index(
           document :: Syncordian.Basic_Types.document(),
-          index    :: Syncordian.Basic_Types.git_document_index()
+          index :: Syncordian.Basic_Types.git_document_index()
         ) ::
           [Syncordian.Line_Object.line()]
   def get_parents_by_index(document, 0),
@@ -358,6 +358,8 @@ defmodule Syncordian.Document do
     check_until_no_tombstone_aux(Enum.drop(document, index), index)
   end
 
+  defp check_until_no_tombstone_aux([], index), do: index
+
   defp check_until_no_tombstone_aux([head | tail], index) do
     case get_line_status(head) do
       :tombstone ->
@@ -383,6 +385,4 @@ defmodule Syncordian.Document do
       end
     end)
   end
-
-
 end

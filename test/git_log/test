@@ -1,3 +1,55 @@
+commit 2526d71c56efe821caec6e2f03f0e5d695db3ecb
+Author: Doug Yun <doug.yun@dockyard.com>
+Date:   Wed Nov 1 06:21:07 2017 -0700
+
+    Use HTTPS for Planet Argon links (#6326)
+
+diff --git a/README.md b/README.md
+index 4531f7b7..0771a036 100644
+--- a/README.md
++++ b/README.md
+@@ -226,7 +226,7 @@ We're on the social media.
+ 
+ ## Merchandise
+ 
+-We have [stickers](http://shop.planetargon.com/products/ohmyzsh-stickers-set-of-3-stickers) and [shirts](http://shop.planetargon.com/products/ohmyzsh-t-shirts) for you to show off your love of Oh My Zsh. Again, this will help you become the talk of the town!
++We have [stickers](https://shop.planetargon.com/products/ohmyzsh-stickers-set-of-3-stickers) and [shirts](http://shop.planetargon.com/products/ohmyzsh-t-shirts) for you to show off your love of Oh My Zsh. Again, this will help you become the talk of the town!
+ 
+ ## License
+ 
+@@ -234,6 +234,6 @@ Oh My Zsh is released under the [MIT license](LICENSE.txt).
+ 
+ ## About Planet Argon
+ 
+-![Planet Argon](http://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
++![Planet Argon](https://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
+ 
+ Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github).
+
+commit f812cfa16ab605a88793dce5b169886ae2802031
+Author: Eli Boyarski <eli@boyar.ski>
+Date:   Wed Nov 1 15:10:02 2017 +0200
+
+    README.md: shit load -> shit-load (#6344)
+    
+    * README.md: shit load -> shit-load
+    
+    * README.md: shit-load -> shitload
+
+diff --git a/README.md b/README.md
+index 558d2412..4531f7b7 100644
+--- a/README.md
++++ b/README.md
+@@ -45,7 +45,7 @@ sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/to
+ 
+ ### Plugins
+ 
+-Oh My Zsh comes with a shit load of plugins to take advantage of. You can take a look in the [plugins](https://github.com/robbyrussell/oh-my-zsh/tree/master/plugins) directory and/or the [wiki](https://github.com/robbyrussell/oh-my-zsh/wiki/Plugins) to see what's currently available.
++Oh My Zsh comes with a shitload of plugins to take advantage of. You can take a look in the [plugins](https://github.com/robbyrussell/oh-my-zsh/tree/master/plugins) directory and/or the [wiki](https://github.com/robbyrussell/oh-my-zsh/wiki/Plugins) to see what's currently available.
+ 
+ #### Enabling Plugins
+ 
+
 commit 2e4539b0d4613e8e5081c81b80959e506038d295
 Author: Clay Anderson <claycephas@users.noreply.github.com>
 Date:   Wed Nov 1 06:57:15 2017 -0600

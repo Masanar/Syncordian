@@ -10,6 +10,7 @@
   <div class="button-container">
     <div class="button-left">
       <button class="button-89" role="button" phx-click="next_commit">Load next commit</button>
+      <button class="button-89" role="button" phx-click="all_commits">Send all commits</button>
       <button class="button-89" role="button" phx-click="write_current_peers_document">Write nodes documents</button>
     </div>
     <div class="button-right">
@@ -22,6 +23,9 @@
       <thead>
         <tr>
           <th>
+            <h1>Commit</h1>
+          </th>
+          <th>
             <h1>Author</h1>
           </th>
           <th>
@@ -30,8 +34,9 @@
         </tr>
       </thead>
       <tbody id="lines" phx-update="replace" phx-hook="InfinityScroll">
-        <%= for log <- @logs do %>
+        <%= for {log, index} <- Enum.with_index(@logs,1) do %>
           <tr id={"log-#{log.hash}"}>
+            <td><%= index %></td>
             <td><%= log.author %></td>
             <td>
               <a href={"/readmelog?commit=#{log.hash}"} class="commit-link">

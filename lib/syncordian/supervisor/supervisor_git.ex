@@ -58,7 +58,9 @@ defmodule Syncordian.Supervisor do
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )
+
         1
+
       :delete ->
         delete_line(
           peer_pid,
@@ -66,6 +68,7 @@ defmodule Syncordian.Supervisor do
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )
+
         -1
     end
   end
@@ -223,12 +226,32 @@ defmodule Syncordian.Supervisor do
         save_current_documents(supervisor(supervisor, :pid_list_author_peers))
         supervisor_loop(supervisor)
 
+      {:send_all_commits, live_view_pid} ->
+        supervisor_counter = supervisor(supervisor, :commit_counter)
+        list_of_commits = supervisor(supervisor, :list_of_commits)
+        length_of_commits = length(list_of_commits)
+
+        if supervisor_counter < length(list_of_commits) do
+          IO.inspect(
+            "Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}"
+          )
+
+          start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
+          send(self(), {:send_all_commits, live_view_pid})
+    Process.sleep(1000)
+          supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
+        else
+          IO.puts("All commits processed")
+          send(live_view_pid, {:limit_reached, "All commits processed"})
+          supervisor_loop(supervisor)
+        end
+
       {:send_next_commit, live_view_pid} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
-        if supervisor_counter <= length(list_of_commits) do
+        if supervisor_counter < length(list_of_commits) do
           IO.inspect(
             "Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}"
           )
@@ -239,6 +262,7 @@ defmodule Syncordian.Supervisor do
         else
           IO.puts("All commits processed")
           send(live_view_pid, {:limit_reached, "All commits processed"})
+          supervisor_loop(supervisor)
         end
 
       {:kill} ->

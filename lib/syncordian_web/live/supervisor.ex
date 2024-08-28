@@ -54,6 +54,26 @@ defmodule SyncordianWeb.Supervisor do
     {:noreply, socket}
   end
 
+  def handle_event("all_commits", _data, socket) do
+    socket =
+      if socket.assigns.launched do
+        if socket.assigns.disable_next_commit do
+          IO.inspect("Next commit disabled")
+          socket
+        else
+          IO.inspect("Sending All Commits")
+          supervisor_pid = socket.assigns.supervisor_pid
+          send(supervisor_pid, {:send_all_commits, self()})
+          socket
+        end
+      else
+        IO.inspect("Supervisor not launched")
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
   def handle_event("next_commit", _data, socket) do
     socket =
       if socket.assigns.launched do
@@ -88,7 +108,7 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_info({:limit_reached, _value}, socket) do
-    IO.inspect("Limit reached")
+    IO.inspect("Web supervisor: limit reached")
     {:noreply, socket}
   end
 

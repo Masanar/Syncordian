@@ -238,7 +238,7 @@ defmodule Syncordian.Supervisor do
 
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
           send(self(), {:send_all_commits, live_view_pid})
-    Process.sleep(1000)
+          # Process.sleep(100)
           supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")

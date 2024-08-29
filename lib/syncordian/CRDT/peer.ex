@@ -131,16 +131,32 @@ defmodule Syncordian.Peer do
             # TODO: This seems to work, maybe need the same for the :insertion
             # also, code looks ugly find a way to refactor it
             new_index_position =
-              if no_check_until_no_tombstones < temp_new_index_position do
-                case shift_due_other_peers_tombstones do
-                  0 ->
-                    temp_new_index_position
+              cond do
+                temp_new_index_position - no_check_until_no_tombstones == 1 and
+                    no_check_until_no_tombstones < temp_new_index_position ->
+                  IO.inspect("Inside the case -1")
+                  temp_new_index_position
 
-                  _ ->
-                    temp_new_index_position + (shift_due_other_peers_tombstones - 1)
-                end
-              else
-                temp_new_index_position
+                no_check_until_no_tombstones < temp_new_index_position ->
+                  case shift_due_other_peers_tombstones do
+                    0 ->
+                      if get_peer_id(peer) == 25 and global_position == 51 do
+                        IO.inspect("Inside the case 0")
+                      end
+
+                      temp_new_index_position
+
+                    _ ->
+                      IO.inspect("Inside the case 1")
+                      temp_new_index_position + (shift_due_other_peers_tombstones - 1)
+                  end
+
+                true ->
+                  if get_peer_id(peer) == 25 and global_position == 51 do
+                    IO.inspect("Inside the case 2")
+                  end
+
+                  temp_new_index_position
               end
 
             peer =
@@ -158,6 +174,22 @@ defmodule Syncordian.Peer do
               get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
+
+            # if get_peer_id(peer) == 25 and global_position == 51 do
+            #   IO.puts("-------------------------DELTE----------------------------")
+            #   IO.puts("Index global position: #{global_position}")
+            #   IO.puts("Index position: #{index_position}")
+            #   IO.puts("shift_due_to_tombstone: #{shift_due_to_tombstone}")
+            #   IO.puts("shift_due_other_peers_tombstones : #{shift_due_other_peers_tombstones}")
+            #   IO.puts("temp_new_index_position: #{temp_new_index_position}")
+            #   IO.puts("Curren delete Ops: #{current_delete_ops}")
+            #   IO.puts(" ")
+            #   IO.puts("Index used: #{new_index_position}")
+            #   IO.puts("Left parent: #{line_to_string(left_parent)}")
+            #   IO.puts("Line DELETE: #{line_to_string(line_deleted)}")
+            #   IO.puts("Right parent: #{line_to_string(right_parent)}")
+            #   IO.puts("--------------------------------------------------------")
+            # end
 
             send(
               get_peer_pid(peer),
@@ -258,7 +290,6 @@ defmodule Syncordian.Peer do
             new_index_temp
           end
 
-
         [left_parent, right_parent] =
           get_parents_by_index(
             document,
@@ -281,13 +312,17 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        if get_peer_id(peer) == 9 do
+        if get_peer_id(peer) == 25 and  global_position == 51 and index_position > 50 and index_position < 60 do
           IO.puts("--------------------------------------------------------")
           IO.puts("Index global position: #{global_position}")
           IO.puts("Index position: #{index_position}")
           IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
           IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
           IO.puts("Curren delete Ops: #{current_delete_ops}")
+          IO.puts(" ")
+          IO.puts("temp_new_index: #{temp_new_index}")
+          IO.puts("new_index_temp: #{new_index_temp}")
+          IO.puts("no_check_until_no_tombstones: #{no_check_until_no_tombstones}")
           IO.puts(" ")
           IO.puts("Index used: #{new_index}")
           IO.puts("Left parent: #{line_to_string(left_parent)}")

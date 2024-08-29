@@ -312,23 +312,34 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        if get_peer_id(peer) == 25 and  global_position == 51 and index_position > 50 and index_position < 60 do
-          IO.puts("--------------------------------------------------------")
-          IO.puts("Index global position: #{global_position}")
-          IO.puts("Index position: #{index_position}")
-          IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
-          IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
-          IO.puts("Curren delete Ops: #{current_delete_ops}")
-          IO.puts(" ")
-          IO.puts("temp_new_index: #{temp_new_index}")
-          IO.puts("new_index_temp: #{new_index_temp}")
-          IO.puts("no_check_until_no_tombstones: #{no_check_until_no_tombstones}")
-          IO.puts(" ")
+        # if get_peer_id(peer) == 25 and  global_position == 51 and index_position > 50 and index_position < 60 do
+        #   IO.puts("--------------------------------------------------------")
+        #   IO.puts("Index global position: #{global_position}")
+        #   IO.puts("Index position: #{index_position}")
+        #   IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
+        #   IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
+        #   IO.puts("Curren delete Ops: #{current_delete_ops}")
+        #   IO.puts(" ")
+        #   IO.puts("temp_new_index: #{temp_new_index}")
+        #   IO.puts("new_index_temp: #{new_index_temp}")
+        #   IO.puts("no_check_until_no_tombstones: #{no_check_until_no_tombstones}")
+        #   IO.puts(" ")
+        #   IO.puts("Index used: #{new_index}")
+        #   IO.puts("Left parent: #{line_to_string(left_parent)}")
+        #   IO.puts("Line inserted: #{line_to_string(new_line)}")
+        #   IO.puts("Right parent: #{line_to_string(right_parent)}")
+        #   IO.puts("--------------------------------------------------------")
+        # end
+        test_index = test(document, index_position) - current_delete_ops
+
+        if test_index != new_index do
+          IO.puts("")
+          IO.puts("Index from git parser: #{index_position}")
           IO.puts("Index used: #{new_index}")
-          IO.puts("Left parent: #{line_to_string(left_parent)}")
-          IO.puts("Line inserted: #{line_to_string(new_line)}")
-          IO.puts("Right parent: #{line_to_string(right_parent)}")
-          IO.puts("--------------------------------------------------------")
+          IO.puts("New implementation index: #{test_index}")
+          IO.puts("Current delete ops: #{current_delete_ops}")
+          IO.puts("New line inserted: #{line_to_string(new_line)}")
+          IO.puts("")
         end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})

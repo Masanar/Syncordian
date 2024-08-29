@@ -385,4 +385,48 @@ defmodule Syncordian.Document do
       end
     end)
   end
+
+  def test(document, target_index) do
+    document_length = get_document_length(document)
+
+    case document_length < target_index do
+      true -> document_length
+      false -> test_aux(document, target_index, 0, 0, document_length)
+    end
+  end
+
+  def test_aux(_, target_index, target_index, return_index, _), do: return_index
+
+  def test_aux(_, _, _, return_index, document_length) when document_length == return_index,
+    do: return_index
+
+  def test_aux(
+        _document = [head | tail],
+        target_index,
+        count_no_tombstones,
+        return_index,
+        document_length
+      ) do
+
+    if target_index == 84 and document_length > 220 do
+      IO.puts("")
+      IO.inspect("head: #{line_to_string(head)}")
+      IO.inspect("target_index: #{target_index}")
+      IO.inspect("count_no_tombstones : #{count_no_tombstones}")
+      IO.inspect("return_index: #{return_index}")
+      IO.inspect("document_length: #{document_length}")
+      IO.puts("")
+    end
+
+    line_status = get_line_status(head)
+    new_return_index = return_index + 1
+
+    case line_status do
+      :tombstone ->
+        test_aux(tail, target_index, count_no_tombstones, new_return_index, document_length)
+
+      _ ->
+        test_aux(tail, target_index, count_no_tombstones + 1, new_return_index, document_length)
+    end
+  end
 end

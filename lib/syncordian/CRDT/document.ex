@@ -408,7 +408,7 @@ defmodule Syncordian.Document do
         document_length
       ) do
 
-    if target_index == 84 and document_length > 220 do
+    if target_index == 84 and document_length > 2200 do
       IO.puts("")
       IO.inspect("head: #{line_to_string(head)}")
       IO.inspect("target_index: #{target_index}")
@@ -429,4 +429,20 @@ defmodule Syncordian.Document do
         test_aux(tail, target_index, count_no_tombstones + 1, new_return_index, document_length)
     end
   end
+
+  def nicolas_tenia_razon([h|t], 0, 0, index) do 
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, 0, 0, index+1)
+    _ -> index
+    end 
+  end
+  def nicolas_tenia_razon([h|t], 0, tombstones, index), do: nicolas_tenia_razon([h|t], tombstones, 0, index)    
+  def nicolas_tenia_razon([h|t], target, tombstones, index) do
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, target-1, tombstones+1, index+1)
+    _ -> nicolas_tenia_razon(t, target-1, tombstones, index + 1)
+    end 
+  end
+  
+  
 end

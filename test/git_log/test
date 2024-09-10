@@ -1,3 +1,2127 @@
+commit f9993d0c687c0fb50490aa530adee57ea4c70c12
+Author: Olivia (Zoe) <zoe.i2k1@gmail.com>
+Date:   Fri Dec 1 16:06:50 2023 +0100
+
+    docs: document the off-GitHub installation URL (#12079)
+
+diff --git a/README.md b/README.md
+index 49998687..98743432 100644
+--- a/README.md
++++ b/README.md
+@@ -88,6 +88,14 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ 
++Alternatively, the installer is also mirrored outside GitHub. Using this URL instead may be required if you're in a country like India or China, that blocks `raw.githubusercontent.com`:
++
++| Method    | Command                                                                                           |
++| :-------- | :------------------------------------------------------------------------------------------------ |
++| **curl**  | `sh -c "$(curl -fsSL https://install.ohmyz.sh/)"`                                                 |
++| **wget**  | `sh -c "$(wget -O- https://install.ohmyz.sh/)"`                                                   |
++| **fetch** | `sh -c "$(fetch -o - https://install.ohmyz.sh/)"`                                                 |
++
+ _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
+ 
+ #### Manual Inspection
+@@ -101,6 +109,8 @@ wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+ sh install.sh
+ ```
+ 
++If the above URL times out or otherwise fails, you may have to substitute the URL for `https://install.ohmyz.sh` to be able to get the script.
++
+ ## Using Oh My Zsh
+ 
+ ### Plugins
+@@ -220,6 +230,8 @@ the default shell, and it also won't run `zsh` when the installation has finishe
+ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+ ```
+ 
++If you're in China, India, or another country that blocks `raw.githubusercontent.com`, you may have to substitute the URL for `https://install.ohmyz.sh` for it to install.
++
+ #### Installing From A Forked Repository
+ 
+ The install script also accepts these variables to allow installation of a different repository:
+
+commit 1868c15ec6b13c2da20375780f1e8b8f61458be5
+Author: Marc Cornellà <marc@mcornella.com>
+Date:   Mon Oct 23 13:24:35 2023 +0200
+
+    chore: remove mentions of huntr.dev
+    
+    huntr.dev has pivoted to ML/AI-only vulnerability reporting, and we are
+    now already using GitHub's private vulnerability reports.
+
+diff --git a/README.md b/README.md
+index 308d117e..49998687 100644
+--- a/README.md
++++ b/README.md
+@@ -17,7 +17,6 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ [![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?label=%40ohmyzsh&domain=https%3A%2F%2Fmstdn.social&logo=mastodon&style=flat)](https://mstdn.social/@ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+-[![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+ 
+ <details>
+ <summary>Table of Contents</summary>
+
+commit 6768906d07151140db901510b2c8b1ce2622f365
+Author: sattisumasri <73093486+sattisumasri@users.noreply.github.com>
+Date:   Thu Oct 12 00:27:01 2023 +0530
+
+    chore: change headings in README to Title Case (#11956)
+    
+    Co-authored-by: Marc Cornellà <hello@mcornella.com>
+
+diff --git a/README.md b/README.md
+index c83e1621..308d117e 100644
+--- a/README.md
++++ b/README.md
+@@ -23,32 +23,33 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ <summary>Table of Contents</summary>
+ 
+ - [Getting Started](#getting-started)
++  - [Operating System Compatibility](#operating-system-compatibility)
+   - [Prerequisites](#prerequisites)
+   - [Basic Installation](#basic-installation)
+-    - [Manual inspection](#manual-inspection)
++    - [Manual Inspection](#manual-inspection)
+ - [Using Oh My Zsh](#using-oh-my-zsh)
+   - [Plugins](#plugins)
+     - [Enabling Plugins](#enabling-plugins)
+     - [Using Plugins](#using-plugins)
+   - [Themes](#themes)
+-    - [Selecting a Theme](#selecting-a-theme)
++    - [Selecting A Theme](#selecting-a-theme)
+   - [FAQ](#faq)
+ - [Advanced Topics](#advanced-topics)
+   - [Advanced Installation](#advanced-installation)
+     - [Custom Directory](#custom-directory)
+-    - [Unattended install](#unattended-install)
+-    - [Installing from a forked repository](#installing-from-a-forked-repository)
++    - [Unattended Install](#unattended-install)
++    - [Installing From A Forked Repository](#installing-from-a-forked-repository)
+     - [Manual Installation](#manual-installation)
+   - [Installation Problems](#installation-problems)
+-  - [Custom Plugins and Themes](#custom-plugins-and-themes)
+-  - [Enable GNU ls in macOS and freeBSD systems](#enable-gnu-ls)
+-  - [Skip aliases](#skip-aliases)
++  - [Custom Plugins And Themes](#custom-plugins-and-themes)
++  - [Enable GNU ls In macOS And freeBSD Systems](#enable-gnu-ls-in-macos-and-freebsd-systems)
++  - [Skip Aliases](#skip-aliases)
+ - [Getting Updates](#getting-updates)
+-  - [Updates verbosity](#updates-verbosity)
++  - [Updates Verbosity](#updates-verbosity)
+   - [Manual Updates](#manual-updates)
+ - [Uninstalling Oh My Zsh](#uninstalling-oh-my-zsh)
+-- [How do I contribute to Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)
+-  - [Do NOT send us themes](#do-not-send-us-themes)
++- [How Do I Contribute To Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)
++  - [Do Not Send Us Themes](#do-not-send-us-themes)
+ - [Contributors](#contributors)
+ - [Follow Us](#follow-us)
+ - [Merchandise](#merchandise)
+@@ -61,15 +62,15 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ 
+ ### Operating System Compatibility
+ 
+-| O/S    | Status   |
+-| :---------------- | :------: |
+-| Android        | ✅ |
+-| FreeBSD        | ✅ |
+-| LCARS          | 🛸 | 
+-| Linux          | ✅ |
+-| MacOS          | ✅ | 
+-| OS/2 Warp      | ❌ |
+-| Windows (WSL2) | ✅ |
++| O/S            | Status  |
++| :------------- | :-----: |
++| Android        |   ✅    |
++| freeBSD        |   ✅    |
++| LCARS          |   🛸    |
++| Linux          |   ✅    |
++| macOS          |   ✅    |
++| OS/2 Warp      |   ❌    |
++| Windows (WSL2) |   ✅    |
+ 
+ 
+ ### Prerequisites
+@@ -90,7 +91,7 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ 
+ _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
+ 
+-#### Manual inspection
++#### Manual Inspection
+ 
+ It's a good idea to inspect the install script from projects you don't yet know. You can do
+ that by downloading the install script first, looking through it so everything looks normal,
+@@ -139,7 +140,7 @@ Each built-in plugin includes a **README**, documenting it. This README should s
+ 
+ We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred and fifty themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki (We are working on updating this!). Check them out!
+ 
+-#### Selecting a Theme
++#### Selecting A Theme
+ 
+ _Robby's theme is the default one. It's not the fanciest one. It's not the simplest one. It's just the right one (for him)._
+ 
+@@ -210,7 +211,7 @@ like this:
+ ZSH="$HOME/.dotfiles/oh-my-zsh" sh install.sh
+ ```
+ 
+-#### Unattended install
++#### Unattended Install
+ 
+ If you're running the Oh My Zsh install script as part of an automated install, you can pass the `--unattended`
+ flag to the `install.sh` script. This will have the effect of not trying to change
+@@ -220,7 +221,7 @@ the default shell, and it also won't run `zsh` when the installation has finishe
+ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+ ```
+ 
+-#### Installing from a forked repository
++#### Installing From A Forked Repository
+ 
+ The install script also accepts these variables to allow installation of a different repository:
+ 
+@@ -245,19 +246,19 @@ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ 
+ #### Manual Installation
+ 
+-##### 1. Clone the repository <!-- omit in toc -->
++##### 1. Clone The Repository <!-- omit in toc -->
+ 
+ ```sh
+ git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+ ```
+ 
+-##### 2. _Optionally_, backup your existing `~/.zshrc` file <!-- omit in toc -->
++##### 2. _Optionally_, Backup Your Existing `~/.zshrc` File <!-- omit in toc -->
+ 
+ ```sh
+ cp ~/.zshrc ~/.zshrc.orig
+ ```
+ 
+-##### 3. Create a new zsh configuration file <!-- omit in toc -->
++##### 3. Create A New Zsh Configuration File <!-- omit in toc -->
+ 
+ You can create a new zsh config file by copying the template that we have included for you.
+ 
+@@ -265,7 +266,7 @@ You can create a new zsh config file by copying the template that we have includ
+ cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+ ```
+ 
+-##### 4. Change your default shell <!-- omit in toc -->
++##### 4. Change Your Default Shell <!-- omit in toc -->
+ 
+ ```sh
+ chsh -s $(which zsh)
+@@ -273,7 +274,7 @@ chsh -s $(which zsh)
+ 
+ You must log out from your user session and log back in to see this change.
+ 
+-##### 5. Initialize your new zsh configuration <!-- omit in toc -->
++##### 5. Initialize Your New Zsh Configuration <!-- omit in toc -->
+ 
+ Once you open up a new terminal window, it should load zsh with Oh My Zsh's configuration.
+ 
+@@ -284,7 +285,7 @@ If you have any hiccups installing, here are a few common fixes.
+ - You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after switching to `oh-my-zsh`.
+ - If you installed manually or changed the install location, check the `ZSH` environment variable in `~/.zshrc`.
+ 
+-### Custom Plugins and Themes
++### Custom Plugins And Themes
+ 
+ If you want to override any of the default behaviors, just add a new file (ending in `.zsh`) in the `custom/` directory.
+ 
+@@ -292,7 +293,7 @@ If you have many functions that go well together, you can put them as a `XYZ.plu
+ 
+ If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+ 
+-### Enable GNU ls in macOS and freeBSD systems
++### Enable GNU ls In macOS And freeBSD Systems
+ 
+ <a name="enable-gnu-ls"></a>
+ 
+@@ -306,7 +307,7 @@ zstyle ':omz:lib:theme-and-appearance' gnu-ls yes
+ 
+ _Note: this is not compatible with `DISABLE_LS_COLORS=true`_
+ 
+-### Skip aliases
++### Skip Aliases
+ 
+ <a name="remove-directories-aliases"></a>
+ 
+@@ -389,7 +390,7 @@ zstyle ':omz:update' frequency 7
+ zstyle ':omz:update' frequency 0
+ ```
+ 
+-### Updates verbosity
++### Updates Verbosity
+ 
+ You can also limit the update verbosity with the following settings:
+ 
+@@ -417,7 +418,7 @@ Oh My Zsh isn't for everyone. We'll miss you, but we want to make this an easy b
+ 
+ If you want to uninstall `oh-my-zsh`, just run `uninstall_oh_my_zsh` from the command-line. It will remove itself and revert your previous `bash` or `zsh` configuration.
+ 
+-## How do I contribute to Oh My Zsh?
++## How Do I Contribute To Oh My Zsh?
+ 
+ Before you participate in our delightful community, please read the [code of conduct](CODE_OF_CONDUCT.md).
+ 
+@@ -427,7 +428,7 @@ We also need people to test out pull requests. So take a look through [the open
+ 
+ See [Contributing](CONTRIBUTING.md) for more details.
+ 
+-### Do NOT send us themes
++### Do Not Send Us Themes
+ 
+ We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes) wiki page.
+ 
+
+commit b75b01a3092e59cd10ff01084d4a5e3ac0be3e3a
+Author: Marc Cornellà <hello@mcornella.com>
+Date:   Sun Oct 8 20:01:46 2023 +0200
+
+    chore: update README badges
+
+diff --git a/README.md b/README.md
+index 70c4faaf..c83e1621 100644
+--- a/README.md
++++ b/README.md
+@@ -13,8 +13,8 @@ Finally, you'll begin to get the sort of attention that you have always felt you
+ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and join us on [Discord](https://discord.gg/ohmyzsh).
+ 
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+-![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ohmyzsh?style=flat)
+-![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?domain=https%3A%2F%2Fmstdn.social&style=flat)
++[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ohmyzsh?label=%40ohmyzsh&logo=x&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
++[![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?label=%40ohmyzsh&domain=https%3A%2F%2Fmstdn.social&logo=mastodon&style=flat)](https://mstdn.social/@ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+ [![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+
+commit ee857e3acf4beba9e3121bc8e776a048c46fa85f
+Author: Robby Russell <robby@planetargon.com>
+Date:   Sun Oct 8 14:05:03 2023 +0200
+
+    Adding operating system compatibility chart
+
+diff --git a/README.md b/README.md
+index d915bd72..70c4faaf 100644
+--- a/README.md
++++ b/README.md
+@@ -59,9 +59,21 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ 
+ ## Getting Started
+ 
++### Operating System Compatibility
++
++| O/S    | Status   |
++| :---------------- | :------: |
++| Android        | ✅ |
++| FreeBSD        | ✅ |
++| LCARS          | 🛸 | 
++| Linux          | ✅ |
++| MacOS          | ✅ | 
++| OS/2 Warp      | ❌ |
++| Windows (WSL2) | ✅ |
++
++
+ ### Prerequisites
+ 
+-- A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL2 is preferred, but cygwin or msys also mostly work.
+ - [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+ - `curl` or `wget` should be installed
+ - `git` should be installed (recommended v2.4.11 or higher)
+
+commit 974055f638dac907cfb10281bce9cf998641febd
+Author: Robby Russell <robby@planetargon.com>
+Date:   Sun Oct 8 13:47:16 2023 +0200
+
+    Adding Mastadon and updating X badge
+
+diff --git a/README.md b/README.md
+index a3059558..d915bd72 100644
+--- a/README.md
++++ b/README.md
+@@ -13,7 +13,8 @@ Finally, you'll begin to get the sort of attention that you have always felt you
+ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and join us on [Discord](https://discord.gg/ohmyzsh).
+ 
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+-[![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
++![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ohmyzsh?style=flat)
++![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?domain=https%3A%2F%2Fmstdn.social&style=flat)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+ [![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+
+commit bfeeda1491b5366aa5798a86cf6f3621536b171c
+Author: Craig Furman <craig.furman89@gmail.com>
+Date:   Sun May 21 11:47:38 2023 +0100
+
+    docs(theme-and-appearance): fix gnu-ls snippet (#11701)
+
+diff --git a/README.md b/README.md
+index 2249b49d..a3059558 100644
+--- a/README.md
++++ b/README.md
+@@ -288,7 +288,7 @@ The default behaviour in Oh My Zsh is to use BSD `ls` in macOS and freeBSD syste
+ sourcing `oh-my-zsh.sh`:
+ 
+ ```zsh
+-zstyle ':omz:lib:theme-and-appearance' gnu-ls no
++zstyle ':omz:lib:theme-and-appearance' gnu-ls yes
+ ```
+ 
+ _Note: this is not compatible with `DISABLE_LS_COLORS=true`_
+
+commit aaf83d37aa1cc5ed2cb96dd29328502003a70848
+Author: Carlo Sala <carlosalag@protonmail.com>
+Date:   Tue May 9 12:10:05 2023 +0200
+
+    docs(theme-and-appearance): reflect properly dcff7a7 changes
+
+diff --git a/README.md b/README.md
+index 650fb00e..2249b49d 100644
+--- a/README.md
++++ b/README.md
+@@ -40,7 +40,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+     - [Manual Installation](#manual-installation)
+   - [Installation Problems](#installation-problems)
+   - [Custom Plugins and Themes](#custom-plugins-and-themes)
+-  - [Disable GNU ls in macOS and freeBSD systems](#disable-gnu-ls)
++  - [Enable GNU ls in macOS and freeBSD systems](#enable-gnu-ls)
+   - [Skip aliases](#skip-aliases)
+ - [Getting Updates](#getting-updates)
+   - [Updates verbosity](#updates-verbosity)
+@@ -279,18 +279,20 @@ If you have many functions that go well together, you can put them as a `XYZ.plu
+ 
+ If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+ 
+-### Disable GNU ls in macOS and freeBSD systems
++### Enable GNU ls in macOS and freeBSD systems
+ 
+-<a name="disable-gnu-ls"></a>
++<a name="enable-gnu-ls"></a>
+ 
+-The default behaviour in Oh My Zsh is to use GNU `ls` even in macOS and freeBSD systems if it's installed (as
+-`gls` command) when enabling colorized `ls` in `lib/theme-and-appearance.zsh`. If you want to disable this
+-behaviour you can use zstyle-based config before sourcing `oh-my-zsh.sh`:
++The default behaviour in Oh My Zsh is to use BSD `ls` in macOS and freeBSD systems. If GNU `ls` is installed
++(as `gls` command), you can choose to use it instead. To do it, you can use zstyle-based config before
++sourcing `oh-my-zsh.sh`:
+ 
+ ```zsh
+ zstyle ':omz:lib:theme-and-appearance' gnu-ls no
+ ```
+ 
++_Note: this is not compatible with `DISABLE_LS_COLORS=true`_
++
+ ### Skip aliases
+ 
+ <a name="remove-directories-aliases"></a>
+
+commit c5208867f1eb46f722e040b239150817abec87a6
+Author: Carlo Sala <carlosalag@protonmail.com>
+Date:   Tue May 2 12:41:01 2023 +0200
+
+    feat(theme-and-appearance): allow disabling gnu-ls in bsd
+    
+    To disable gnu-ls (`gls`) even if it's installed in freeBSD and macOS
+    you can set it up with:
+    ```zsh
+    zstyle ':omz:lib:theme-and-appearance' gnu-ls no
+    ```
+    
+    Closes #11647
+
+diff --git a/README.md b/README.md
+index 556d4c8c..650fb00e 100644
+--- a/README.md
++++ b/README.md
+@@ -40,6 +40,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+     - [Manual Installation](#manual-installation)
+   - [Installation Problems](#installation-problems)
+   - [Custom Plugins and Themes](#custom-plugins-and-themes)
++  - [Disable GNU ls in macOS and freeBSD systems](#disable-gnu-ls)
+   - [Skip aliases](#skip-aliases)
+ - [Getting Updates](#getting-updates)
+   - [Updates verbosity](#updates-verbosity)
+@@ -278,6 +279,18 @@ If you have many functions that go well together, you can put them as a `XYZ.plu
+ 
+ If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+ 
++### Disable GNU ls in macOS and freeBSD systems
++
++<a name="disable-gnu-ls"></a>
++
++The default behaviour in Oh My Zsh is to use GNU `ls` even in macOS and freeBSD systems if it's installed (as
++`gls` command) when enabling colorized `ls` in `lib/theme-and-appearance.zsh`. If you want to disable this
++behaviour you can use zstyle-based config before sourcing `oh-my-zsh.sh`:
++
++```zsh
++zstyle ':omz:lib:theme-and-appearance' gnu-ls no
++```
++
+ ### Skip aliases
+ 
+ <a name="remove-directories-aliases"></a>
+
+commit 1ad167dfac325a9f92e0693c70d0ab3f7c4c574b
+Author: Marc Cornellà <hello@mcornella.com>
+Date:   Mon Apr 3 23:14:36 2023 +0200
+
+    feat(init)!: allow turning off aliases for libs and plugins (#11550)
+    
+    BREAKING CHANGE: the previous zstyle setting to disable `lib/directories.zsh` aliases has
+    been changed to the new syntax: `zstyle ':omz:lib:directories' aliases no`. See
+    https://github.com/ohmyzsh/ohmyzsh#skip-aliases to see other ways you can use this setting.
+    
+    Co-authored-by: Carlo Sala <carlosalag@protonmail.com>
+
+diff --git a/README.md b/README.md
+index 4f0aeb7b..556d4c8c 100644
+--- a/README.md
++++ b/README.md
+@@ -40,7 +40,9 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+     - [Manual Installation](#manual-installation)
+   - [Installation Problems](#installation-problems)
+   - [Custom Plugins and Themes](#custom-plugins-and-themes)
++  - [Skip aliases](#skip-aliases)
+ - [Getting Updates](#getting-updates)
++  - [Updates verbosity](#updates-verbosity)
+   - [Manual Updates](#manual-updates)
+ - [Uninstalling Oh My Zsh](#uninstalling-oh-my-zsh)
+ - [How do I contribute to Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)
+@@ -276,16 +278,58 @@ If you have many functions that go well together, you can put them as a `XYZ.plu
+ 
+ If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+ 
+-### Remove directories aliases
++### Skip aliases
+ 
+-If you want to skip ohmyzsh default
+-[directories aliases](https://github.com/ohmyzsh/ohmyzsh/blob/master/lib/directories.zsh) you can add the
+-following snippet to your `zshrc`, before loading `oh-my-zsh.sh` script:
++<a name="remove-directories-aliases"></a>
+ 
+-```zsh
++If you want to skip default Oh My Zsh aliases (those defined in `lib/*` files) or plugin aliases,
++you can use the settings below in your `~/.zshrc` file, **before Oh My Zsh is loaded**. Note that
++there are many different ways to skip aliases, depending on your needs.
++
++```sh
++# Skip all aliases, in lib files and enabled plugins
++zstyle ':omz:*' aliases no
++
++# Skip all aliases in lib files
++zstyle ':omz:lib:*' aliases no
++# Skip only aliases defined in the directories.zsh lib file
++zstyle ':omz:lib:directories' aliases no
++
++# Skip all plugin aliases
++zstyle ':omz:plugins:*' aliases no
++# Skip only the aliases from the git plugin
++zstyle ':omz:plugins:git' aliases no
++```
++
++You can combine these in other ways taking into account that more specific scopes takes precedence:
++
++```sh
++# Skip all plugin aliases, except for the git plugin
++zstyle ':omz:plugins:*' aliases no
++zstyle ':omz:plugins:git' aliases yes
++```
++
++A previous version of this feature was using the setting below, which has been removed:
++
++```sh
+ zstyle ':omz:directories' aliases no
+ ```
+ 
++Instead, you can now use the following:
++
++```sh
++zstyle ':omz:lib:directories' aliases no
++```
++
++#### Notice <!-- omit in toc -->
++
++> This feature is currently in a testing phase and it may be subject to change in the future.
++> It is also not currently compatible with plugin managers such as zpm or zinit, which don't
++> source the init script (`oh-my-zsh.sh`) where this feature is implemented in.
++
++> It is also not currently aware of "aliases" that are defined as functions. Example of such
++> are `gccd`, `ggf`, or `ggl` functions from the git plugin.
++
+ ## Getting Updates
+ 
+ By default, you will be prompted to check for updates every 2 weeks. You can choose other update modes by adding a line to your `~/.zshrc` file, **before Oh My Zsh is loaded**:
+
+commit 8f6fbe238969ecb22fbdae75450a9f8705c9f979
+Author: Håvard Bartnes <haavard.bartnes@gmail.com>
+Date:   Tue Mar 28 12:50:05 2023 +0200
+
+    feat(upgrade): add verbosity settings
+    
+    Co-authored-by: Carlo Sala <carlosalag@protonmail.com>
+    
+    Closes #11574
+    Closes #11579
+
+diff --git a/README.md b/README.md
+index 4042c8c2..4f0aeb7b 100644
+--- a/README.md
++++ b/README.md
+@@ -317,6 +317,18 @@ zstyle ':omz:update' frequency 7
+ zstyle ':omz:update' frequency 0
+ ```
+ 
++### Updates verbosity
++
++You can also limit the update verbosity with the following settings:
++
++```sh
++zstyle ':omz:update' verbose default # default update prompt
++
++zstyle ':omz:update' verbose minimal # only few lines
++
++zstyle ':omz:update' verbose silent # only errors
++```
++
+ ### Manual Updates
+ 
+ If you'd like to update at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:
+
+commit 1c325de464117aa058d5f810b96ed54d65e5d0d5
+Author: Robby Russell <robby@planetargon.com>
+Date:   Tue Mar 7 11:52:38 2023 -0800
+
+    Fixing link to PA website in README
+    
+    Was linking to an old URL
+
+diff --git a/README.md b/README.md
+index 7f4a26ca..4042c8c2 100644
+--- a/README.md
++++ b/README.md
+@@ -374,4 +374,4 @@ Oh My Zsh is released under the [MIT license](LICENSE.txt).
+ 
+ ![Planet Argon](https://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
+ 
+-Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](https://www.planetargon.com/skills/ruby-on-rails-development?utm_source=github). Check out our [other open source projects](https://www.planetargon.com/open-source?utm_source=github).
++Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](http://www.planetargon.com/services/ruby-on-rails-development?utm_source=github). Check out our [other open source projects](https://www.planetargon.com/open-source?utm_source=github).
+
+commit ea4854dba3ef72e18df2c7cc79db2806d92322eb
+Author: Hazael Sanchez <hazaelsan@gmail.com>
+Date:   Thu Feb 2 02:30:34 2023 -0800
+
+    feat(directories): add config to skip aliases (#11469)
+    
+    Co-authored-by: Carlo Sala <carlosalag@protonmail.com>
+
+diff --git a/README.md b/README.md
+index 1e4b7ff7..7f4a26ca 100644
+--- a/README.md
++++ b/README.md
+@@ -276,6 +276,16 @@ If you have many functions that go well together, you can put them as a `XYZ.plu
+ 
+ If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+ 
++### Remove directories aliases
++
++If you want to skip ohmyzsh default
++[directories aliases](https://github.com/ohmyzsh/ohmyzsh/blob/master/lib/directories.zsh) you can add the
++following snippet to your `zshrc`, before loading `oh-my-zsh.sh` script:
++
++```zsh
++zstyle ':omz:directories' aliases no
++```
++
+ ## Getting Updates
+ 
+ By default, you will be prompted to check for updates every 2 weeks. You can choose other update modes by adding a line to your `~/.zshrc` file, **before Oh My Zsh is loaded**:
+
+commit eb00b95d26e8f264af80f508d50ac32e50619027
+Author: Olivia (Zoe) <zoe.i2k1@gmail.com>
+Date:   Thu Apr 14 16:31:17 2022 +0200
+
+    chore: minor documentation tweaks (#10853)
+
+diff --git a/README.md b/README.md
+index 4c41fad8..1e4b7ff7 100644
+--- a/README.md
++++ b/README.md
+@@ -72,7 +72,7 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ 
+-_Note that previous configuration in `.zshrc` will be placed in `.pre-oh-my-zsh`. After installation you can move configuration you want to preserve into `.zshrc`._
++_Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
+ 
+ #### Manual inspection
+ 
+@@ -117,7 +117,7 @@ _Note that the plugins are separated by whitespace (spaces, tabs, new lines...).
+ 
+ #### Using Plugins
+ 
+-Each plugin includes a **README**, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
++Each built-in plugin includes a **README**, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
+ 
+ ### Themes
+ 
+@@ -140,7 +140,7 @@ ZSH_THEME="agnoster" # (this is one of the fancy ones)
+ # see https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#agnoster
+ ```
+ 
+-_Note: many themes require installing the [Powerline Fonts](https://github.com/powerline/fonts) in order to render properly._
++_Note: many themes require installing a [Powerline Font](https://github.com/powerline/fonts) or a [Nerd Font](https://github.com/ryanoasis/nerd-fonts) in order to render properly. Without them, these themes will render [weird prompt symbols](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ#i-have-a-weird-character-in-my-prompt)_
+ 
+ Open up a new terminal window and your prompt should look something like this:
+ 
+@@ -196,9 +196,9 @@ ZSH="$HOME/.dotfiles/oh-my-zsh" sh install.sh
+ 
+ #### Unattended install
+ 
+-If you're running the Oh My Zsh install script as part of an automated install, you can pass the
+-flag `--unattended` to the `install.sh` script. This will have the effect of not trying to change
+-the default shell, and also won't run `zsh` when the installation has finished.
++If you're running the Oh My Zsh install script as part of an automated install, you can pass the `--unattended`
++flag to the `install.sh` script. This will have the effect of not trying to change
++the default shell, and it also won't run `zsh` when the installation has finished.
+ 
+ ```sh
+ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+@@ -329,7 +329,7 @@ Before you participate in our delightful community, please read the [code of con
+ 
+ I'm far from being a [Zsh](https://www.zsh.org/) expert and suspect there are many ways to improve – if you have ideas on how to make the configuration easier to maintain (and faster), don't hesitate to fork and send pull requests!
+ 
+-We also need people to test out pull-requests. So take a look through [the open issues](https://github.com/ohmyzsh/ohmyzsh/issues) and help where you can.
++We also need people to test out pull requests. So take a look through [the open issues](https://github.com/ohmyzsh/ohmyzsh/issues) and help where you can.
+ 
+ See [Contributing](CONTRIBUTING.md) for more details.
+ 
+
+commit 0f2715bb45ef025b48469817712a4cd3e23839b6
+Author: Bunyamin Shabanov <42899786+MetaMmodern@users.noreply.github.com>
+Date:   Mon Mar 14 19:09:45 2022 +0200
+
+    docs: add Table of Contents to README (#10766)
+    
+    Co-authored-by: Mohan Sha <mohansha@outlook.com>
+
+diff --git a/README.md b/README.md
+index 5a6b9844..4c41fad8 100644
+--- a/README.md
++++ b/README.md
+@@ -18,6 +18,41 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+ [![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+ 
++<details>
++<summary>Table of Contents</summary>
++
++- [Getting Started](#getting-started)
++  - [Prerequisites](#prerequisites)
++  - [Basic Installation](#basic-installation)
++    - [Manual inspection](#manual-inspection)
++- [Using Oh My Zsh](#using-oh-my-zsh)
++  - [Plugins](#plugins)
++    - [Enabling Plugins](#enabling-plugins)
++    - [Using Plugins](#using-plugins)
++  - [Themes](#themes)
++    - [Selecting a Theme](#selecting-a-theme)
++  - [FAQ](#faq)
++- [Advanced Topics](#advanced-topics)
++  - [Advanced Installation](#advanced-installation)
++    - [Custom Directory](#custom-directory)
++    - [Unattended install](#unattended-install)
++    - [Installing from a forked repository](#installing-from-a-forked-repository)
++    - [Manual Installation](#manual-installation)
++  - [Installation Problems](#installation-problems)
++  - [Custom Plugins and Themes](#custom-plugins-and-themes)
++- [Getting Updates](#getting-updates)
++  - [Manual Updates](#manual-updates)
++- [Uninstalling Oh My Zsh](#uninstalling-oh-my-zsh)
++- [How do I contribute to Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)
++  - [Do NOT send us themes](#do-not-send-us-themes)
++- [Contributors](#contributors)
++- [Follow Us](#follow-us)
++- [Merchandise](#merchandise)
++- [License](#license)
++- [About Planet Argon](#about-planet-argon)
++
++</details>
++
+ ## Getting Started
+ 
+ ### Prerequisites
+@@ -32,7 +67,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl`, `wget` or another similar tool.
+ 
+ | Method    | Command                                                                                           |
+-|:----------|:--------------------------------------------------------------------------------------------------|
++| :-------- | :------------------------------------------------------------------------------------------------ |
+ | **curl**  | `sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+@@ -82,7 +117,7 @@ _Note that the plugins are separated by whitespace (spaces, tabs, new lines...).
+ 
+ #### Using Plugins
+ 
+-Each plugin includes a __README__, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
++Each plugin includes a **README**, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
+ 
+ ### Themes
+ 
+@@ -194,19 +229,19 @@ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ 
+ #### Manual Installation
+ 
+-##### 1. Clone the repository
++##### 1. Clone the repository <!-- omit in toc -->
+ 
+ ```sh
+ git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+ ```
+ 
+-##### 2. *Optionally*, backup your existing `~/.zshrc` file
++##### 2. _Optionally_, backup your existing `~/.zshrc` file <!-- omit in toc -->
+ 
+ ```sh
+ cp ~/.zshrc ~/.zshrc.orig
+ ```
+ 
+-##### 3. Create a new zsh configuration file
++##### 3. Create a new zsh configuration file <!-- omit in toc -->
+ 
+ You can create a new zsh config file by copying the template that we have included for you.
+ 
+@@ -214,7 +249,7 @@ You can create a new zsh config file by copying the template that we have includ
+ cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+ ```
+ 
+-##### 4. Change your default shell
++##### 4. Change your default shell <!-- omit in toc -->
+ 
+ ```sh
+ chsh -s $(which zsh)
+@@ -222,7 +257,7 @@ chsh -s $(which zsh)
+ 
+ You must log out from your user session and log back in to see this change.
+ 
+-##### 5. Initialize your new zsh configuration
++##### 5. Initialize your new zsh configuration <!-- omit in toc -->
+ 
+ Once you open up a new terminal window, it should load zsh with Oh My Zsh's configuration.
+ 
+@@ -230,10 +265,8 @@ Once you open up a new terminal window, it should load zsh with Oh My Zsh's conf
+ 
+ If you have any hiccups installing, here are a few common fixes.
+ 
+-- You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after
+-switching to `oh-my-zsh`.
+-- If you installed manually or changed the install location, check the `ZSH` environment variable in
+-`~/.zshrc`.
++- You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after switching to `oh-my-zsh`.
++- If you installed manually or changed the install location, check the `ZSH` environment variable in `~/.zshrc`.
+ 
+ ### Custom Plugins and Themes
+ 
+
+commit 2d3bae965a445ac0f6edeed0b277a15d09e6a261
+Author: Robby Russell <robby@planetargon.com>
+Date:   Thu Feb 3 19:07:27 2022 -0800
+
+    Introducing the ANSI logo graphic
+    
+    Trying this on for size for a while.
+
+diff --git a/README.md b/README.md
+index 94a20085..5a6b9844 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-<p align="center"><img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh"></p>
++<p align="center"><img src="https://ohmyzsh.s3.amazonaws.com/omz-ansi-github.png" alt="Oh My Zsh"></p>
+ 
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+
+commit 8d02dabbb616a149d23ab5668b6db5428d5182ac
+Author: Eric <192110+scribe@users.noreply.github.com>
+Date:   Fri Dec 17 17:12:31 2021 -0700
+
+    docs(README): Document .pre-oh-my-zsh (#10315)
+
+diff --git a/README.md b/README.md
+index 310283e9..94a20085 100644
+--- a/README.md
++++ b/README.md
+@@ -37,6 +37,8 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ 
++_Note that previous configuration in `.zshrc` will be placed in `.pre-oh-my-zsh`. After installation you can move configuration you want to preserve into `.zshrc`._
++
+ #### Manual inspection
+ 
+ It's a good idea to inspect the install script from projects you don't yet know. You can do
+
+commit 29b344a7102a2fe427d5ea6bcde4044898be1112
+Author: Marc Cornellà <hello@mcornella.com>
+Date:   Tue Dec 7 18:04:33 2021 +0100
+
+    chore: update security docs and link to huntr.dev
+
+diff --git a/README.md b/README.md
+index 5712c170..310283e9 100644
+--- a/README.md
++++ b/README.md
+@@ -16,6 +16,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+ [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
++[![huntr.dev](https://cdn.huntr.dev/huntr_security_badge_mono.svg)](https://huntr.dev/bounties/disclose/?utm_campaign=ohmyzsh%2Fohmyzsh&utm_medium=social&utm_source=github&target=https%3A%2F%2Fgithub.com%2Fohmyzsh%2Fohmyzsh)
+ 
+ ## Getting Started
+ 
+
+commit b2f35a7b98455b2bb8c7c3b11db6aa587e1d28bf
+Author: Jonathan Batchelor <jmb@users.noreply.github.com>
+Date:   Fri Nov 5 23:40:38 2021 +0000
+
+    refactor(osx): Rename osx plugin to macos (#10341)
+    
+    Apple changed the name of their operating system from OS X to macOS a number of years ago. This was overdue!
+    
+    As per issue  #10311
+    
+    * refactor(osx): rename `osx` plugin to `macos`
+    * refactor(macos): Add symbolic link from old `osx` plugin name.
+
+diff --git a/README.md b/README.md
+index 907248be..5712c170 100644
+--- a/README.md
++++ b/README.md
+@@ -68,7 +68,7 @@ plugins=(
+   git
+   bundler
+   dotenv
+-  osx
++  macos
+   rake
+   rbenv
+   ruby
+
+commit 75fe22b40552305ef7636b7604ba99534d4f7808
+Author: Eric <192110+scribe@users.noreply.github.com>
+Date:   Mon Oct 18 11:58:25 2021 -0600
+
+    docs(README): document new `zstyle` update settings (#10304)
+    
+    Co-authored-by: Marc Cornellà <hello@mcornella.com>
+
+diff --git a/README.md b/README.md
+index 3ebea91e..907248be 100644
+--- a/README.md
++++ b/README.md
+@@ -42,7 +42,7 @@ It's a good idea to inspect the install script from projects you don't yet know.
+ that by downloading the install script first, looking through it so everything looks normal,
+ then running it:
+ 
+-```shell
++```sh
+ wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+ sh install.sh
+ ```
+@@ -57,13 +57,13 @@ Oh My Zsh comes with a shitload of plugins for you to take advantage of. You can
+ 
+ Once you spot a plugin (or several) that you'd like to use with Oh My Zsh, you'll need to enable them in the `.zshrc` file. You'll find the zshrc file in your `$HOME` directory. Open it with your favorite text editor and you'll see a spot to list all the plugins you want to load.
+ 
+-```shell
++```sh
+ vi ~/.zshrc
+ ```
+ 
+ For example, this might begin to look like this:
+ 
+-```shell
++```sh
+ plugins=(
+   git
+   bundler
+@@ -91,13 +91,13 @@ _Robby's theme is the default one. It's not the fanciest one. It's not the simpl
+ 
+ Once you find a theme that you'd like to use, you will need to edit the `~/.zshrc` file. You'll see an environment variable (all caps) in there that looks like:
+ 
+-```shell
++```sh
+ ZSH_THEME="robbyrussell"
+ ```
+ 
+ To use a different theme, simply change the value to match the name of your desired theme. For example:
+ 
+-```shell
++```sh
+ ZSH_THEME="agnoster" # (this is one of the fancy ones)
+ # see https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#agnoster
+ ```
+@@ -112,13 +112,13 @@ In case you did not find a suitable theme for your needs, please have a look at
+ 
+ If you're feeling feisty, you can let the computer select one randomly for you each time you open a new terminal window.
+ 
+-```shell
++```sh
+ ZSH_THEME="random" # (...please let it be pie... please be some pie..)
+ ```
+ 
+ And if you want to pick random theme from a list of your favorite themes:
+ 
+-```shell
++```sh
+ ZSH_THEME_RANDOM_CANDIDATES=(
+   "robbyrussell"
+   "agnoster"
+@@ -127,7 +127,7 @@ ZSH_THEME_RANDOM_CANDIDATES=(
+ 
+ If you only know which themes you don't like, you can add them similarly to an ignored list:
+ 
+-```shell
++```sh
+ ZSH_THEME_RANDOM_IGNORED=(pygmalion tjkirch_mod)
+ ```
+ 
+@@ -152,7 +152,7 @@ If you'd like to change the install directory with the `ZSH` environment variabl
+ `export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline
+ like this:
+ 
+-```shell
++```sh
+ ZSH="$HOME/.dotfiles/oh-my-zsh" sh install.sh
+ ```
+ 
+@@ -162,7 +162,7 @@ If you're running the Oh My Zsh install script as part of an automated install,
+ flag `--unattended` to the `install.sh` script. This will have the effect of not trying to change
+ the default shell, and also won't run `zsh` when the installation has finished.
+ 
+-```shell
++```sh
+ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+ ```
+ 
+@@ -185,7 +185,7 @@ The install script also accepts these variables to allow installation of a diffe
+ 
+ For example:
+ 
+-```shell
++```sh
+ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ ```
+ 
+@@ -193,13 +193,13 @@ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ 
+ ##### 1. Clone the repository
+ 
+-```shell
++```sh
+ git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+ ```
+ 
+ ##### 2. *Optionally*, backup your existing `~/.zshrc` file
+ 
+-```shell
++```sh
+ cp ~/.zshrc ~/.zshrc.orig
+ ```
+ 
+@@ -207,13 +207,13 @@ cp ~/.zshrc ~/.zshrc.orig
+ 
+ You can create a new zsh config file by copying the template that we have included for you.
+ 
+-```shell
++```sh
+ cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+ ```
+ 
+ ##### 4. Change your default shell
+ 
+-```shell
++```sh
+ chsh -s $(which zsh)
+ ```
+ 
+@@ -242,23 +242,40 @@ If you would like to override the functionality of a plugin distributed with Oh
+ 
+ ## Getting Updates
+ 
+-By default, you will be prompted to check for upgrades every few weeks. If you would like `oh-my-zsh` to automatically upgrade itself without prompting you, set the following in your `~/.zshrc`:
++By default, you will be prompted to check for updates every 2 weeks. You can choose other update modes by adding a line to your `~/.zshrc` file, **before Oh My Zsh is loaded**:
+ 
+-```shell
+-DISABLE_UPDATE_PROMPT=true
+-```
++1. Automatic update without confirmation prompt:
++
++   ```sh
++   zstyle ':omz:update' mode auto
++   ```
++
++2. Just offer a reminder every few days, if there are updates available:
++
++   ```sh
++   zstyle ':omz:update' mode reminder
++   ```
++
++3. To disable automatic updates entirely:
++
++   ```sh
++   zstyle ':omz:update' mode disabled
++   ```
+ 
+-To disable automatic upgrades, set the following in your `~/.zshrc`:
++NOTE: you can control how often Oh My Zsh checks for updates with the following setting:
+ 
+-```shell
+-DISABLE_AUTO_UPDATE=true
++```sh
++# This will check for updates every 7 days
++zstyle ':omz:update' frequency 7
++# This will check for updates every time you open the terminal (not recommended)
++zstyle ':omz:update' frequency 0
+ ```
+ 
+ ### Manual Updates
+ 
+-If you'd like to upgrade at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:
++If you'd like to update at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:
+ 
+-```shell
++```sh
+ omz update
+ ```
+ 
+
+commit 6a7285bc5bb69c255920950c45a911fdeca7f665
+Author: Piper <piperchester@users.noreply.github.com>
+Date:   Sun Apr 25 10:21:31 2021 -0700
+
+    chore: fix "Facebook" typo in README.md (#9378)
+
+diff --git a/README.md b/README.md
+index 86037f19..3ebea91e 100644
+--- a/README.md
++++ b/README.md
+@@ -295,7 +295,7 @@ Thank you so much!
+ We're on social media:
+ 
+ - [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.
+-- [FaceBook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
++- [Facebook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
+ - [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!
+ - [Discord](https://discord.gg/ohmyzsh) to chat with us!
+ 
+
+commit 2657c87f0aa1fe7f66062bc3452ad68347be356f
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sun Oct 11 20:12:16 2020 +0200
+
+    Add gitpod integration
+    
+    Fixes #8212
+    
+    Co-authored-by: Sean Hellum <seanhellum45@gmail.com>
+
+diff --git a/README.md b/README.md
+index 0c292e10..86037f19 100644
+--- a/README.md
++++ b/README.md
+@@ -15,6 +15,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
++[![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+ 
+ ## Getting Started
+ 
+
+commit cacf5d0435cbd33d1b9460d118720c6a9b5f6420
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sat Sep 26 13:08:03 2020 +0200
+
+    Fix image alignment
+
+diff --git a/README.md b/README.md
+index ba14d17a..0c292e10 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-<center><img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh"></center>
++<p align="center"><img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh"></p>
+ 
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+
+commit 1be75bbc275a92cd47b0327bb1a688eb013934ca
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sat Sep 26 13:07:14 2020 +0200
+
+    Right-align table in README
+
+diff --git a/README.md b/README.md
+index b5403f63..ba14d17a 100644
+--- a/README.md
++++ b/README.md
+@@ -30,7 +30,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl`, `wget` or another similar tool.
+ 
+ | Method    | Command                                                                                           |
+-|-----------|---------------------------------------------------------------------------------------------------|
++|:----------|:--------------------------------------------------------------------------------------------------|
+ | **curl**  | `sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+ | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+
+commit 671745f4964df5e6c0282fde9020c3f945b68b43
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sat Sep 26 13:05:31 2020 +0200
+
+    A few README tweaks
+
+diff --git a/README.md b/README.md
+index 69862eba..b5403f63 100644
+--- a/README.md
++++ b/README.md
+@@ -1,18 +1,16 @@
+-<p align="center">
+-  <img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh">
+-</p>
++<center><img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh"></center>
+ 
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+ Sounds boring. Let's try again.
+ 
+-__Oh My Zsh will not make you a 10x developer...but you may feel like one.__
++**Oh My Zsh will not make you a 10x developer...but you may feel like one.**
+ 
+ Once installed, your terminal shell will become the talk of the town _or your money back!_ With each keystroke in your command prompt, you'll take advantage of the hundreds of powerful plugins and beautiful themes. Strangers will come up to you in cafés and ask you, _"that is amazing! are you some sort of genius?"_
+ 
+ Finally, you'll begin to get the sort of attention that you have always felt you deserved. ...or maybe you'll use the time that you're saving to start flossing more often. 😬
+ 
+-To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on [Discord](https://discord.gg/ohmyzsh).
++To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and join us on [Discord](https://discord.gg/ohmyzsh).
+ 
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+@@ -22,32 +20,20 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ 
+ ### Prerequisites
+ 
+-* A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL2 is preferred, but cygwin or msys also mostly work.
+-* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+-* `curl` or `wget` should be installed
+-* `git` should be installed (recommended v2.4.11 or higher)
++- A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL2 is preferred, but cygwin or msys also mostly work.
++- [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
++- `curl` or `wget` should be installed
++- `git` should be installed (recommended v2.4.11 or higher)
+ 
+ ### Basic Installation
+ 
+-Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl` or `wget`, whichever is installed on your machine.
++Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl`, `wget` or another similar tool.
+ 
+-#### via curl
+-
+-```shell
+-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+-```
+-
+-#### via wget
+-
+-```shell
+-sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+-```
+-
+-#### via fetch
+-
+-```shell
+-sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+-```
++| Method    | Command                                                                                           |
++|-----------|---------------------------------------------------------------------------------------------------|
++| **curl**  | `sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
++| **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
++| **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+ 
+ #### Manual inspection
+ 
+@@ -56,7 +42,7 @@ that by downloading the install script first, looking through it so everything l
+ then running it:
+ 
+ ```shell
+-curl -Lo install.sh https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
++wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+ sh install.sh
+ ```
+ 
+@@ -125,7 +111,6 @@ In case you did not find a suitable theme for your needs, please have a look at
+ 
+ If you're feeling feisty, you can let the computer select one randomly for you each time you open a new terminal window.
+ 
+-
+ ```shell
+ ZSH_THEME="random" # (...please let it be pie... please be some pie..)
+ ```
+@@ -205,13 +190,13 @@ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ 
+ #### Manual Installation
+ 
+-##### 1. Clone the repository:
++##### 1. Clone the repository
+ 
+ ```shell
+ git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+ ```
+ 
+-##### 2. *Optionally*, backup your existing `~/.zshrc` file:
++##### 2. *Optionally*, backup your existing `~/.zshrc` file
+ 
+ ```shell
+ cp ~/.zshrc ~/.zshrc.orig
+@@ -241,9 +226,9 @@ Once you open up a new terminal window, it should load zsh with Oh My Zsh's conf
+ 
+ If you have any hiccups installing, here are a few common fixes.
+ 
+-* You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after
++- You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after
+ switching to `oh-my-zsh`.
+-* If you installed manually or changed the install location, check the `ZSH` environment variable in
++- If you installed manually or changed the install location, check the `ZSH` environment variable in
+ `~/.zshrc`.
+ 
+ ### Custom Plugins and Themes
+@@ -306,12 +291,12 @@ Thank you so much!
+ 
+ ## Follow Us
+ 
+-We're on the social media.
++We're on social media:
+ 
+-* [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.
+-* [FaceBook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
+-* [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!
+-* [Discord](https://discord.gg/ohmyzsh) to chat with us!
++- [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.
++- [FaceBook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
++- [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!
++- [Discord](https://discord.gg/ohmyzsh) to chat with us!
+ 
+ ## Merchandise
+ 
+
+commit bc9d4b89bb3985a250e5a702a0f2d76a8632cd8a
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Fri Sep 18 19:34:17 2020 +0200
+
+    Remove racially-charged language from the codebase
+    
+    The ZSH_THEME_RANDOM_BLACKLIST variable will be deprecated until it's
+    removed 2 months from now.
+
+diff --git a/README.md b/README.md
+index eaeae826..69862eba 100644
+--- a/README.md
++++ b/README.md
+@@ -139,10 +139,10 @@ ZSH_THEME_RANDOM_CANDIDATES=(
+ )
+ ```
+ 
+-If you only know which themes you don't like, you can add them similarly to a blacklist:
++If you only know which themes you don't like, you can add them similarly to an ignored list:
+ 
+ ```shell
+-ZSH_THEME_RANDOM_BLACKLIST=(pygmalion tjkirch_mod)
++ZSH_THEME_RANDOM_IGNORED=(pygmalion tjkirch_mod)
+ ```
+ 
+ ### FAQ
+
+commit 814e0b3c25316879b2f86e017701449cc2302ad4
+Author: 0xflotus <0xflotus@gmail.com>
+Date:   Mon Sep 14 17:14:14 2020 +0200
+
+    docs: fix small typo in README (#9255)
+
+diff --git a/README.md b/README.md
+index 8be05b6f..eaeae826 100644
+--- a/README.md
++++ b/README.md
+@@ -92,7 +92,7 @@ _Note that the plugins are separated by whitespace (spaces, tabs, new lines...).
+ 
+ #### Using Plugins
+ 
+-Each plugin includes a __README__, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are inclued in that particular plugin.
++Each plugin includes a __README__, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
+ 
+ ### Themes
+ 
+
+commit c785db621e8bdb9edb897cc7353fe87fb6e550b1
+Author: Kirill Suslov <kirill.suslov@shopify.com>
+Date:   Sun Aug 23 15:52:11 2020 -0400
+
+    Update README with new update command (#9203)
+    
+    Note: `upgrade_oh_my_zsh` is deprecated. Use `omz update` instead.
+
+diff --git a/README.md b/README.md
+index 8dfa4a13..8be05b6f 100644
+--- a/README.md
++++ b/README.md
+@@ -273,7 +273,7 @@ DISABLE_AUTO_UPDATE=true
+ If you'd like to upgrade at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:
+ 
+ ```shell
+-upgrade_oh_my_zsh
++omz update
+ ```
+ 
+ Magic! 🎉
+
+commit 93f8c0686cd28d3f93810c4824397f21530899c7
+Author: Adam G. Emerson <35545129+AdamGEmerson@users.noreply.github.com>
+Date:   Thu Aug 20 04:26:39 2020 -0500
+
+    docs: add fetch install command for FreeBSD (#9172)
+    
+    Co-authored-by: Marc Cornellà <marc.cornella@live.com>
+
+diff --git a/README.md b/README.md
+index 329eff17..8dfa4a13 100644
+--- a/README.md
++++ b/README.md
+@@ -43,6 +43,12 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
+ sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+ ```
+ 
++#### via fetch
++
++```shell
++sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
++```
++
+ #### Manual inspection
+ 
+ It's a good idea to inspect the install script from projects you don't yet know. You can do
+
+commit 7afaee858a4ae5a8d0d8c1f5fe150979842ebefc
+Author: Larson Carter <larsoncarter@blazermail.net>
+Date:   Sun Jul 5 10:59:12 2020 -0500
+
+    Bug and Feature Request Templates + MLH Theme + Readme (#9068)
+    
+    Co-authored-by: Marc Cornellà <marc.cornella@live.com>
+    Co-authored-by: Bartek Pacia <barpac02@gmail.com>
+
+diff --git a/README.md b/README.md
+index 9fa0c204..329eff17 100644
+--- a/README.md
++++ b/README.md
+@@ -12,7 +12,7 @@ Once installed, your terminal shell will become the talk of the town _or your mo
+ 
+ Finally, you'll begin to get the sort of attention that you have always felt you deserved. ...or maybe you'll use the time that you're saving to start flossing more often. 😬
+ 
+-To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on Discord.
++To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on [Discord](https://discord.gg/ohmyzsh).
+ 
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+@@ -22,14 +22,14 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ 
+ ### Prerequisites
+ 
+-* A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL is preferred, but cygwin or msys also mostly work.
+-* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (run `zsh --version` to confirm), check the following instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
++* A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL2 is preferred, but cygwin or msys also mostly work.
++* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+ * `curl` or `wget` should be installed
+-* `git` should be installed (recommended v1.7.2 or higher)
++* `git` should be installed (recommended v2.4.11 or higher)
+ 
+ ### Basic Installation
+ 
+-Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl` or `wget`.
++Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl` or `wget`, whichever is installed on your machine.
+ 
+ #### via curl
+ 
+@@ -58,7 +58,7 @@ sh install.sh
+ 
+ ### Plugins
+ 
+-Oh My Zsh comes with a shitload of plugins to take advantage of. You can take a look in the [plugins](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins) directory and/or the [wiki](https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins) to see what's currently available.
++Oh My Zsh comes with a shitload of plugins for you to take advantage of. You can take a look in the [plugins](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins) directory and/or the [wiki](https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins) to see what's currently available.
+ 
+ #### Enabling Plugins
+ 
+@@ -82,15 +82,15 @@ plugins=(
+ )
+ ```
+ 
+-_Note that the plugins are separated by whitespace. **Do not** use commas between them._
++_Note that the plugins are separated by whitespace (spaces, tabs, new lines...). **Do not** use commas between them or it will break._
+ 
+ #### Using Plugins
+ 
+-Most plugins (should! we're working on this) include a __README__, which documents how to use them.
++Each plugin includes a __README__, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are inclued in that particular plugin.
+ 
+ ### Themes
+ 
+-We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki. Check them out!
++We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred and fifty themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki (We are working on updating this!). Check them out!
+ 
+ #### Selecting a Theme
+ 
+@@ -154,7 +154,7 @@ the installer accepts (these settings are also documented at the top of the inst
+ 
+ #### Custom Directory
+ 
+-The default location is `~/.oh-my-zsh` (hidden in your home directory)
++The default location is `~/.oh-my-zsh` (hidden in your home directory, you can access it with `cd ~/.oh-my-zsh`)
+ 
+ If you'd like to change the install directory with the `ZSH` environment variable, either by running
+ `export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline
+@@ -303,7 +303,9 @@ Thank you so much!
+ We're on the social media.
+ 
+ * [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.
+-* [Oh My Zsh](https://www.facebook.com/Oh-My-Zsh-296616263819290/) on Facebook.
++* [FaceBook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
++* [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!
++* [Discord](https://discord.gg/ohmyzsh) to chat with us!
+ 
+ ## Merchandise
+ 
+
+commit db94f60d342ba2be7dbe3bfd86f4edb335c2a6a7
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Wed Jun 10 19:32:26 2020 +0200
+
+    Change Discord invite URL
+
+diff --git a/README.md b/README.md
+index 38cfd9f4..9fa0c204 100644
+--- a/README.md
++++ b/README.md
+@@ -16,7 +16,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ 
+ [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+-[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
++[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+ 
+ ## Getting Started
+ 
+
+commit 9ce7de9f16ba894423bc5105c7e959894ca2e751
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sun Mar 1 22:53:33 2020 +0100
+
+    Document ZSH_THEME_RANDOM_BLACKLIST setting
+
+diff --git a/README.md b/README.md
+index 2ab859a6..38cfd9f4 100644
+--- a/README.md
++++ b/README.md
+@@ -133,6 +133,12 @@ ZSH_THEME_RANDOM_CANDIDATES=(
+ )
+ ```
+ 
++If you only know which themes you don't like, you can add them similarly to a blacklist:
++
++```shell
++ZSH_THEME_RANDOM_BLACKLIST=(pygmalion tjkirch_mod)
++```
++
+ ### FAQ
+ 
+ If you have some more questions or issues, you might find a solution in our [FAQ](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ).
+
+commit 498cd722b39215be04468f291a23b6a76b75b095
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sat Feb 29 14:56:37 2020 +0100
+
+    Add git version requirement in documentation
+
+diff --git a/README.md b/README.md
+index 187cceb7..2ab859a6 100644
+--- a/README.md
++++ b/README.md
+@@ -25,7 +25,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twi
+ * A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL is preferred, but cygwin or msys also mostly work.
+ * [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (run `zsh --version` to confirm), check the following instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+ * `curl` or `wget` should be installed
+-* `git` should be installed
++* `git` should be installed (recommended v1.7.2 or higher)
+ 
+ ### Basic Installation
+ 
+
+commit 578b0860112af83af25afb687887109748a03c08
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Tue Feb 4 13:07:40 2020 +0100
+
+    Link to Actions page in GitHub Action badge
+
+diff --git a/README.md b/README.md
+index d36591ab..187cceb7 100644
+--- a/README.md
++++ b/README.md
+@@ -14,7 +14,7 @@ Finally, you'll begin to get the sort of attention that you have always felt you
+ 
+ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on Discord.
+ 
+-![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)
++[![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
+ 
+
+commit df56d1ee1fb7430d8979973300bf0c6b53a5446c
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Tue Feb 4 13:02:20 2020 +0100
+
+    Rename GitHub Action to CI
+
+diff --git a/README.md b/README.md
+index fddc7c24..d36591ab 100644
+--- a/README.md
++++ b/README.md
+@@ -14,7 +14,7 @@ Finally, you'll begin to get the sort of attention that you have always felt you
+ 
+ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on Discord.
+ 
+-![Check Suite](https://github.com/ohmyzsh/ohmyzsh/workflows/Check%20Suite/badge.svg)
++![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
+ 
+
+commit 64a7f6b38833d007394b9b4bf5d17e48db77c0d7
+Author: Modded Gamers <35778371+ModdedGamers@users.noreply.github.com>
+Date:   Tue Jan 28 18:22:27 2020 -0500
+
+    Create Github Action to run tests (#8569)
+    
+    The published workflow tests the installer and checks the syntax of known zsh files
+    in the project.
+    
+    Co-authored-by: Marc Cornellà <marc.cornella@live.com>
+
+diff --git a/README.md b/README.md
+index 291fb512..fddc7c24 100644
+--- a/README.md
++++ b/README.md
+@@ -14,6 +14,7 @@ Finally, you'll begin to get the sort of attention that you have always felt you
+ 
+ To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on Discord.
+ 
++![Check Suite](https://github.com/ohmyzsh/ohmyzsh/workflows/Check%20Suite/badge.svg)
+ [![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
+ 
+
+commit cf9aa420d6bc48cd8780a58b7cff854add0f3897
+Author: Robby Russell <robby@planetargon.com>
+Date:   Fri Dec 27 06:43:43 2019 -0800
+
+    Relocating chat/twitter
+    
+    Moving down below the intro copy so that first content to new-comers is a description of the project
+
+diff --git a/README.md b/README.md
+index bfb42c0f..291fb512 100644
+--- a/README.md
++++ b/README.md
+@@ -2,9 +2,6 @@
+   <img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh">
+ </p>
+ 
+-[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
+-[![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+-
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+ Sounds boring. Let's try again.
+@@ -15,7 +12,10 @@ Once installed, your terminal shell will become the talk of the town _or your mo
+ 
+ Finally, you'll begin to get the sort of attention that you have always felt you deserved. ...or maybe you'll use the time that you're saving to start flossing more often. 😬
+ 
+-To learn more, visit [ohmyz.sh](https://ohmyz.sh) and follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter.
++To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and/or join us on Discord.
++
++[![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
++[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
+ 
+ ## Getting Started
+ 
+
+commit 671d21ac5305e815668500563a6b7ef61057b659
+Author: Michal Bultrowicz <butla@users.noreply.github.com>
+Date:   Mon Nov 25 18:59:31 2019 +0100
+
+    Mention FAQ in the README (#8051)
+
+diff --git a/README.md b/README.md
+index ac4b3879..bfb42c0f 100644
+--- a/README.md
++++ b/README.md
+@@ -132,6 +132,10 @@ ZSH_THEME_RANDOM_CANDIDATES=(
+ )
+ ```
+ 
++### FAQ
++
++If you have some more questions or issues, you might find a solution in our [FAQ](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ).
++
+ ## Advanced Topics
+ 
+ If you're the type that likes to get their hands dirty, these sections might resonate.
+
+commit b80b1a1e8b30e5f2a7c4977019cf56e72c434037
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Thu Nov 21 02:26:18 2019 +0100
+
+    Actions to take after repository migration is complete (#8394)
+    
+    * Change project URL from robbyrussell to ohmyzsh org
+    
+    * Update git remote to use ohmyzsh org repository
+
+diff --git a/README.md b/README.md
+index 2a5ec178..ac4b3879 100644
+--- a/README.md
++++ b/README.md
+@@ -22,7 +22,7 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh) and follow [@ohmyzsh](https://
+ ### Prerequisites
+ 
+ * A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL is preferred, but cygwin or msys also mostly work.
+-* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (run `zsh --version` to confirm), check the following instructions here: [Installing ZSH](https://github.com/robbyrussell/oh-my-zsh/wiki/Installing-ZSH)
++* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (run `zsh --version` to confirm), check the following instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+ * `curl` or `wget` should be installed
+ * `git` should be installed
+ 
+@@ -33,13 +33,13 @@ Oh My Zsh is installed by running one of the following commands in your terminal
+ #### via curl
+ 
+ ```shell
+-sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
++sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+ ```
+ 
+ #### via wget
+ 
+ ```shell
+-sh -c "$(wget -O- https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
++sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+ ```
+ 
+ #### Manual inspection
+@@ -49,7 +49,7 @@ that by downloading the install script first, looking through it so everything l
+ then running it:
+ 
+ ```shell
+-curl -Lo install.sh https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh
++curl -Lo install.sh https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+ sh install.sh
+ ```
+ 
+@@ -57,7 +57,7 @@ sh install.sh
+ 
+ ### Plugins
+ 
+-Oh My Zsh comes with a shitload of plugins to take advantage of. You can take a look in the [plugins](https://github.com/robbyrussell/oh-my-zsh/tree/master/plugins) directory and/or the [wiki](https://github.com/robbyrussell/oh-my-zsh/wiki/Plugins) to see what's currently available.
++Oh My Zsh comes with a shitload of plugins to take advantage of. You can take a look in the [plugins](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins) directory and/or the [wiki](https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins) to see what's currently available.
+ 
+ #### Enabling Plugins
+ 
+@@ -89,7 +89,7 @@ Most plugins (should! we're working on this) include a __README__, which documen
+ 
+ ### Themes
+ 
+-We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred themes now bundled. Most of them have [screenshots](https://github.com/robbyrussell/oh-my-zsh/wiki/Themes) on the wiki. Check them out!
++We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki. Check them out!
+ 
+ #### Selecting a Theme
+ 
+@@ -105,7 +105,7 @@ To use a different theme, simply change the value to match the name of your desi
+ 
+ ```shell
+ ZSH_THEME="agnoster" # (this is one of the fancy ones)
+-# see https://github.com/robbyrussell/oh-my-zsh/wiki/Themes#agnoster
++# see https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#agnoster
+ ```
+ 
+ _Note: many themes require installing the [Powerline Fonts](https://github.com/powerline/fonts) in order to render properly._
+@@ -114,7 +114,7 @@ Open up a new terminal window and your prompt should look something like this:
+ 
+ ![Agnoster theme](https://cloud.githubusercontent.com/assets/2618447/6316862/70f58fb6-ba03-11e4-82c9-c083bf9a6574.png)
+ 
+-In case you did not find a suitable theme for your needs, please have a look at the wiki for [more of them](https://github.com/robbyrussell/oh-my-zsh/wiki/External-themes).
++In case you did not find a suitable theme for your needs, please have a look at the wiki for [more of them](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes).
+ 
+ If you're feeling feisty, you can let the computer select one randomly for you each time you open a new terminal window.
+ 
+@@ -160,14 +160,14 @@ flag `--unattended` to the `install.sh` script. This will have the effect of not
+ the default shell, and also won't run `zsh` when the installation has finished.
+ 
+ ```shell
+-sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
++sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+ ```
+ 
+ #### Installing from a forked repository
+ 
+ The install script also accepts these variables to allow installation of a different repository:
+ 
+-- `REPO` (default: `robbyrussell/oh-my-zsh`): this takes the form of `owner/repository`. If you set
++- `REPO` (default: `ohmyzsh/ohmyzsh`): this takes the form of `owner/repository`. If you set
+   this variable, the installer will look for a repository at `https://github.com/{owner}/{repository}`.
+ 
+ - `REMOTE` (default: `https://github.com/${REPO}.git`): this is the full URL of the git repository
+@@ -191,7 +191,7 @@ REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ ##### 1. Clone the repository:
+ 
+ ```shell
+-git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
++git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+ ```
+ 
+ ##### 2. *Optionally*, backup your existing `~/.zshrc` file:
+@@ -273,13 +273,13 @@ Before you participate in our delightful community, please read the [code of con
+ 
+ I'm far from being a [Zsh](https://www.zsh.org/) expert and suspect there are many ways to improve – if you have ideas on how to make the configuration easier to maintain (and faster), don't hesitate to fork and send pull requests!
+ 
+-We also need people to test out pull-requests. So take a look through [the open issues](https://github.com/robbyrussell/oh-my-zsh/issues) and help where you can.
++We also need people to test out pull-requests. So take a look through [the open issues](https://github.com/ohmyzsh/ohmyzsh/issues) and help where you can.
+ 
+ See [Contributing](CONTRIBUTING.md) for more details.
+ 
+ ### Do NOT send us themes
+ 
+-We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/robbyrussell/oh-my-zsh/wiki/External-themes) wiki page.
++We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes) wiki page.
+ 
+ ## Contributors
+ 
+
+commit 4888d4ad1aefc9fa73d3b62500facaa1d97f31d8
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Mon Nov 18 00:07:06 2019 +0100
+
+    Add Twitter follow badge to README
+
+diff --git a/README.md b/README.md
+index 713af1e8..2a5ec178 100644
+--- a/README.md
++++ b/README.md
+@@ -3,6 +3,7 @@
+ </p>
+ 
+ [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
++[![Follow @ohmyzsh](https://img.shields.io/twitter/follow/ohmyzsh?label=Follow+@ohmyzsh&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+ 
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+
+commit 2810a3740286d8c6b8a06873d7db5faee5b4c956
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Sun Nov 17 23:53:42 2019 +0100
+
+    Add Discord badge to README
+
+diff --git a/README.md b/README.md
+index 2f23febf..713af1e8 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,8 @@
+   <img src="https://s3.amazonaws.com/ohmyzsh/oh-my-zsh-logo.png" alt="Oh My Zsh">
+ </p>
+ 
++[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/bpXWhnN)
++
+ Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+ 
+ Sounds boring. Let's try again.
+
+commit a6d71ddadb5c9c1f0ded8ecce228dcde1a23ad05
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Tue Oct 1 21:11:18 2019 +0200
+
+    Update README with up-to-date platform requirements
+    
+    Co-authored-by: Emil Engler <me@emilengler.com>
+    Closes #8157
+
+diff --git a/README.md b/README.md
+index 78a5b56b..2f23febf 100644
+--- a/README.md
++++ b/README.md
+@@ -18,10 +18,8 @@ To learn more, visit [ohmyz.sh](https://ohmyz.sh) and follow [@ohmyzsh](https://
+ 
+ ### Prerequisites
+ 
+-__Disclaimer:__ _Oh My Zsh works best on macOS and Linux._
+-
+-* Unix-like operating system (macOS or Linux)
+-* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (`zsh --version` to confirm), check the following instruction here: [Installing ZSH](https://github.com/robbyrussell/oh-my-zsh/wiki/Installing-ZSH)
++* A Unix-like operating system: macOS, Linux, BSD. On Windows: WSL is preferred, but cygwin or msys also mostly work.
++* [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent). If not pre-installed (run `zsh --version` to confirm), check the following instructions here: [Installing ZSH](https://github.com/robbyrussell/oh-my-zsh/wiki/Installing-ZSH)
+ * `curl` or `wget` should be installed
+ * `git` should be installed
+ 
+
+commit 29fb617e6b6b18fc7bdfef74fc57bbdf0e2fe52b
+Author: Mark Coleman <MEHColeman@users.noreply.github.com>
+Date:   Fri Jul 12 13:16:00 2019 +0100
+
+    readme: document oneliner unattended installation command (#7983)
+    
+    The original suggestion for an unattended install downloads the installation script to a file, then runs that file with the --unattended argument. The install.sh file would be left behind after the suggested command was run.
+    This change passes the --unattended argument directly into sh. So, it's a nice one-liner like the default installation script, and it doesn't leave a dangling install.sh script.
+
+diff --git a/README.md b/README.md
+index 43dcdd3a..78a5b56b 100644
+--- a/README.md
++++ b/README.md
+@@ -159,8 +159,7 @@ flag `--unattended` to the `install.sh` script. This will have the effect of not
+ the default shell, and also won't run `zsh` when the installation has finished.
+ 
+ ```shell
+-curl -Lo install.sh https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh
+-sh install.sh --unattended
++sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
+ ```
+ 
+ #### Installing from a forked repository
+
+commit b259cdf7e71ad6c3cc1a66a48c6c79cf63f38590
+Author: Robby Russell <robby@planetargon.com>
+Date:   Mon Jul 1 08:01:24 2019 -0700
+
+    s/might/may
+    
+    After wandering into a few articles that discuss the difference between might and may...opting for may.
+
+diff --git a/README.md b/README.md
+index 3924c3a9..43dcdd3a 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ Oh My Zsh is an open source, community-driven framework for managing your [zsh](
+ 
+ Sounds boring. Let's try again.
+ 
+-__Oh My Zsh will not make you a 10x developer...but you might feel like one.__
++__Oh My Zsh will not make you a 10x developer...but you may feel like one.__
+ 
+ Once installed, your terminal shell will become the talk of the town _or your money back!_ With each keystroke in your command prompt, you'll take advantage of the hundreds of powerful plugins and beautiful themes. Strangers will come up to you in cafés and ask you, _"that is amazing! are you some sort of genius?"_
+ 
+
+commit c8ac4038cf41112161de984d3f7eef8579eb085e
+Author: Marc Cornellà <marc.cornella@live.com>
+Date:   Mon Jun 3 16:47:54 2019 +0200
+
+    installer: add documentation of new installer features to README
+
+diff --git a/README.md b/README.md
+index 38f6ae9f..3924c3a9 100644
+--- a/README.md
++++ b/README.md
+@@ -38,7 +38,18 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/mas
+ #### via wget
+ 
+ ```shell
+-sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -)"
++sh -c "$(wget -O- https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
++```
++
++#### Manual inspection
++
++It's a good idea to inspect the install script from projects you don't yet know. You can do
++that by downloading the install script first, looking through it so everything looks normal,
++then running it:
++
++```shell
++curl -Lo install.sh https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh
++sh install.sh
+ ```
+ 
+ ## Using Oh My Zsh
+@@ -69,6 +80,8 @@ plugins=(
+ )
+ ```
+ 
++_Note that the plugins are separated by whitespace. **Do not** use commas between them._
++
+ #### Using Plugins
+ 
+ Most plugins (should! we're working on this) include a __README__, which documents how to use them.
+@@ -124,16 +137,53 @@ If you're the type that likes to get their hands dirty, these sections might res
+ 
+ ### Advanced Installation
+ 
+-Some users may want to change the default path, or manually install Oh My Zsh.
++Some users may want to manually install Oh My Zsh, or change the default path or other settings that
++the installer accepts (these settings are also documented at the top of the install script).
+ 
+ #### Custom Directory
+ 
+ The default location is `~/.oh-my-zsh` (hidden in your home directory)
+ 
+-If you'd like to change the install directory with the `ZSH` environment variable, either by running `export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline like this:
++If you'd like to change the install directory with the `ZSH` environment variable, either by running
++`export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline
++like this:
++
++```shell
++ZSH="$HOME/.dotfiles/oh-my-zsh" sh install.sh
++```
++
++#### Unattended install
++
++If you're running the Oh My Zsh install script as part of an automated install, you can pass the
++flag `--unattended` to the `install.sh` script. This will have the effect of not trying to change
++the default shell, and also won't run `zsh` when the installation has finished.
+ 
+ ```shell
+-export ZSH="$HOME/.dotfiles/oh-my-zsh"; sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
++curl -Lo install.sh https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh
++sh install.sh --unattended
++```
++
++#### Installing from a forked repository
++
++The install script also accepts these variables to allow installation of a different repository:
++
++- `REPO` (default: `robbyrussell/oh-my-zsh`): this takes the form of `owner/repository`. If you set
++  this variable, the installer will look for a repository at `https://github.com/{owner}/{repository}`.
++
++- `REMOTE` (default: `https://github.com/${REPO}.git`): this is the full URL of the git repository
++  clone. You can use this setting if you want to install from a fork that is not on GitHub (GitLab,
++  Bitbucket...) or if you want to clone with SSH instead of HTTPS (`git@github.com:user/project.git`).
++
++  _NOTE: it's incompatible with setting the `REPO` variable. This setting will take precedence._
++
++- `BRANCH` (default: `master`): you can use this setting if you want to change the default branch to be
++  checked out when cloning the repository. This might be useful for testing a Pull Request, or if you
++  want to use a branch other than `master`.
++
++For example:
++
++```shell
++REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+ ```
+ 
+ #### Manual Installation
+@@ -161,9 +211,10 @@ cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+ ##### 4. Change your default shell
+ 
+ ```shell
+-chsh -s /bin/zsh
++chsh -s $(which zsh)
+ ```
+-You must log out and log back in to see this change.
++
++You must log out from your user session and log back in to see this change.
+ 
+ ##### 5. Initialize your new zsh configuration
+ 
+@@ -173,8 +224,10 @@ Once you open up a new terminal window, it should load zsh with Oh My Zsh's conf
+ 
+ If you have any hiccups installing, here are a few common fixes.
+ 
+-* You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after switching to `oh-my-zsh`.
+-* If you installed manually or changed the install location, check the `ZSH` environment variable in `~/.zshrc`.
++* You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after
++switching to `oh-my-zsh`.
++* If you installed manually or changed the install location, check the `ZSH` environment variable in
++`~/.zshrc`.
+ 
+ ### Custom Plugins and Themes
+ 
+
+commit 177d11d30ecd978b68b08b86d7dabff4c3218280
+Author: Peter Stevenson <2e0pgs@gmail.com>
+Date:   Sat May 4 17:36:29 2019 +0100
+
+    readme: add notice about shell changes (#6288)
+    
+    Add important notice about `chsh -s /bin/zsh` command requiring the user to log out and log back in to see the changes.
+
+diff --git a/README.md b/README.md
+index dd330d19..38f6ae9f 100644
+--- a/README.md
++++ b/README.md
+@@ -163,6 +163,7 @@ cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+ ```shell
+ chsh -s /bin/zsh
+ ```
++You must log out and log back in to see this change.
+ 
+ ##### 5. Initialize your new zsh configuration
+ 
+
+commit 4ddb2e384ab0840b1d8a6d4c95770ef8a6c25fcc
+Author: Robby Russell <robby@planetargon.com>
+Date:   Thu Apr 4 09:45:00 2019 -0700
+
+    Introducing a Code of Conduct based on the Contributor Covenant project. Adding links from the README and CONTRIBUTING pages to this, too, along with an email address for reporting abusive behavior to. Closes #7733 (#7734)
+
+diff --git a/README.md b/README.md
+index 511e6aef..dd330d19 100644
+--- a/README.md
++++ b/README.md
+@@ -213,12 +213,16 @@ Oh My Zsh isn't for everyone. We'll miss you, but we want to make this an easy b
+ 
+ If you want to uninstall `oh-my-zsh`, just run `uninstall_oh_my_zsh` from the command-line. It will remove itself and revert your previous `bash` or `zsh` configuration.
+ 
+-## Contributing
++## How do I contribute to Oh My Zsh?
++
++Before you participate in our delightful community, please read the [code of conduct](CODE_OF_CONDUCT.md).
+ 
+ I'm far from being a [Zsh](https://www.zsh.org/) expert and suspect there are many ways to improve – if you have ideas on how to make the configuration easier to maintain (and faster), don't hesitate to fork and send pull requests!
+ 
+ We also need people to test out pull-requests. So take a look through [the open issues](https://github.com/robbyrussell/oh-my-zsh/issues) and help where you can.
+ 
++See [Contributing](CONTRIBUTING.md) for more details.
++
+ ### Do NOT send us themes
+ 
+ We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/robbyrussell/oh-my-zsh/wiki/External-themes) wiki page.
+
+commit 934615480e8a008deda1a5330d8fbd47815b7cf4
+Author: Alec Ge <me@alec.ge>
+Date:   Tue Feb 26 15:13:27 2019 -0500
+
+    docs: fixed themes link for readme (#7620)
+
+diff --git a/README.md b/README.md
+index d6c77a14..511e6aef 100644
+--- a/README.md
++++ b/README.md
+@@ -75,7 +75,7 @@ Most plugins (should! we're working on this) include a __README__, which documen
+ 
+ ### Themes
+ 
+-We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred themes now bundled. Most of them have [screenshots](https://wiki.github.com/robbyrussell/oh-my-zsh/themes) on the wiki. Check them out!
++We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred themes now bundled. Most of them have [screenshots](https://github.com/robbyrussell/oh-my-zsh/wiki/Themes) on the wiki. Check them out!
+ 
+ #### Selecting a Theme
+ 
+
 commit f319aa845dfa6b202e31dacf49ec8c2b2d5d17c2
 Author: Robby Russell <robby@planetargon.com>
 Date:   Mon Feb 25 19:22:07 2019 -0600

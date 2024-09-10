@@ -47,6 +47,6 @@ erl_crash.dump
 /.vscode
 .devcontainer
 .github
-# TODO.md
+TODO.md
 # test.*
 

@@ -178,16 +178,16 @@ defmodule Syncordian.Peer do
 
           # if test_index == 85 and get_document_length(document) > 100 do
             # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
-            if nicolas_index != new_index_position do
-              IO.puts("")
-              IO.puts("DELETE OPERATION------------------------------------")
-              IO.puts("Index from git parser new: #{test_index}")
-              IO.puts("Index from git parser old: #{index_position}")
-              IO.puts("Index used old: #{new_index_position}")
-              IO.puts("Index used new: #{nicolas_index}")
-              IO.puts("Line deleted: #{line_to_string(line_deleted)}")
-              IO.puts("")
-            end
+            # if nicolas_index != new_index_position do
+            #   IO.puts("")
+            #   IO.puts("DELETE OPERATION------------------------------------")
+            #   IO.puts("Index from git parser new: #{test_index}")
+            #   IO.puts("Index from git parser old: #{index_position}")
+            #   IO.puts("Index used old: #{new_index_position}")
+            #   IO.puts("Index used new: #{nicolas_index}")
+            #   IO.puts("Line deleted: #{line_to_string(line_deleted)}")
+            #   IO.puts("")
+            # end
           # end
 
             send(
@@ -314,16 +314,16 @@ defmodule Syncordian.Peer do
         current_vector_clock = peer(peer, :vector_clock)
         # if test_index == 85 and get_document_length(document) > 100 do
           # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
-          if nicolas_index != new_index do
-            IO.puts("")
-            IO.puts("INSERT OPERATION------------------------------------")
-            IO.puts("Index from git parser new: #{test_index}")
-            IO.puts("Index from git parser old: #{index_position}")
-            IO.puts("Index used old: #{new_index}")
-            IO.puts("Index used new: #{nicolas_index}")
-            IO.puts("New line inserted: #{line_to_string(new_line)}")
-            IO.puts("")
-          end
+          # if nicolas_index != new_index do
+          #   IO.puts("")
+          #   IO.puts("INSERT OPERATION------------------------------------")
+          #   IO.puts("Index from git parser new: #{test_index}")
+          #   IO.puts("Index from git parser old: #{index_position}")
+          #   IO.puts("Index used old: #{new_index}")
+          #   IO.puts("Index used new: #{nicolas_index}")
+          #   IO.puts("New line inserted: #{line_to_string(new_line)}")
+          #   IO.puts("")
+          # end
         # end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})

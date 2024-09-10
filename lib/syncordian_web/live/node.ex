@@ -9,7 +9,6 @@ defmodule SyncordianWeb.Node do
   def handle_event("refresh", _data, socket) do
     peer_id = socket.assigns.peer_id
     peer_pid = :global.whereis_name(peer_id)
-    IO.inspect(peer_id)
 
     case peer_pid do
       :undefined -> IO.inspect("Node has not been started yet")
@@ -26,17 +25,18 @@ defmodule SyncordianWeb.Node do
   def handle_info({:receive_live_view_document, document}, socket) do
     IO.inspect("Received document")
 
-    lines = Enum.map(document, fn line ->
-      %{
-        line_id: Syncordian.Line_Object.get_line_id(line),
-        content: Syncordian.Line_Object.get_content(line),
-        signature: Syncordian.Line_Object.get_signature(line),
-        peer_id: Syncordian.Line_Object.get_line_peer_id(line),
-        status: Syncordian.Line_Object.get_line_status(line),
-        insertion_attempts: Syncordian.Line_Object.get_line_insertion_attempts(line),
-        commit_at: Syncordian.Line_Object.get_commit_at(line)
-      }
-    end)
+    lines =
+      Enum.map(document, fn line ->
+        %{
+          line_id: Syncordian.Line_Object.get_line_id(line),
+          content: Syncordian.Line_Object.get_content(line),
+          signature: Syncordian.Line_Object.get_signature(line),
+          peer_id: Syncordian.Line_Object.get_line_peer_id(line),
+          status: Syncordian.Line_Object.get_line_status(line),
+          insertion_attempts: Syncordian.Line_Object.get_line_insertion_attempts(line),
+          commit_at: Syncordian.Line_Object.get_commit_at(line)
+        }
+      end)
 
     {:noreply, assign(socket, lines: lines)}
   end

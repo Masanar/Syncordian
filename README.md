@@ -1,4 +1,4 @@
-# Bizantine Syncordian
+# Syncordian
 
 Collaborative editing, as observed in projects such as Google Docs, often relies on costly
 central services. While many Conflict-Free Replicated Data Types ( CRDTs) exists to solve
@@ -14,20 +14,19 @@ CRDTs demonstrating the effectiveness of our approach in ensuring reliability an
 consistency in the challenging context of Byzantine faults within peer-to-peer
 collaborative editing environments without introducing any interleaving anomalies.
 
-## Installation
+## Testing
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `bizantine_crdt` to your list of dependencies in `mix.exs`:
+We provided a test scenario for Syncordian based on the git log of the edit for the
+README.md for the git project of [OhMyZsh](https://github.com/ohmyzsh/ohmyzsh). To
+replicate the test run
 
-```elixir
-def deps do
-  [
-    {:Syncordian, "~> 0.1.0"}
-  ]
-end
+```
+  ▶ iex -S mix
+  Erlang/OTP 26 [erts-14.2.5] [source] [64-bit] [smp:20:20] [ds:20:20:10] [async-threads:1] [jit:ns]
+
+  Interactive Elixir (1.16.2) - press Ctrl+C to exit (type h() ENTER for help)
+  iex(1)> Test.init()
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/bizantine_crdt](https://hexdocs.pm/bizantine_crdt).
-
+This will create a folder /debug with the resulting document for each of the peer (authors)
+that had participated in the document.

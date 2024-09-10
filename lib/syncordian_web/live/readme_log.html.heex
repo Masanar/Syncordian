@@ -1,0 +1,54 @@
+<h1>
+  <span class="blue">&lt;</span>READMELOG<span class="blue">&gt;</span>
+  <span class="yellow">Syncordian</span>
+</h1>
+<h2>
+  Full
+  <a href="https://github.com/ohmyzsh/ohmyzsh/blob/master/README.md" target="_blank">README</a>
+  git log for the ohmyzsh github project
+</h2>
+<div class="main-container">
+  <div class="container">
+    <div class="content">
+      <pre><%= @readme_content %></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const commitHash = urlParams.get('commit');
+
+    if (commitHash) {
+      // Perform a search for the commit hash
+      const content = document.querySelector('.content pre').textContent;
+      const regex = new RegExp(commitHash, 'gi');
+      const matches = [...content.matchAll(regex)];
+
+      if (matches.length > 0) {
+        // Get the index of the first match
+        const matchIndex = matches[0].index;
+
+        // Find the position of the match in the text
+        const preElement = document.querySelector('.content pre');
+        const range = document.createRange();
+        const textNode = preElement.childNodes[0];
+        range.setStart(textNode, matchIndex);
+        range.setEnd(textNode, matchIndex + commitHash.length);
+
+        // Scroll to the position of the match
+        const rect = range.getBoundingClientRect();
+        window.scrollTo({
+          top: rect.top + window.pageYOffset - 100,
+          behavior: 'smooth'
+        });
+
+        // Highlight the matched text (optional)
+        const span = document.createElement('span');
+        span.style.backgroundColor = 'yellow';
+        range.surroundContents(span);
+      }
+    }
+  });
+</script>

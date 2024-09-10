@@ -1,0 +1,12 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Google fonts - Open Sans */
+/* assets/css/app.css */
+
+@import "./main.css";
+/* @import "./global.css"; */
+/* @import "./table.css"; */
+
+/* This file is for your main application CSS */

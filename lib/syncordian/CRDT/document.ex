@@ -385,4 +385,77 @@ defmodule Syncordian.Document do
       end
     end)
   end
+
+  def test(document, target_index) do
+    document_length = get_document_length(document)
+
+    case document_length < target_index do
+      true -> document_length
+      false -> test_aux(document, target_index, 0, 0, document_length)
+    end
+  end
+
+  def test_aux(_, target_index, target_index, return_index, _), do: return_index
+
+  def test_aux(_, _, _, return_index, document_length) when document_length == return_index,
+    do: return_index
+
+  def test_aux(
+        _document = [head | tail],
+        target_index,
+        count_no_tombstones,
+        return_index,
+        document_length
+      ) do
+
+    if target_index == 84 and document_length > 2200 do
+      IO.puts("")
+      IO.inspect("head: #{line_to_string(head)}")
+      IO.inspect("target_index: #{target_index}")
+      IO.inspect("count_no_tombstones : #{count_no_tombstones}")
+      IO.inspect("return_index: #{return_index}")
+      IO.inspect("document_length: #{document_length}")
+      IO.puts("")
+    end
+
+    line_status = get_line_status(head)
+    new_return_index = return_index + 1
+
+    case line_status do
+      :tombstone ->
+        test_aux(tail, target_index, count_no_tombstones, new_return_index, document_length)
+
+      _ ->
+        test_aux(tail, target_index, count_no_tombstones + 1, new_return_index, document_length)
+    end
+  end
+
+  # The -1 is because the last line is the supremum
+  def nicolas_tenia_razon([], 0, 0, index) ,do: index - 1
+  def nicolas_tenia_razon([h|t], 0, 0, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, 0, 0, index+1)
+    # case line_status do :tombstone ->  index
+    _ -> index
+    end
+  end
+  def nicolas_tenia_razon([h|t], 0, tombstones, index), do: nicolas_tenia_razon([h|t], tombstones, 0, index)
+  def nicolas_tenia_razon([h|t], target, tombstones, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("target: #{target}")
+    # IO.puts("tombstones: #{tombstones}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, target-1, tombstones+1, index+1)
+    _ -> nicolas_tenia_razon(t, target-1, tombstones, index + 1)
+    end
+  end
+
+
 end

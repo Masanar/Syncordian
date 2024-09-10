@@ -55,6 +55,7 @@ defmodule Syncordian.Supervisor do
           peer_pid,
           Map.get(edit, :content),
           Map.get(edit, :index) + acc,
+          Map.get(edit, :test_index) + acc,
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )
@@ -65,6 +66,7 @@ defmodule Syncordian.Supervisor do
         delete_line(
           peer_pid,
           Map.get(edit, :index) + acc,
+          Map.get(edit, :test_index) + acc,
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )

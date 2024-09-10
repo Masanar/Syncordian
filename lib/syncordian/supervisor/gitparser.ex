@@ -171,17 +171,20 @@ defmodule Syncordian.GitParser do
   def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
     # TODO: the structure %{op:....} could be the type of this module, it does?
     context_lines
-    |> Enum.reduce({global_position,0, []}, fn line, {index_position, current_delete_ops, acc} ->
+    |> Enum.reduce({global_position, 0, 0, []}, fn line,
+                                                   {index_position, test_index_position,
+                                                    current_delete_ops, acc} ->
       new_index_position = index_position + 1
+      # new_test_index_position =  test_index_position + 1
 
       case String.at(line, 0) do
         "-" ->
-          {new_index_position,
-          current_delete_ops + 1,
+          {new_index_position, test_index_position, current_delete_ops + 1,
            [
              %{
                op: :delete,
                index: index_position,
+               test_index: index_position - current_delete_ops,
                content: "",
                global_position: global_position,
                current_delete_ops: current_delete_ops
@@ -192,12 +195,12 @@ defmodule Syncordian.GitParser do
         "+" ->
           case line do
             "+" <> content ->
-              {new_index_position,
-              current_delete_ops,
+              {new_index_position, test_index_position + 1, current_delete_ops,
                [
                  %{
                    op: :insert,
                    index: index_position,
+                   test_index: index_position - current_delete_ops,
                    content: content,
                    global_position: global_position,
                    current_delete_ops: current_delete_ops
@@ -206,12 +209,12 @@ defmodule Syncordian.GitParser do
                ]}
 
             "+" ->
-              {new_index_position,
-              current_delete_ops,
+              {new_index_position, test_index_position + 1, current_delete_ops,
                [
                  %{
                    op: :insert,
                    index: index_position,
+                   test_index: index_position - current_delete_ops,
                    content: "\n",
                    global_position: global_position,
                    current_delete_ops: current_delete_ops
@@ -221,10 +224,10 @@ defmodule Syncordian.GitParser do
           end
 
         _ ->
-          {new_index_position, current_delete_ops, acc}
+          {new_index_position, new_index_position, current_delete_ops, acc}
       end
     end)
-    |> elem(2)
+    |> elem(3)
     |> Enum.reverse()
   end
 

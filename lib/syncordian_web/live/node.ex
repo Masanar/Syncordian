@@ -3,14 +3,7 @@ defmodule SyncordianWeb.Node do
   require Syncordian.Line_Object
 
   def mount(_params, _session, socket) do
-    {
-      :ok,
-      assign(
-        socket,
-        peer_id: 25,
-        lines: []
-      )
-    }
+    {:ok, assign(socket, peer_id: 5, lines: [])}
   end
 
   def handle_event("refresh", _data, socket) do
@@ -18,22 +11,18 @@ defmodule SyncordianWeb.Node do
     peer_pid = :global.whereis_name(peer_id)
 
     case peer_pid do
-      :undefined ->
-        IO.inspect("Node has not been started yet")
-
-      _ ->
-        send(peer_pid, {:request_live_view_document, self()})
+      :undefined -> IO.inspect("Node has not been started yet")
+      _ -> send(peer_pid, {:request_live_view_document, self()})
     end
 
     {:noreply, socket}
   end
 
+  def handle_event("select_node", %{"node_id" => node_id}, socket) do
+    {:noreply, assign(socket, peer_id: String.to_integer(node_id))}
+  end
+
   def handle_info({:receive_live_view_document, document}, socket) do
-    # This process is not efficient!! but this will affect the performance of the web app
-    # and that is not my goal here, actually this is my first time using LiveView so I am
-    # completely sure that there are others parts of the code that can be improved.
-    # Additionally, this app do not uses a DB it is trying to simulate a P2P network
-    # and I THINK that Phonenix LiveView was not designed to be used in this way. (I THINK)
     IO.inspect("Received document")
 
     lines =
@@ -50,6 +39,5 @@ defmodule SyncordianWeb.Node do
       end)
 
     {:noreply, assign(socket, lines: lines)}
-    # {:noreply,socket}
   end
 end

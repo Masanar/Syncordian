@@ -48,7 +48,8 @@ config :syncordian, SyncordianWeb.Endpoint,
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/syncordian_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/syncordian_web/(controllers|live|components)/.*(ex|heex)$",
+      ~r"lib/syncordian/(CRDT|supervisor)/.*(ex|heex)$"
     ]
   ]
 

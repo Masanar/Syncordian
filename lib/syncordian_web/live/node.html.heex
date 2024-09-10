@@ -3,58 +3,64 @@
   <span class="yellow">Syncordian</span>
 </h1>
 <h2>
-  Implemented with love by
-  <a href="https://github.com/Masanar" target="_blank">Mateo Sanabria</a>
+  Implemented with love by <a href="https://github.com/Masanar" target="_blank">Mateo Sanabria</a>
 </h2>
 
 <div class="container">
   <div class="button-container">
-    <button class="button-89" role="button" phx-click="node_id">Node selector</button>
+    <form phx-change="select_node">
+      <select class="button-89" name="node_id">
+        <%= for i <- 1..25 do %>
+          <option value={i}><%= i %></option>
+        <% end %>
+      </select>
+    </form>
     <div class="button-right">
       <button class="button-89" role="button" phx-click="refresh">Refresh document</button>
     </div>
   </div>
-  <div class="table-wrapper">
-  <table>
-  <thead>
-    <tr>
-      <th>
-        <h1>#</h1>
-      </th>
-      <th>
-        <h1>Line ID</h1>
-      </th>
-      <th>
-        <h1>Status</h1>
-      </th>
-      <th>
-        <h1>Content</h1>
-      </th>
-      <th>
-        <h1>Peer ID</h1>
-      </th>
-      <th>
-        <h1>Signature</h1>
-      </th>
-      <th>
-        <h1>Insertions Attempts</h1>
-      </th>
-    </tr>
-  </thead>
-  <tbody id="lines" phx-hook="InfinityScroll" phx-update="replace">
-    <%= for {line, index} <- Enum.with_index(@lines, 0) do %>
-      <tr id={"line-#{line.line_id}"}>
-        <td><%= index %></td> <!-- Row number -->
-        <td><%= line.line_id %></td>
-        <td><%= line.status %></td>
-        <td><%= line.content %></td>
-        <td><%= line.peer_id %></td>
-        <td><%= line.signature %></td>
-        <td><%= line.insertion_attempts %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
 
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <h1>#</h1>
+          </th>
+          <th>
+            <h1>Line ID</h1>
+          </th>
+          <th>
+            <h1>Status</h1>
+          </th>
+          <th>
+            <h1>Content</h1>
+          </th>
+          <th>
+            <h1>Peer ID</h1>
+          </th>
+          <th>
+            <h1>Signature</h1>
+          </th>
+          <th>
+            <h1>Insertions Attempts</h1>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="lines" phx-hook="InfinityScroll" phx-update="replace">
+        <%= for {line, index} <- Enum.with_index(@lines, 0) do %>
+          <tr id={"line-#{line.line_id}"}>
+            <td><%= index %></td>
+            <!-- Row number -->
+            <td><%= line.line_id %></td>
+            <td><%= line.status %></td>
+            <td><%= line.content %></td>
+            <td><%= line.peer_id %></td>
+            <td><%= line.signature %></td>
+            <td><%= line.insertion_attempts %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
   </div>
 </div>

@@ -430,19 +430,32 @@ defmodule Syncordian.Document do
     end
   end
 
-  def nicolas_tenia_razon([h|t], 0, 0, index) do 
+  # The -1 is because the last line is the supremum
+  def nicolas_tenia_razon([], 0, 0, index) ,do: index - 1
+  def nicolas_tenia_razon([h|t], 0, 0, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
     line_status = get_line_status(h)
     case line_status do :tombstone -> nicolas_tenia_razon(t, 0, 0, index+1)
+    # case line_status do :tombstone ->  index
     _ -> index
-    end 
+    end
   end
-  def nicolas_tenia_razon([h|t], 0, tombstones, index), do: nicolas_tenia_razon([h|t], tombstones, 0, index)    
+  def nicolas_tenia_razon([h|t], 0, tombstones, index), do: nicolas_tenia_razon([h|t], tombstones, 0, index)
   def nicolas_tenia_razon([h|t], target, tombstones, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("target: #{target}")
+    # IO.puts("tombstones: #{tombstones}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
     line_status = get_line_status(h)
     case line_status do :tombstone -> nicolas_tenia_razon(t, target-1, tombstones+1, index+1)
     _ -> nicolas_tenia_razon(t, target-1, tombstones, index + 1)
-    end 
+    end
   end
-  
-  
+
+
 end

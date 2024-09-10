@@ -55,9 +55,10 @@ defmodule Syncordian.Peer do
       - global_position: the global position of the current commit, in other words the
         beginning position of the line in the context lines.
   """
-  @spec delete_line(pid, integer, integer, integer) :: any
-  def delete_line(pid, index_position, global_position, current_delete_ops),
-    do: send(pid, {:delete_line, [index_position, global_position, current_delete_ops]})
+  @spec delete_line(pid, integer, integer, integer, integer) :: any
+  def delete_line(pid, index_position, test_index, global_position, current_delete_ops),
+    do:
+      send(pid, {:delete_line, [index_position, test_index, global_position, current_delete_ops]})
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to
@@ -70,9 +71,13 @@ defmodule Syncordian.Peer do
         beginning position of the line in the context lines.
 
   """
-  @spec insert(pid, String.t(), integer, integer, integer) :: any
-  def insert(pid, content, index_position, global_position, current_delete_ops),
-    do: send(pid, {:insert, [content, index_position, global_position, current_delete_ops]})
+  @spec insert(pid, String.t(), integer, integer, integer, integer) :: any
+  def insert(pid, content, index_position, test_index, global_position, current_delete_ops),
+    do:
+      send(
+        pid,
+        {:insert, [content, index_position, test_index, global_position, current_delete_ops]}
+      )
 
   @doc """
     This function starts a peer with the given peer_id and registers it in the global registry.
@@ -96,7 +101,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      {:delete_line, [index_position, global_position, current_delete_ops]} ->
+      {:delete_line, [index_position, test_index, global_position, current_delete_ops]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
 
@@ -109,7 +114,6 @@ defmodule Syncordian.Peer do
 
           _ ->
             peer_id = get_peer_id(peer)
-            IO.inspect("Peer id: #{peer_id}")
 
             shift_due_to_tombstone =
               get_number_of_tombstones_before_index(document, global_position)
@@ -134,39 +138,36 @@ defmodule Syncordian.Peer do
               cond do
                 temp_new_index_position - no_check_until_no_tombstones == 1 and
                     no_check_until_no_tombstones < temp_new_index_position ->
-                  IO.inspect("Inside the case -1")
                   temp_new_index_position
 
                 no_check_until_no_tombstones < temp_new_index_position ->
                   case shift_due_other_peers_tombstones do
                     0 ->
                       if get_peer_id(peer) == 25 and global_position == 51 do
-                        IO.inspect("Inside the case 0")
                       end
 
                       temp_new_index_position
 
                     _ ->
-                      IO.inspect("Inside the case 1")
                       temp_new_index_position + (shift_due_other_peers_tombstones - 1)
                   end
 
                 true ->
                   if get_peer_id(peer) == 25 and global_position == 51 do
-                    IO.inspect("Inside the case 2")
                   end
 
                   temp_new_index_position
               end
 
+            nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
             peer =
               document
-              |> update_document_line_status(new_index_position, :tombstone)
-              |> update_document_line_peer_id(new_index_position, peer_id)
+              |> update_document_line_status(nicolas_index, :tombstone)
+              |> update_document_line_peer_id(nicolas_index, peer_id)
               |> update_peer_document(peer)
 
             line_deleted =
-              get_document_line_by_index(document, new_index_position)
+              get_document_line_by_index(document, nicolas_index)
 
             line_deleted_id = line_deleted |> get_line_id
 
@@ -175,21 +176,19 @@ defmodule Syncordian.Peer do
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
 
-            # if get_peer_id(peer) == 25 and global_position == 51 do
-            #   IO.puts("-------------------------DELTE----------------------------")
-            #   IO.puts("Index global position: #{global_position}")
-            #   IO.puts("Index position: #{index_position}")
-            #   IO.puts("shift_due_to_tombstone: #{shift_due_to_tombstone}")
-            #   IO.puts("shift_due_other_peers_tombstones : #{shift_due_other_peers_tombstones}")
-            #   IO.puts("temp_new_index_position: #{temp_new_index_position}")
-            #   IO.puts("Curren delete Ops: #{current_delete_ops}")
-            #   IO.puts(" ")
-            #   IO.puts("Index used: #{new_index_position}")
-            #   IO.puts("Left parent: #{line_to_string(left_parent)}")
-            #   IO.puts("Line DELETE: #{line_to_string(line_deleted)}")
-            #   IO.puts("Right parent: #{line_to_string(right_parent)}")
-            #   IO.puts("--------------------------------------------------------")
-            # end
+          # if test_index == 85 and get_document_length(document) > 100 do
+            # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
+            if nicolas_index != new_index_position do
+              IO.puts("")
+              IO.puts("DELETE OPERATION------------------------------------")
+              IO.puts("Index from git parser new: #{test_index}")
+              IO.puts("Index from git parser old: #{index_position}")
+              IO.puts("Index used old: #{new_index_position}")
+              IO.puts("Index used new: #{nicolas_index}")
+              IO.puts("Line deleted: #{line_to_string(line_deleted)}")
+              IO.puts("")
+            end
+          # end
 
             send(
               get_peer_pid(peer),
@@ -252,7 +251,7 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      {:insert, [content, index_position, global_position, current_delete_ops]} ->
+      {:insert, [content, index_position, test_index, global_position, current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
         # IO.inspect("Peer id: #{peer_id}")
@@ -290,10 +289,12 @@ defmodule Syncordian.Peer do
             new_index_temp
           end
 
+        nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
         [left_parent, right_parent] =
           get_parents_by_index(
             document,
-            new_index
+            nicolas_index
+            # new_index
           )
 
         new_line =
@@ -311,36 +312,19 @@ defmodule Syncordian.Peer do
           |> tick_individual_peer_clock
 
         current_vector_clock = peer(peer, :vector_clock)
-
-        # if get_peer_id(peer) == 25 and  global_position == 51 and index_position > 50 and index_position < 60 do
-        #   IO.puts("--------------------------------------------------------")
-        #   IO.puts("Index global position: #{global_position}")
-        #   IO.puts("Index position: #{index_position}")
-        #   IO.puts("Shift due to tombstone: #{shift_due_to_tombstone}")
-        #   IO.puts("Shift due to other tombstone: #{shift_due_other_peers_tombstones}")
-        #   IO.puts("Curren delete Ops: #{current_delete_ops}")
-        #   IO.puts(" ")
-        #   IO.puts("temp_new_index: #{temp_new_index}")
-        #   IO.puts("new_index_temp: #{new_index_temp}")
-        #   IO.puts("no_check_until_no_tombstones: #{no_check_until_no_tombstones}")
-        #   IO.puts(" ")
-        #   IO.puts("Index used: #{new_index}")
-        #   IO.puts("Left parent: #{line_to_string(left_parent)}")
-        #   IO.puts("Line inserted: #{line_to_string(new_line)}")
-        #   IO.puts("Right parent: #{line_to_string(right_parent)}")
-        #   IO.puts("--------------------------------------------------------")
+        # if test_index == 85 and get_document_length(document) > 100 do
+          # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
+          if nicolas_index != new_index do
+            IO.puts("")
+            IO.puts("INSERT OPERATION------------------------------------")
+            IO.puts("Index from git parser new: #{test_index}")
+            IO.puts("Index from git parser old: #{index_position}")
+            IO.puts("Index used old: #{new_index}")
+            IO.puts("Index used new: #{nicolas_index}")
+            IO.puts("New line inserted: #{line_to_string(new_line)}")
+            IO.puts("")
+          end
         # end
-        test_index = test(document, index_position) - current_delete_ops
-
-        if test_index != new_index do
-          IO.puts("")
-          IO.puts("Index from git parser: #{index_position}")
-          IO.puts("Index used: #{new_index}")
-          IO.puts("New implementation index: #{test_index}")
-          IO.puts("Current delete ops: #{current_delete_ops}")
-          IO.puts("New line inserted: #{line_to_string(new_line)}")
-          IO.puts("")
-        end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)

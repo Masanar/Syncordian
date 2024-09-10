@@ -1,0 +1,36 @@
+<header class="header-container">
+  <div class="header-content">
+    <div class="header-left">
+      <a href="/">
+        <img src={~p"/images/logo1.jpg"} width="45" />
+      </a>
+      <p class="header-title">
+        Syncordian: A Byzantine Fault Tolerant CRDT without Interleaving
+      </p>
+    </div>
+    <div class="header-right">
+      <a href="https://github.com/Masanar/Syncordia" class="header-link">
+        GitHub
+      </a>
+      <a href="/node" class="header-button">
+        Nodes <span aria-hidden="true">&#9993;</span>
+      </a>
+      <a href="/supervisor" class="header-button">
+        Supervisor <span aria-hidden="true">&#9819;</span>
+      </a>
+      <a href="/readmelog" class="header-button">
+        Readme Log <span aria-hidden="true">&#x2602;</span>
+      </a>
+      <a href="/" class="header-button">
+        About <span aria-hidden="true">&#9783;</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="main-container">
+  <div class="container">
+    <.flash_group flash={@flash} />
+    <%= @inner_content %>
+  </div>
+</main>

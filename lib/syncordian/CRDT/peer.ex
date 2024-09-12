@@ -115,51 +115,7 @@ defmodule Syncordian.Peer do
           _ ->
             peer_id = get_peer_id(peer)
 
-            shift_due_to_tombstone =
-              get_number_of_tombstones_before_index(document, global_position)
-
-            shift_due_other_peers_tombstones =
-              get_number_of_tombstones_due_other_peers(
-                document,
-                global_position,
-                index_position + shift_due_to_tombstone
-              )
-
-            no_check_until_no_tombstones =
-              index_position + shift_due_to_tombstone +
-                (shift_due_other_peers_tombstones - current_delete_ops)
-
-            temp_new_index_position =
-              check_until_no_tombstone(document, no_check_until_no_tombstones)
-
-            # TODO: This seems to work, maybe need the same for the :insertion
-            # also, code looks ugly find a way to refactor it
-            new_index_position =
-              cond do
-                temp_new_index_position - no_check_until_no_tombstones == 1 and
-                    no_check_until_no_tombstones < temp_new_index_position ->
-                  temp_new_index_position
-
-                no_check_until_no_tombstones < temp_new_index_position ->
-                  case shift_due_other_peers_tombstones do
-                    0 ->
-                      if get_peer_id(peer) == 25 and global_position == 51 do
-                      end
-
-                      temp_new_index_position
-
-                    _ ->
-                      temp_new_index_position + (shift_due_other_peers_tombstones - 1)
-                  end
-
-                true ->
-                  if get_peer_id(peer) == 25 and global_position == 51 do
-                  end
-
-                  temp_new_index_position
-              end
-
-            nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
+            nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
             peer =
               document
               |> update_document_line_status(nicolas_index, :tombstone)
@@ -175,20 +131,6 @@ defmodule Syncordian.Peer do
               get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
-
-          # if test_index == 85 and get_document_length(document) > 100 do
-            # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
-            # if nicolas_index != new_index_position do
-            #   IO.puts("")
-            #   IO.puts("DELETE OPERATION------------------------------------")
-            #   IO.puts("Index from git parser new: #{test_index}")
-            #   IO.puts("Index from git parser old: #{index_position}")
-            #   IO.puts("Index used old: #{new_index_position}")
-            #   IO.puts("Index used new: #{nicolas_index}")
-            #   IO.puts("Line deleted: #{line_to_string(line_deleted)}")
-            #   IO.puts("")
-            # end
-          # end
 
             send(
               get_peer_pid(peer),
@@ -254,42 +196,8 @@ defmodule Syncordian.Peer do
       {:insert, [content, index_position, test_index, global_position, current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
-        # IO.inspect("Peer id: #{peer_id}")
 
-        shift_due_to_tombstone =
-          get_number_of_tombstones_before_index(document, global_position)
-
-        shift_due_other_peers_tombstones =
-          get_number_of_tombstones_due_other_peers(
-            document,
-            global_position,
-            index_position + shift_due_to_tombstone
-          )
-
-        no_check_until_no_tombstones =
-          index_position + shift_due_to_tombstone +
-            shift_due_other_peers_tombstones
-
-        temp_new_index =
-          check_until_no_tombstone(
-            document,
-            no_check_until_no_tombstones - current_delete_ops
-          )
-
-        new_index_temp =
-          check_until_no_tombstone(
-            document,
-            no_check_until_no_tombstones
-          ) - current_delete_ops
-
-        new_index =
-          if new_index_temp < temp_new_index do
-            temp_new_index
-          else
-            new_index_temp
-          end
-
-        nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
+        nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
         [left_parent, right_parent] =
           get_parents_by_index(
             document,
@@ -312,19 +220,6 @@ defmodule Syncordian.Peer do
           |> tick_individual_peer_clock
 
         current_vector_clock = peer(peer, :vector_clock)
-        # if test_index == 85 and get_document_length(document) > 100 do
-          # nicolas_index = nicolas_tenia_razon(document, test_index, 0, 0)
-          # if nicolas_index != new_index do
-          #   IO.puts("")
-          #   IO.puts("INSERT OPERATION------------------------------------")
-          #   IO.puts("Index from git parser new: #{test_index}")
-          #   IO.puts("Index from git parser old: #{index_position}")
-          #   IO.puts("Index used old: #{new_index}")
-          #   IO.puts("Index used new: #{nicolas_index}")
-          #   IO.puts("New line inserted: #{line_to_string(new_line)}")
-          #   IO.puts("")
-          # end
-        # end
 
         send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
         loop(peer)

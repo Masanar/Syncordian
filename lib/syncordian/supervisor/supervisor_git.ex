@@ -199,7 +199,7 @@ defmodule Syncordian.Supervisor do
     commit_group_map = group_by_commit(parsed_git_log)
 
     # Instance all the 30 peers independent  the number of commits in the test file
-    temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
+    temporal_git_log = parser_git_log("ohmyzsh_README_full_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 

@@ -15,13 +15,13 @@ defmodule SyncordianWeb.Router do
   end
 
   scope "/", SyncordianWeb do
-    pipe_through :browser
+  pipe_through :browser
 
-    get "/", PageController, :home
-    live "/node", Node
-    live "/supervisor", Supervisor
-    live "/readmelog", ReadmeLog
-  end
+  live "/", About, :home, as: :about
+  live "/node", Node
+  live "/supervisor", Supervisor
+  live "/readmelog", ReadmeLog
+end
 
   # Other scopes may use custom stacks.
   # scope "/api", SyncordianWeb do

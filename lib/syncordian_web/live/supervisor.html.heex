@@ -33,10 +33,10 @@
           </th>
         </tr>
       </thead>
-      <tbody id="lines" phx-update="replace" phx-hook="InfinityScroll">
+      <tbody id="lines" phx-update="replace">
         <%= for {log, index} <- Enum.with_index(@logs,1) do %>
           <tr id={"log-#{log.hash}"}>
-            <td><%= index %></td>
+            <td><%= Enum.count(@logs) - index + 1 %></td>>
             <td><%= log.author %></td>
             <td>
               <a href={"/readmelog?commit=#{log.hash}"} class="commit-link">

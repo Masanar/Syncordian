@@ -9,7 +9,7 @@ defmodule Syncordian.Line_Object do
   # @max_float 230_584_300_921_369.0
   @max_float 230_584_300_921.0
   # @max_float   230_584_300.0
-  @max_insertion_attempts 5
+  @max_insertion_attempts 20
   Record.defrecord(:line,
     line_id: 0.0,
     content: "",

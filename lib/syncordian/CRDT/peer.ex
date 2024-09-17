@@ -101,7 +101,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      {:delete_line, [index_position, test_index, global_position, current_delete_ops]} ->
+      {:delete_line, [index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
 
@@ -193,7 +193,7 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
-      {:insert, [content, index_position, test_index, global_position, current_delete_ops]} ->
+      {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
@@ -243,6 +243,8 @@ defmodule Syncordian.Peer do
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_local_vector_clock(peer)
 
+        # Process.sleep(10)
+
         clock_distance_usual =
           distance_between_vector_clocks(
             local_vector_clock,
@@ -260,6 +262,7 @@ defmodule Syncordian.Peer do
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
             # debug_function.(1)
+            IO.inspect("Clock distance is greater than 1 insertion")
             send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
@@ -316,7 +319,6 @@ defmodule Syncordian.Peer do
                       incoming_peer_id,
                       get_line_id(line)
                     )
-
                     add_line_to_document(line, document)
                     |> update_peer_document(peer)
                     |> tick_projection_peer_clock(incoming_peer_id)
@@ -337,12 +339,14 @@ defmodule Syncordian.Peer do
               false ->
                 # HERE
                 # TODO: Check the interleaving!
+                IO.inspect("Wrong order of the vector clocks")
                 {valid_line?, _} =
                   stash_document_lines(document, line, local_vector_clock, incoming_vc)
 
                 case valid_line? do
                   true ->
                     # TODO: This is repeted code! Should be a function!
+                    IO.inspect("Stash process succeeded")
                     send_confirmation_line_insertion(
                       get_peer_id(peer),
                       incoming_peer_id,
@@ -428,6 +432,7 @@ defmodule Syncordian.Peer do
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
       send(pid, message)
+      # Process.send_after(pid, message, Enum.random(1..20))
     end)
   end
 
@@ -477,7 +482,7 @@ defmodule Syncordian.Peer do
 
   # This is a private function used to instance the initial document of the peer within
   # the record peer.
-  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: peer()
+  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: Syncordian.Basic_Types.document()
   defp define(peer_id, network_size) do
     initial_peer_document = [
       create_infimum_line(peer_id, network_size),

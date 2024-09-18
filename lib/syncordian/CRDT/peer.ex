@@ -36,6 +36,94 @@ defmodule Syncordian.Peer do
             vector_clock: [integer]
           )
 
+  #################################### Peer Interface ####################################
+  # Getter and setter for the peer structure
+
+  # This is a private function used to get the pid of the peer.
+  @spec get_peer_pid(peer()) :: pid()
+  defp get_peer_pid(peer), do: peer(peer, :pid)
+
+  # This is a private function used to get the peer_id of the peer.
+  @spec get_peer_id(peer()) :: Syncordian.Basic_Types.peer_id()
+  defp get_peer_id(peer), do: peer(peer, :peer_id)
+
+  # This is a private function used to get the document of the peer.
+  @spec get_peer_document(peer()) :: Syncordian.Basic_Types.document()
+  defp get_peer_document(peer), do: peer(peer, :document)
+
+  # Getter for the current vector clock of the peer
+  @spec get_peer_vector_clock(peer()) :: peer()
+  defp get_peer_vector_clock(peer), do: peer(peer, :vector_clock)
+
+  # This is a private function used to get the number of marked as deleted lines of the
+  # document of the peer.
+  @spec get_peer_deleted_count(peer()) :: integer
+  defp get_peer_deleted_count(peer), do: peer(peer, :deleted_count)
+
+  # This is a private function used whenever an update to the document is needed. It
+  # updates the record peer with the new document.
+  @spec update_peer_document(Syncordian.Basic_Types.document(), peer()) :: peer()
+  defp update_peer_document(document, peer), do: peer(peer, document: document)
+
+  # This is a private function used whenever an update to the pid is needed. It updates
+  # the record peer with the new pid.
+  @spec update_peer_pid({pid, integer(), Syncordian.Basic_Types.peer_id()}, peer()) :: peer()
+  defp update_peer_pid({pid, network_size, peer_id}, peer),
+    # TODO: Be careful when using this function the vector clock is always set to 0
+    do:
+      peer(peer,
+        pid: pid,
+        vector_clock: List.duplicate(0, network_size),
+        peer_id: peer_id
+      )
+
+  defp check_deleted_lines_limit(peer) do
+    case get_peer_deleted_count(peer) > @delete_limit do
+      true ->
+        # TODO: HERE call the mechanism of broadcast consensus -> update
+        IO.puts(" \n ________________________________________________________ \n ")
+        IO.puts(" The deleted lines limit has been reached by #{get_peer_id(peer)} ")
+        IO.puts(" ___________________________________________________________ \n ")
+        loop(peer)
+
+      _ ->
+        loop(peer)
+    end
+  end
+
+  # This is a private function used to update the deleted count of the peer.
+  @spec tick_peer_deleted_count(peer()) :: peer()
+  defp tick_peer_deleted_count(peer) do
+    new_count = get_peer_deleted_count(peer) + 1
+
+    peer(peer, deleted_count: new_count)
+    |> check_deleted_lines_limit
+  end
+
+  # This function is used to update the vector clock of the peer, it increments only the
+  # value of the peer_id in the vector clock. The tick is done by adding 1 to the value of
+  # the peer_id in the vector clock.
+  @spec tick_individual_peer_clock(peer()) :: peer()
+  defp tick_individual_peer_clock(peer) do
+    peer_id = get_peer_id(peer)
+    vector_clock = get_peer_vector_clock(peer)
+    new_peer_clock_value = Enum.at(vector_clock, peer_id) + 1
+    new_vector_clock = update_list_value(vector_clock, peer_id, new_peer_clock_value)
+    peer(peer, vector_clock: new_vector_clock)
+  end
+
+  # This function is used to update only the specific projection in the vector clock of
+  # the local peer, it increments the current projection value by one.
+  @spec tick_projection_peer_clock(peer(), integer) :: peer()
+  defp tick_projection_peer_clock(peer, projection) do
+    local_vector_clock = peer(peer, :vector_clock)
+    new_peer_clock_value = Enum.at(local_vector_clock, projection) + 1
+    new_vector_clock = update_list_value(local_vector_clock, projection, new_peer_clock_value)
+    peer(peer, vector_clock: new_vector_clock)
+  end
+
+  ########################################################################################
+
   @doc """
     This function prints the whole document as a list of lists by sending a message to the
     loop peer function with the atom :print.
@@ -92,8 +180,6 @@ defmodule Syncordian.Peer do
     pid
   end
 
-  defp get_peer_pid(peer), do: peer(peer, :pid)
-
   @doc """
     This function is the main loop of the peer, it receives messages and calls the
     appropriate functions to handle them.
@@ -116,6 +202,7 @@ defmodule Syncordian.Peer do
             peer_id = get_peer_id(peer)
 
             nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+
             peer =
               document
               |> update_document_line_status(nicolas_index, :tombstone)
@@ -198,6 +285,7 @@ defmodule Syncordian.Peer do
         peer_id = get_peer_id(peer)
 
         nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+
         [left_parent, right_parent] =
           get_parents_by_index(
             document,
@@ -241,7 +329,7 @@ defmodule Syncordian.Peer do
       {:receive_insert_broadcast, line, incoming_vc} ->
         # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
-        local_vector_clock = get_local_vector_clock(peer)
+        local_vector_clock = get_peer_vector_clock(peer)
 
         # Process.sleep(10)
 
@@ -319,6 +407,7 @@ defmodule Syncordian.Peer do
                       incoming_peer_id,
                       get_line_id(line)
                     )
+
                     add_line_to_document(line, document)
                     |> update_peer_document(peer)
                     |> tick_projection_peer_clock(incoming_peer_id)
@@ -340,6 +429,7 @@ defmodule Syncordian.Peer do
                 # HERE
                 # TODO: Check the interleaving!
                 IO.inspect("Wrong order of the vector clocks")
+
                 {valid_line?, _} =
                   stash_document_lines(document, line, local_vector_clock, incoming_vc)
 
@@ -347,6 +437,7 @@ defmodule Syncordian.Peer do
                   true ->
                     # TODO: This is repeted code! Should be a function!
                     IO.inspect("Stash process succeeded")
+
                     send_confirmation_line_insertion(
                       get_peer_id(peer),
                       incoming_peer_id,
@@ -397,24 +488,6 @@ defmodule Syncordian.Peer do
     end
   end
 
-  defp check_deleted_lines_limit(peer) do
-    case get_document_deleted_lines(peer) > @delete_limit do
-      true ->
-        # TODO: HERE call the mechanism of broadcast consensus -> update
-        IO.puts(
-          " \n __________________________________________________________________________ \n "
-        )
-
-        IO.puts(" The deleted lines limit has been reached by #{inspect(get_peer_id(peer))} ")
-
-        IO.puts(" __________________________________________________________________________ \n ")
-        loop(peer)
-
-      _ ->
-        loop(peer)
-    end
-  end
-
   defp should_filter_out?(name, peer_pid) do
     pid = :global.whereis_name(name)
 
@@ -436,53 +509,14 @@ defmodule Syncordian.Peer do
     end)
   end
 
-  # Getter for the current vector clock of the peer
-  @spec get_local_vector_clock(peer()) :: [integer]
-  defp get_local_vector_clock(peer), do: peer(peer, :vector_clock)
-
-  # This is a private function used to get the number of marked as deleted lines of the
-  # document of the peer.
-  @spec get_document_deleted_lines(peer()) :: integer
-  defp get_document_deleted_lines(peer), do: peer(peer, :deleted_count)
-
-  # This is a private function used whenever an update to the document is needed. It
-  # updates the record peer with the new document.
-  @spec update_peer_document(Syncordian.Basic_Types.document(), peer()) ::
-          any
-  defp update_peer_document(document, peer), do: peer(peer, document: document)
-
-  # This is a private function used whenever an update to the pid is needed. It updates
-  # the record peer with the new pid.
-  @spec update_peer_pid({pid, integer(), Syncordian.Basic_Types.peer_id()}, peer()) :: peer()
-  defp update_peer_pid({pid, network_size, peer_id}, peer),
-    # TODO: Be careful when using this function the vector clock is always set to 0
-    do:
-      peer(peer,
-        pid: pid,
-        vector_clock: List.duplicate(0, network_size),
-        peer_id: peer_id
-      )
-
-  defp get_peer_id(peer), do: peer(peer, :peer_id)
-
-  defp get_peer_document(peer), do: peer(peer, :document)
-
   # This is a private function used to save the pid of the peer in the record.
   @spec save_peer_pid(pid, integer, integer) :: any
   defp save_peer_pid(pid, network_size, peer_id),
     do: send(pid, {:save_pid, {pid, network_size, peer_id}})
 
-  # This is a private function used to update the deleted count of the peer.
-  defp tick_peer_deleted_count(peer) do
-    new_count = peer(peer, :deleted_count) + 1
-
-    peer(peer, deleted_count: new_count)
-    |> check_deleted_lines_limit
-  end
-
   # This is a private function used to instance the initial document of the peer within
   # the record peer.
-  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: Syncordian.Basic_Types.document()
+  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: peer()
   defp define(peer_id, network_size) do
     initial_peer_document = [
       create_infimum_line(peer_id, network_size),
@@ -490,28 +524,6 @@ defmodule Syncordian.Peer do
     ]
 
     peer(peer_id: peer_id, document: initial_peer_document)
-  end
-
-  # This function is used to update the vector clock of the peer, it increments only the
-  # value of the peer_id in the vector clock. The tick is done by adding 1 to the value of
-  # the peer_id in the vector clock.
-  @spec tick_individual_peer_clock(peer()) :: peer()
-  defp tick_individual_peer_clock(peer) do
-    peer_id = peer(peer, :peer_id)
-    vector_clock = peer(peer, :vector_clock)
-    new_peer_clock_value = Enum.at(vector_clock, peer_id) + 1
-    new_vector_clock = update_list_value(vector_clock, peer_id, new_peer_clock_value)
-    peer(peer, vector_clock: new_vector_clock)
-  end
-
-  # This function is used to update only the specific projection in the vector clock of
-  # the local peer, it increments the current projection value by one.
-  @spec tick_projection_peer_clock(peer(), integer) :: peer()
-  defp tick_projection_peer_clock(peer, projection) do
-    local_vector_clock = peer(peer, :vector_clock)
-    new_peer_clock_value = Enum.at(local_vector_clock, projection) + 1
-    new_vector_clock = update_list_value(local_vector_clock, projection, new_peer_clock_value)
-    peer(peer, vector_clock: new_vector_clock)
   end
 
   @doc """

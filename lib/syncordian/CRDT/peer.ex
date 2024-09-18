@@ -36,6 +36,34 @@ defmodule Syncordian.Peer do
             vector_clock: [integer]
           )
 
+  ################################ Peer Live View utility ################################
+  @doc """
+    This function send a messages to the sending peer to update the commit list of the
+    line that was inserted in the document of the receiving peer. As it just receive the
+    peer id it has to search the pid of the sending peer in the global registry.
+    When the message is received by the sending peer it is handled by the loop function
+    of the peer module.
+  """
+  @spec send_confirmation_line_insertion(
+          receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
+          sending_peer_id :: Syncordian.Basic_Types.peer_id(),
+          inserted_line_id :: Syncordian.Basic_Types.line_id()
+        ) :: any
+  def send_confirmation_line_insertion(
+        receiving_peer_id,
+        sending_peer_id,
+        inserted_line_id
+      ) do
+    sending_peer_pid = :global.whereis_name(sending_peer_id)
+
+    send(
+      sending_peer_pid,
+      {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}}
+    )
+  end
+
+  ########################################################################################
+
   ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
 
@@ -215,7 +243,7 @@ defmodule Syncordian.Peer do
 
   ########################################################################################
 
-  ################################ Peer Broadcast utility ################################
+  ################################ Peer utility ################################
 
   # Function to filter weather the peer is the current peer, the supervisor or the storage
   @spec should_filter_out?(any, pid) :: boolean
@@ -242,35 +270,31 @@ defmodule Syncordian.Peer do
     end)
   end
 
-  ########################################################################################
-
-  ################################ Peer Live View utility ################################
-  @doc """
-    This function send a messages to the sending peer to update the commit list of the
-    line that was inserted in the document of the receiving peer. As it just receive the
-    peer id it has to search the pid of the sending peer in the global registry.
-    When the message is received by the sending peer it is handled by the loop function
-    of the peer module.
-  """
-  @spec send_confirmation_line_insertion(
-          receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
-          sending_peer_id :: Syncordian.Basic_Types.peer_id(),
-          inserted_line_id :: Syncordian.Basic_Types.line_id()
+  @spec add_valid_line_to_document_and_loop(
+          peer(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Basic_Types.peer_id()
         ) :: any
-  def send_confirmation_line_insertion(
-        receiving_peer_id,
-        sending_peer_id,
-        inserted_line_id
-      ) do
-    sending_peer_pid = :global.whereis_name(sending_peer_id)
+  defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id) do
+    document = get_peer_document(peer)
 
-    send(
-      sending_peer_pid,
-      {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}}
+    send_confirmation_line_insertion(
+      get_peer_id(peer),
+      incoming_peer_id,
+      get_line_id(line)
     )
+
+    add_line_to_document(line, document)
+    |> update_peer_document(peer)
+    |> tick_projection_peer_clock(incoming_peer_id)
+    |> loop
   end
 
   ########################################################################################
+
+  # TODO: I think that all the functions defined above could be moved into a different
+  # modules, the peer module should only contain the loop function and the functions that
+  # are used to interact with the loop function. But I am not sure about this.
 
   @doc """
     This function is the main loop of the peer, it receives messages and calls the
@@ -293,7 +317,8 @@ defmodule Syncordian.Peer do
           _ ->
             peer_id = get_peer_id(peer)
 
-            nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+            nicolas_index =
+              translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
             peer =
               document
@@ -324,7 +349,9 @@ defmodule Syncordian.Peer do
         document = get_peer_document(peer)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
-        [left_parent, right_parent] = get_document_line_fathers(document, current_document_line)
+
+        [left_parent, right_parent] =
+          get_document_line_fathers(document, current_document_line)
 
         valid_signature? =
           check_signature_delete(
@@ -382,7 +409,6 @@ defmodule Syncordian.Peer do
           get_parents_by_index(
             document,
             nicolas_index
-            # new_index
           )
 
         new_line =
@@ -401,7 +427,11 @@ defmodule Syncordian.Peer do
 
         current_vector_clock = peer(peer, :vector_clock)
 
-        send(get_peer_pid(peer), {:send_insert_broadcast, {new_line, current_vector_clock}})
+        send(
+          get_peer_pid(peer),
+          {:send_insert_broadcast, {new_line, current_vector_clock}}
+        )
+
         loop(peer)
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
@@ -423,8 +453,6 @@ defmodule Syncordian.Peer do
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_peer_vector_clock(peer)
 
-        # Process.sleep(10)
-
         clock_distance_usual =
           distance_between_vector_clocks(
             local_vector_clock,
@@ -441,7 +469,6 @@ defmodule Syncordian.Peer do
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            # debug_function.(1)
             IO.inspect("Clock distance is greater than 1 insertion")
             send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
@@ -457,29 +484,6 @@ defmodule Syncordian.Peer do
             line_index = get_document_new_index_by_incoming_line_id(line, document)
             [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
-            debug_function = fn x ->
-              local_peer_id = get_peer_id(peer)
-              line_id = get_line_id(line)
-
-              file_name =
-                "debug/local:#{local_peer_id}_" <>
-                  "#{line_id}_incoming:#{incoming_peer_id}" <>
-                  "_insertions:#{get_line_insertion_attempts(line)}"
-
-              file_content =
-                "Reason  : #{x}\n" <>
-                  "Local   : #{Enum.join(local_vector_clock, ", ")}\n" <>
-                  "Incoming: #{Enum.join(incoming_vc, ", ")}\n" <>
-                  "Clock Distance: #{clock_distance}\n" <>
-                  "Line index: #{line_index} \n" <>
-                  "Projection Distance: #{projection_distance(local_vector_clock, incoming_vc)}\n" <>
-                  "Left line content : #{line_to_string(left_parent)}\n" <>
-                  "Line content      : #{line_to_string(line)}\n" <>
-                  "Right line content: #{line_to_string(right_parent)}"
-
-              File.write!(file_name, file_content)
-            end
-
             case order_vc do
               # local_vc < incoming_vc
               true ->
@@ -494,25 +498,22 @@ defmodule Syncordian.Peer do
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
-                    send_confirmation_line_insertion(
-                      get_peer_id(peer),
-                      incoming_peer_id,
-                      get_line_id(line)
-                    )
-
-                    add_line_to_document(line, document)
-                    |> update_peer_document(peer)
-                    |> tick_projection_peer_clock(incoming_peer_id)
-                    |> loop
+                    add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   {false, false} ->
-                    # TODO: Nothing is happening here
-                    debug_function.("Requesting requeue")
-                    # new_line = tick_line_insertion_attempts(line)
-                    # send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
+                    IO.puts("Requesting requeue not valid line but attempts not reached yet")
+                    new_line = tick_line_insertion_attempts(line)
+
+                    send(
+                      get_peer_pid(peer),
+                      {:receive_insert_broadcast, new_line, incoming_vc}
+                    )
+
                     loop(peer)
 
                   {false, true} ->
+                    # The line has reach the maximum number of attempts and it was not
+                    # possible to check if the line is valid or not.
                     loop(peer)
                 end
 
@@ -527,19 +528,9 @@ defmodule Syncordian.Peer do
 
                 case valid_line? do
                   true ->
-                    # TODO: This is repeted code! Should be a function!
                     IO.inspect("Stash process succeeded")
 
-                    send_confirmation_line_insertion(
-                      get_peer_id(peer),
-                      incoming_peer_id,
-                      get_line_id(line)
-                    )
-
-                    add_line_to_document(line, document)
-                    |> update_peer_document(peer)
-                    |> tick_projection_peer_clock(incoming_peer_id)
-                    |> loop
+                    add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   false ->
                     IO.inspect("Stash process failed")

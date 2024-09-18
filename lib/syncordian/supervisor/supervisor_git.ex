@@ -152,10 +152,7 @@ defmodule Syncordian.Supervisor do
 
     ## Parameters
 
-    - `authors_list`: A    Enum.each(edits, fn edit ->
-      Process.sleep(200)
-      parse_edit(edit, peer_pid)
-    end) list of author IDs representing the authors in the system.
+    - `authors_list`: A list of author IDs representing the authors in the system.
 
     ## Returns
 
@@ -240,7 +237,6 @@ defmodule Syncordian.Supervisor do
 
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
           send(self(), {:send_all_commits, live_view_pid})
-          # Process.sleep(100)
           supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")

@@ -36,7 +36,7 @@ defmodule Syncordian.Peer do
             vector_clock: [integer]
           )
 
-  #################################### Peer Interface ####################################
+  ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
 
   # This is a private function used to get the pid of the peer.
@@ -52,7 +52,7 @@ defmodule Syncordian.Peer do
   defp get_peer_document(peer), do: peer(peer, :document)
 
   # Getter for the current vector clock of the peer
-  @spec get_peer_vector_clock(peer()) :: peer()
+  @spec get_peer_vector_clock(peer()) :: Syncordian.Basic_Types.vector_clock()
   defp get_peer_vector_clock(peer), do: peer(peer, :vector_clock)
 
   # This is a private function used to get the number of marked as deleted lines of the
@@ -77,18 +77,18 @@ defmodule Syncordian.Peer do
         peer_id: peer_id
       )
 
+  # This function check is the deleted lines limit has been reached by the peer, in
+  # theory this function should trigger the update mechanism of the peer. This feature
+  # is not implemented yet. Instead it just prints a message in the console and continues
+  # as usual.
+  @spec check_deleted_lines_limit(peer()) :: any()
   defp check_deleted_lines_limit(peer) do
-    case get_peer_deleted_count(peer) > @delete_limit do
-      true ->
-        # TODO: HERE call the mechanism of broadcast consensus -> update
-        IO.puts(" \n ________________________________________________________ \n ")
-        IO.puts(" The deleted lines limit has been reached by #{get_peer_id(peer)} ")
-        IO.puts(" ___________________________________________________________ \n ")
-        loop(peer)
-
-      _ ->
-        loop(peer)
+    if get_peer_deleted_count(peer) > @delete_limit do
+      # TODO: HERE call the mechanism of broadcast consensus -> update
+      IO.puts(" The deleted lines limit has been reached by #{get_peer_id(peer)} ")
     end
+
+    loop(peer)
   end
 
   # This is a private function used to update the deleted count of the peer.
@@ -122,8 +122,21 @@ defmodule Syncordian.Peer do
     peer(peer, vector_clock: new_vector_clock)
   end
 
+  # This is a private function used to instance the initial document of the peer within
+  # the record peer.
+  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: peer()
+  defp define(peer_id, network_size) do
+    initial_peer_document = [
+      create_infimum_line(peer_id, network_size),
+      create_supremum_line(peer_id, network_size)
+    ]
+
+    peer(peer_id: peer_id, document: initial_peer_document)
+  end
+
   ########################################################################################
 
+  ################################## Peer Loop Interface #################################
   @doc """
     This function prints the whole document as a list of lists by sending a message to the
     loop peer function with the atom :print.
@@ -131,8 +144,20 @@ defmodule Syncordian.Peer do
   @spec raw_print(pid) :: any
   def raw_print(pid), do: send(pid, {:print, :document})
 
+  @doc """
+    This function prints in console the whole document no matter if the status of the line
+    each line of the document is printed in a new line as a string.
+  """
+  @spec print_content(pid) :: any
   def print_content(pid), do: send(pid, {:print_content, :document})
 
+  @doc """
+    This function saves the content of the document of the peer in a file with the name
+    document_peer_{peer_id} where peer_id is the id of the peer. The file is saved in the
+    debug/documents folder. This function filter the first and last line of the document
+    and the lines that are marked as tombstone.
+  """
+  @spec save_content(pid) :: any
   def save_content(pid), do: send(pid, {:save_content, :document})
 
   @doc """
@@ -146,7 +171,10 @@ defmodule Syncordian.Peer do
   @spec delete_line(pid, integer, integer, integer, integer) :: any
   def delete_line(pid, index_position, test_index, global_position, current_delete_ops),
     do:
-      send(pid, {:delete_line, [index_position, test_index, global_position, current_delete_ops]})
+      send(
+        pid,
+        {:delete_line, [index_position, test_index, global_position, current_delete_ops]}
+      )
 
   @doc """
     This function inserts a content at the given index and a pid by sending a message to
@@ -168,9 +196,9 @@ defmodule Syncordian.Peer do
       )
 
   @doc """
-    This function starts a peer with the given peer_id and registers it in the global registry.
-    The returned content is the pid of the peer. The pid is the corresponding content of the
-    pid of the spawned process.
+    This function starts a peer with the given peer_id and registers it in the global
+    registry. The returned content is the pid of the peer. The pid is the corresponding
+    content of the pid of the spawned process.
   """
   @spec start(Syncordian.Basic_Types.peer_id(), integer) :: pid
   def start(peer_id, network_size) do
@@ -179,6 +207,70 @@ defmodule Syncordian.Peer do
     save_peer_pid(pid, network_size, peer_id)
     pid
   end
+
+  # This is a private function used to save the pid of the peer in the record.
+  @spec save_peer_pid(pid, integer, integer) :: any
+  defp save_peer_pid(pid, network_size, peer_id),
+    do: send(pid, {:save_pid, {pid, network_size, peer_id}})
+
+  ########################################################################################
+
+  ################################ Peer Broadcast utility ################################
+
+  # Function to filter weather the peer is the current peer, the supervisor or the storage
+  @spec should_filter_out?(any, pid) :: boolean
+  defp should_filter_out?(name, peer_pid) do
+    pid = :global.whereis_name(name)
+
+    pid == peer_pid or
+      pid == :global.whereis_name(:supervisor) or
+      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
+  end
+
+  # Function to perform the filtering and broadcast messages to all peers in the network
+  # except the current peer. or the supervisor.
+  @spec perform_broadcast(peer(), any) :: any
+  defp perform_broadcast(peer, message) do
+    peer_pid = get_peer_pid(peer)
+
+    :global.registered_names()
+    |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
+    |> Enum.each(fn name ->
+      pid = :global.whereis_name(name)
+      send(pid, message)
+      # Process.send_after(pid, message, Enum.random(1..20))
+    end)
+  end
+
+  ########################################################################################
+
+  ################################ Peer Live View utility ################################
+  @doc """
+    This function send a messages to the sending peer to update the commit list of the
+    line that was inserted in the document of the receiving peer. As it just receive the
+    peer id it has to search the pid of the sending peer in the global registry.
+    When the message is received by the sending peer it is handled by the loop function
+    of the peer module.
+  """
+  @spec send_confirmation_line_insertion(
+          receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
+          sending_peer_id :: Syncordian.Basic_Types.peer_id(),
+          inserted_line_id :: Syncordian.Basic_Types.line_id()
+        ) :: any
+  def send_confirmation_line_insertion(
+        receiving_peer_id,
+        sending_peer_id,
+        inserted_line_id
+      ) do
+    sending_peer_pid = :global.whereis_name(sending_peer_id)
+
+    send(
+      sending_peer_pid,
+      {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}}
+    )
+  end
+
+  ########################################################################################
 
   @doc """
     This function is the main loop of the peer, it receives messages and calls the
@@ -486,64 +578,5 @@ defmodule Syncordian.Peer do
         IO.puts("Wrong message")
         loop(peer)
     end
-  end
-
-  defp should_filter_out?(name, peer_pid) do
-    pid = :global.whereis_name(name)
-
-    pid == peer_pid or
-      pid == :global.whereis_name(:supervisor) or
-      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
-  end
-
-  # Function to perform the filtering and sending messages
-  defp perform_broadcast(peer, message) do
-    peer_pid = get_peer_pid(peer)
-
-    :global.registered_names()
-    |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
-    |> Enum.each(fn name ->
-      pid = :global.whereis_name(name)
-      send(pid, message)
-      # Process.send_after(pid, message, Enum.random(1..20))
-    end)
-  end
-
-  # This is a private function used to save the pid of the peer in the record.
-  @spec save_peer_pid(pid, integer, integer) :: any
-  defp save_peer_pid(pid, network_size, peer_id),
-    do: send(pid, {:save_pid, {pid, network_size, peer_id}})
-
-  # This is a private function used to instance the initial document of the peer within
-  # the record peer.
-  @spec define(Syncordian.Basic_Types.peer_id(), integer) :: peer()
-  defp define(peer_id, network_size) do
-    initial_peer_document = [
-      create_infimum_line(peer_id, network_size),
-      create_supremum_line(peer_id, network_size)
-    ]
-
-    peer(peer_id: peer_id, document: initial_peer_document)
-  end
-
-  @doc """
-    This function send a messages to the sending peer to update the commit list of the
-    line that was inserted in the document of the receiving peer. As it just receive the
-    peer id it has to search the pid of the sending peer in the global registry.
-    When the message is received by the sending peer it is handled by the loop function
-    of the peer module.
-  """
-  @spec send_confirmation_line_insertion(
-          receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
-          sending_peer_id :: Syncordian.Basic_Types.peer_id(),
-          inserted_line_id :: Syncordian.Basic_Types.line_id()
-        ) :: any
-  def send_confirmation_line_insertion(receiving_peer_id, sending_peer_id, inserted_line_id) do
-    sending_peer_pid = :global.whereis_name(sending_peer_id)
-
-    send(
-      sending_peer_pid,
-      {:receive_confirmation_line_insertion, {inserted_line_id, receiving_peer_id}}
-    )
   end
 end

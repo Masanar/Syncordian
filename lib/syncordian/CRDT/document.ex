@@ -88,7 +88,7 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.document(),
           Syncordian.Line_Object.line()
         ) ::
-          {Syncordian.Line_Object.line(), Syncordian.Line_Object.line()}
+          [Syncordian.Line_Object.line()]
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
@@ -188,15 +188,19 @@ defmodule Syncordian.Document do
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
 
-  @spec stash_document_lines(
+  @spec stash_document_lines_insert(
           document :: Syncordian.Basic_Types.document(),
           incoming_line :: Syncordian.Line_Object.line(),
           local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
           incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
         ) :: {boolean(), {integer(), integer()}}
-  def stash_document_lines(document, incoming_line, local_peer_vc, incoming_peer_vc) do
-    # TODO: There are things here that are borrables(translate this word)
-    # HERE
+  def stash_document_lines_insert(
+        document,
+        incoming_line,
+        local_peer_vc,
+        incoming_peer_vc
+      ) do
+    # TODO: There are things here that are removable
     # Les't try this:
     # 1. Calculate the number of lines to stash by comparing the incoming_peer_vc with the
     #    local_peer_vc in the projection of the incoming_peer_id in the local_peer_vc.
@@ -208,45 +212,92 @@ defmodule Syncordian.Document do
 
     window_size = projection_distance(local_peer_vc, incoming_peer_vc)
     document_length = get_document_length(document) + 1
-    # HERE this was afected due to the changes marks as HERE
     window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
-    new_document = add_element_list_in_given_index(document, window_center - 1, incoming_line)
+
+    new_document =
+      add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
     window_stash_check_signature(
-      {document_length, window_size, window_center, new_document, incoming_line},
-      -1,
-      1
+      {document_length, window_size, window_center, new_document, incoming_line,
+       get_trivial_signature()}
+    )
+  end
+
+  @spec stash_document_lines_delete(
+          document :: Syncordian.Basic_Types.document(),
+          line_deleted_id :: Syncordian.Basic_Types.line_id(),
+          line_delete_signature :: Syncordian.Basic_Types.signature(),
+          local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
+          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
+        ) :: {boolean(), {integer(), integer()}}
+  def stash_document_lines_delete(
+        document,
+        line_deleted_id,
+        line_delete_signature,
+        local_peer_vc,
+        incoming_peer_vc
+      ) do
+    window_size = projection_distance(local_peer_vc, incoming_peer_vc)
+    document_length = get_document_length(document) + 1
+
+    window_center =
+      get_document_new_index_by_incoming_line_id_aux(
+        line_deleted_id,
+        document,
+        0
+      )
+
+    window_stash_check_signature(
+      {document_length, window_size, window_center, document, get_empty_line(),
+       line_delete_signature}
     )
   end
 
   # This function checks if the incoming line is checkable in the window of the document
   # defined by the window_center, window_size, and the document_length. It need to check
-  # any window size until the window_size attribute in the available parte of the document,
-  # based on the document_length, window_size and window center. If the incoming line
-  # is checkable, it returns true, otherwise, it returns false.
+  # any window size until the window_size attribute in the available part of the document,
+  # based on the document_length, window_size and window center. If the incoming line is
+  # checkable, it returns true, otherwise, it returns false. Additionally, it returns the
+  # left and right shift of the window.
+  #
+  # This function is used by the stash_document_lines_insert and
+  # stash_document_lines_delete, to check if the incoming line is valid to be inserted or
+  # deleted. The difference in the call of this function is that the
+  # stash_document_lines_insert uses the incoming_line and the stash_document_lines_delete
+  # uses the line_delete_signature.
   @spec window_stash_check_signature(
           fix_parameter :: {
             integer(),
             integer(),
             integer(),
             Syncordian.Basic_Types.document(),
-            Syncordian.Line_Object.line()
+            Syncordian.Line_Object.line(),
+            Syncordian.Basic_Types.signature()
           },
           left_shift :: integer(),
           right_shift :: integer()
         ) :: {boolean(), {integer(), integer()}}
 
   defp window_stash_check_signature(
-         fix_parameter = {document_length, window_size, window_center, document, incoming_line},
-         left_shift,
-         right_shift
+         fix_parameter =
+           {document_length, window_size, window_center, document, incoming_line,
+            line_delete_signature},
+         left_shift \\ -1,
+         right_shift \\ 1
        ) do
     left_parent = get_document_line_by_index(document, window_center + left_shift)
     right_parent = get_document_line_by_index(document, window_center + right_shift)
 
     not_found_value = {false, {0, 0}}
 
-    case check_signature_insert(left_parent, incoming_line, right_parent) do
+    check_value =
+      if is_empty_line(incoming_line) do
+        check_signature_delete(line_delete_signature, left_parent, right_parent)
+      else
+        check_signature_insert(left_parent, incoming_line, right_parent)
+      end
+
+    case check_value do
       true ->
         {true, {left_shift + window_center, right_shift + window_center}}
 
@@ -280,8 +331,6 @@ defmodule Syncordian.Document do
           {false, true} ->
             result_right
 
-          # This match may never happen, if so, it is a bug in the code
-          # {true, true} -> ...
           _ ->
             IO.inspect("Error in the window_stash_check_signature")
             result_right

@@ -7,6 +7,25 @@ defmodule Syncordian.Byzantine do
   """
   import Syncordian.Line_Object
 
+  # This function defines the hash function that is used to create the signatures
+  defp hash_function(content) do
+    :crypto.hash(:sha256, content) |> Base.encode16()
+  end
+
+  @doc """
+    This function is important just for seek of keeping the types consistent. The content
+    is just the name of my dog 🐕
+  """
+  @spec get_trivial_signature() :: Syncordian.Basic_Types.signature()
+  def get_trivial_signature(), do:  "Omega"
+
+  @doc """
+    This function checks if the signature is trivial by comparing it with the trivial
+    signature.
+  """
+  @spec is_trivial_signature(Syncordian.Basic_Types.signature()) :: boolean()
+  def is_trivial_signature(signature), do: signature == get_trivial_signature()
+
   @doc """
     This function checks if the delete signature is valid by comparing it with the
     signature created by the left parent and right parent content. Because the delete
@@ -40,7 +59,7 @@ defmodule Syncordian.Byzantine do
     left_parent_signature = get_signature(left_parent)
     right_parent_signature = get_signature(right_parent)
     element = "#{left_parent_signature}#{right_parent_signature}"
-    :crypto.hash(:sha256, element) |> Base.encode16()
+    hash_function(element)
   end
 
   @doc """
@@ -113,6 +132,6 @@ defmodule Syncordian.Byzantine do
         peer_id
       ) do
     element = "#{left_parent_signature}#{new_content}#{right_parent_signature}#{peer_id}"
-    :crypto.hash(:sha256, element) |> Base.encode16()
+    hash_function(element)
   end
 end

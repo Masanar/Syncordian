@@ -127,7 +127,7 @@ defmodule Syncordian.Supervisor do
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    Process.sleep(1000)
+    Process.sleep(300)
     author_id
   end
 

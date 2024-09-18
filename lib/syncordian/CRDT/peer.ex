@@ -237,8 +237,8 @@ defmodule Syncordian.Peer do
     |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
-      send(pid, message)
-      # Process.send_after(pid, message, Enum.random(1..20))
+      # send(pid, message)
+      Process.send_after(pid, message, Enum.random(1..20))
     end)
   end
 
@@ -287,6 +287,24 @@ defmodule Syncordian.Peer do
     |> loop
   end
 
+  @spec delete_valid_line_to_document_and_loop(
+          peer :: peer(),
+          document :: Syncordian.Basic_Types.document(),
+          line_deleted_id :: Syncordian.Basic_Types.line_id()
+        ) :: any
+  defp delete_valid_line_to_document_and_loop(peer, document, line_deleted_id) do
+    peer_id = get_peer_id(peer)
+    index_position = get_document_index_by_line_id(document, line_deleted_id)
+
+    peer =
+      document
+      |> update_document_line_status(index_position, :tombstone)
+      |> update_document_line_peer_id(index_position, peer_id)
+      |> update_peer_document(peer)
+
+    tick_peer_deleted_count(peer)
+  end
+
   ########################################################################################
 
   # TODO: I think that all the functions defined above could be moved into a different
@@ -317,6 +335,9 @@ defmodule Syncordian.Peer do
             nicolas_index =
               translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
+            IO.puts("Vector clock after deletion")
+            IO.inspect(get_peer_vector_clock(peer))
+
             peer =
               document
               |> update_document_line_status(nicolas_index, :tombstone)
@@ -332,17 +353,21 @@ defmodule Syncordian.Peer do
               get_document_line_fathers(document, line_deleted)
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
+            peer_vector_clock = get_peer_vector_clock(peer)
+            IO.puts("Vector clock before deletion")
+            IO.inspect(peer_vector_clock)
 
             send(
               get_peer_pid(peer),
-              {:send_delete_broadcast, {line_deleted_id, line_delete_signature, 0}}
+              {:send_delete_broadcast,
+               {line_deleted_id, line_delete_signature, 0, peer_vector_clock}}
             )
 
             tick_peer_deleted_count(peer)
         end
 
-      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, attempt_count}} ->
-        # TODO: (question) Should we keep the delete attempt count? I think that YES
+      {:receive_delete_broadcast,
+       {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
@@ -361,27 +386,36 @@ defmodule Syncordian.Peer do
 
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
-            index_position = get_document_index_by_line_id(document, line_deleted_id)
-            peer_id = get_peer_id(peer)
-
-            peer =
-              document
-              |> update_document_line_status(index_position, :tombstone)
-              |> update_document_line_peer_id(index_position, peer_id)
-              |> update_peer_document(peer)
-
-            tick_peer_deleted_count(peer)
+            delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
           {false, false} ->
-            IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
+            local_vector_clock = get_peer_vector_clock(peer)
 
-            send(
-              get_peer_pid(peer),
-              {:receive_delete_broadcast,
-               {line_deleted_id, line_delete_signature, attempt_count + 1}}
-            )
+            {valid_line?, _} =
+              stash_document_lines_delete(
+                document,
+                line_deleted_id,
+                line_delete_signature,
+                local_vector_clock,
+                incoming_vc
+              )
 
-            loop(peer)
+            case valid_line? do
+              true ->
+                IO.inspect("Deleted Stash process succeeded")
+                delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
+
+              false ->
+                IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
+
+                send(
+                  get_peer_pid(peer),
+                  {:receive_delete_broadcast,
+                   {line_deleted_id, line_delete_signature, attempt_count + 1, incoming_vc}}
+                )
+
+                loop(peer)
+            end
 
           {_, true} ->
             IO.inspect(
@@ -396,6 +430,7 @@ defmodule Syncordian.Peer do
         loop(peer)
 
       # This correspond to the insert process do it by the peer
+      # TODO: Delete the test_index, the global_position and current_delete_ops
       {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
@@ -422,7 +457,7 @@ defmodule Syncordian.Peer do
           |> update_peer_document(peer)
           |> tick_individual_peer_clock
 
-        current_vector_clock = peer(peer, :vector_clock)
+        current_vector_clock = get_peer_vector_clock(peer)
 
         send(
           get_peer_pid(peer),
@@ -466,7 +501,7 @@ defmodule Syncordian.Peer do
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            IO.inspect("Clock distance is greater than 1 insertion")
+            # IO.inspect("Clock distance is greater than 1 insertion")
             send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
@@ -523,7 +558,12 @@ defmodule Syncordian.Peer do
                 IO.inspect("Wrong order of the vector clocks")
 
                 {valid_line?, _} =
-                  stash_document_lines_insert(document, line, local_vector_clock, incoming_vc)
+                  stash_document_lines_insert(
+                    document,
+                    line,
+                    local_vector_clock,
+                    incoming_vc
+                  )
 
                 case valid_line? do
                   true ->
@@ -564,8 +604,9 @@ defmodule Syncordian.Peer do
         |> update_peer_pid(peer)
         |> loop
 
-      _ ->
+      test ->
         IO.puts("Wrong message")
+        IO.inspect(test)
         loop(peer)
     end
   end

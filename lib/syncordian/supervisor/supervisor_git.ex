@@ -127,7 +127,7 @@ defmodule Syncordian.Supervisor do
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    Process.sleep(300)
+    Process.sleep(1000)
     author_id
   end
 
@@ -152,7 +152,10 @@ defmodule Syncordian.Supervisor do
 
     ## Parameters
 
-    - `authors_list`: A list of author IDs representing the authors in the system.
+    - `authors_list`: A    Enum.each(edits, fn edit ->
+      Process.sleep(200)
+      parse_edit(edit, peer_pid)
+    end) list of author IDs representing the authors in the system.
 
     ## Returns
 
@@ -196,7 +199,7 @@ defmodule Syncordian.Supervisor do
     commit_group_map = group_by_commit(parsed_git_log)
 
     # Instance all the 30 peers independent  the number of commits in the test file
-    temporal_git_log = parser_git_log("ohmyzsh_README_full_git_log")
+    temporal_git_log = parser_git_log("ohmyzsh_README_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)
     {pid_list_author_peers, map_peer_id_authors} = init_peers(authors_list)
 
@@ -237,6 +240,7 @@ defmodule Syncordian.Supervisor do
 
           start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
           send(self(), {:send_all_commits, live_view_pid})
+          # Process.sleep(100)
           supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")

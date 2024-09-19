@@ -84,6 +84,8 @@ defmodule SyncordianWeb.Supervisor do
           IO.inspect("Sending next commit")
           supervisor_pid = socket.assigns.supervisor_pid
           send(supervisor_pid, {:send_next_commit, self()})
+          # PhoenixLiveSession.put_session(socket, "disable_next_commit", true)
+          # Process.send_after(self(), :enable_button, @commit_button_disabled_time)
           socket
         end
       else

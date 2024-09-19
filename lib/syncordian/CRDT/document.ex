@@ -88,7 +88,7 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.document(),
           Syncordian.Line_Object.line()
         ) ::
-          [Syncordian.Line_Object.line()]
+          {Syncordian.Line_Object.line(), Syncordian.Line_Object.line()}
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
@@ -188,19 +188,15 @@ defmodule Syncordian.Document do
     Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   end
 
-  @spec stash_document_lines_insert(
+  @spec stash_document_lines(
           document :: Syncordian.Basic_Types.document(),
           incoming_line :: Syncordian.Line_Object.line(),
           local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
           incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
         ) :: {boolean(), {integer(), integer()}}
-  def stash_document_lines_insert(
-        document,
-        incoming_line,
-        local_peer_vc,
-        incoming_peer_vc
-      ) do
-    # TODO: There are things here that are removable
+  def stash_document_lines(document, incoming_line, local_peer_vc, incoming_peer_vc) do
+    # TODO: There are things here that are borrables(translate this word)
+    # HERE
     # Les't try this:
     # 1. Calculate the number of lines to stash by comparing the incoming_peer_vc with the
     #    local_peer_vc in the projection of the incoming_peer_id in the local_peer_vc.
@@ -212,92 +208,45 @@ defmodule Syncordian.Document do
 
     window_size = projection_distance(local_peer_vc, incoming_peer_vc)
     document_length = get_document_length(document) + 1
+    # HERE this was afected due to the changes marks as HERE
     window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
-
-    new_document =
-      add_element_list_in_given_index(document, window_center - 1, incoming_line)
+    new_document = add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
     window_stash_check_signature(
-      {document_length, window_size, window_center, new_document, incoming_line,
-       get_trivial_signature()}
-    )
-  end
-
-  @spec stash_document_lines_delete(
-          document :: Syncordian.Basic_Types.document(),
-          line_deleted_id :: Syncordian.Basic_Types.line_id(),
-          line_delete_signature :: Syncordian.Basic_Types.signature(),
-          local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
-          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
-        ) :: {boolean(), {integer(), integer()}}
-  def stash_document_lines_delete(
-        document,
-        line_deleted_id,
-        line_delete_signature,
-        local_peer_vc,
-        incoming_peer_vc
-      ) do
-    window_size = projection_distance(local_peer_vc, incoming_peer_vc)
-    document_length = get_document_length(document) + 1
-
-    window_center =
-      get_document_new_index_by_incoming_line_id_aux(
-        line_deleted_id,
-        document,
-        0
-      )
-
-    window_stash_check_signature(
-      {document_length, window_size, window_center, document, get_empty_line(),
-       line_delete_signature}
+      {document_length, window_size, window_center, new_document, incoming_line},
+      -1,
+      1
     )
   end
 
   # This function checks if the incoming line is checkable in the window of the document
   # defined by the window_center, window_size, and the document_length. It need to check
-  # any window size until the window_size attribute in the available part of the document,
-  # based on the document_length, window_size and window center. If the incoming line is
-  # checkable, it returns true, otherwise, it returns false. Additionally, it returns the
-  # left and right shift of the window.
-  #
-  # This function is used by the stash_document_lines_insert and
-  # stash_document_lines_delete, to check if the incoming line is valid to be inserted or
-  # deleted. The difference in the call of this function is that the
-  # stash_document_lines_insert uses the incoming_line and the stash_document_lines_delete
-  # uses the line_delete_signature.
+  # any window size until the window_size attribute in the available parte of the document,
+  # based on the document_length, window_size and window center. If the incoming line
+  # is checkable, it returns true, otherwise, it returns false.
   @spec window_stash_check_signature(
           fix_parameter :: {
             integer(),
             integer(),
             integer(),
             Syncordian.Basic_Types.document(),
-            Syncordian.Line_Object.line(),
-            Syncordian.Basic_Types.signature()
+            Syncordian.Line_Object.line()
           },
           left_shift :: integer(),
           right_shift :: integer()
         ) :: {boolean(), {integer(), integer()}}
 
   defp window_stash_check_signature(
-         fix_parameter =
-           {document_length, window_size, window_center, document, incoming_line,
-            line_delete_signature},
-         left_shift \\ -1,
-         right_shift \\ 1
+         fix_parameter = {document_length, window_size, window_center, document, incoming_line},
+         left_shift,
+         right_shift
        ) do
     left_parent = get_document_line_by_index(document, window_center + left_shift)
     right_parent = get_document_line_by_index(document, window_center + right_shift)
 
     not_found_value = {false, {0, 0}}
 
-    check_value =
-      if is_empty_line(incoming_line) do
-        check_signature_delete(line_delete_signature, left_parent, right_parent)
-      else
-        check_signature_insert(left_parent, incoming_line, right_parent)
-      end
-
-    case check_value do
+    case check_signature_insert(left_parent, incoming_line, right_parent) do
       true ->
         {true, {left_shift + window_center, right_shift + window_center}}
 
@@ -331,6 +280,8 @@ defmodule Syncordian.Document do
           {false, true} ->
             result_right
 
+          # This match may never happen, if so, it is a bug in the code
+          # {true, true} -> ...
           _ ->
             IO.inspect("Error in the window_stash_check_signature")
             result_right
@@ -393,30 +344,118 @@ defmodule Syncordian.Document do
     end
   end
 
-  # The -1 is because the last line is the supremum
-  def translate_git_index_to_syncordian_index([], 0, 0, index), do: index - 1
+  def get_number_of_tombstones_before_index(document, index) do
+    Enum.reduce(Enum.take(document, index + 1), 0, fn line, acc ->
+      if get_line_status(line) == :tombstone do
+        acc + 1
+      else
+        acc
+      end
+    end)
+  end
 
-  def translate_git_index_to_syncordian_index([h | t], 0, 0, index) do
-    line_status = get_line_status(h)
+  def check_until_no_tombstone(document, index) do
+    check_until_no_tombstone_aux(Enum.drop(document, index), index)
+  end
 
-    case line_status do
-      :tombstone -> translate_git_index_to_syncordian_index(t, 0, 0, index + 1)
-      _ -> index
+  defp check_until_no_tombstone_aux([], index), do: index
+
+  defp check_until_no_tombstone_aux([head | tail], index) do
+    case get_line_status(head) do
+      :tombstone ->
+        check_until_no_tombstone_aux(tail, index + 1)
+
+      _ ->
+        index
     end
   end
 
-  def translate_git_index_to_syncordian_index([h | t], 0, tombstones, index),
-    do: translate_git_index_to_syncordian_index([h | t], tombstones, 0, index)
+  def get_number_of_tombstones_due_other_peers(
+        document,
+        global_position,
+        current_index
+      ) do
+    document
+    |> Enum.slice(global_position..current_index)
+    |> Enum.reduce(0, fn current_line, acc ->
+      if get_line_status(current_line) == :tombstone do
+        acc + 1
+      else
+        acc
+      end
+    end)
+  end
 
-  def translate_git_index_to_syncordian_index([h | t], target, tombstones, index) do
-    line_status = get_line_status(h)
+  def test(document, target_index) do
+    document_length = get_document_length(document)
+
+    case document_length < target_index do
+      true -> document_length
+      false -> test_aux(document, target_index, 0, 0, document_length)
+    end
+  end
+
+  def test_aux(_, target_index, target_index, return_index, _), do: return_index
+
+  def test_aux(_, _, _, return_index, document_length) when document_length == return_index,
+    do: return_index
+
+  def test_aux(
+        _document = [head | tail],
+        target_index,
+        count_no_tombstones,
+        return_index,
+        document_length
+      ) do
+
+    if target_index == 84 and document_length > 2200 do
+      IO.puts("")
+      IO.inspect("head: #{line_to_string(head)}")
+      IO.inspect("target_index: #{target_index}")
+      IO.inspect("count_no_tombstones : #{count_no_tombstones}")
+      IO.inspect("return_index: #{return_index}")
+      IO.inspect("document_length: #{document_length}")
+      IO.puts("")
+    end
+
+    line_status = get_line_status(head)
+    new_return_index = return_index + 1
 
     case line_status do
       :tombstone ->
-        translate_git_index_to_syncordian_index(t, target - 1, tombstones + 1, index + 1)
+        test_aux(tail, target_index, count_no_tombstones, new_return_index, document_length)
 
       _ ->
-        translate_git_index_to_syncordian_index(t, target - 1, tombstones, index + 1)
+        test_aux(tail, target_index, count_no_tombstones + 1, new_return_index, document_length)
     end
   end
+
+  # The -1 is because the last line is the supremum
+  def nicolas_tenia_razon([], 0, 0, index) ,do: index - 1
+  def nicolas_tenia_razon([h|t], 0, 0, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, 0, 0, index+1)
+    # case line_status do :tombstone ->  index
+    _ -> index
+    end
+  end
+  def nicolas_tenia_razon([h|t], 0, tombstones, index), do: nicolas_tenia_razon([h|t], tombstones, 0, index)
+  def nicolas_tenia_razon([h|t], target, tombstones, index) do
+    # IO.puts("-----------------------------------------------")
+    # IO.puts("h: #{line_to_string(h)}")
+    # IO.puts("target: #{target}")
+    # IO.puts("tombstones: #{tombstones}")
+    # IO.puts("index: #{index}")
+    # IO.puts("-----------------------------------------------")
+    line_status = get_line_status(h)
+    case line_status do :tombstone -> nicolas_tenia_razon(t, target-1, tombstones+1, index+1)
+    _ -> nicolas_tenia_razon(t, target-1, tombstones, index + 1)
+    end
+  end
+
+
 end

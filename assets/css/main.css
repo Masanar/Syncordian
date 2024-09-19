@@ -66,8 +66,7 @@
 
 @media (max-width: 768px) {
   .header-right {
-    display: none;
-    /* Hide the buttons when the screen width is less than 768px */
+    display: none; /* Hide the buttons when the screen width is less than 768px */
   }
 }
 
@@ -295,17 +294,14 @@ pre {
 }
 
 .main-container h1 {
-  margin-top: 10vh;
-  /* Default margin-top based on 10% of the viewport height */
+  margin-top: 10vh; /* Default margin-top based on 10% of the viewport height */
 
   @media (max-width: 1400px) {
-    margin-top: 15vh;
-    /* Adjust this value as necessary for smaller screens */
+    margin-top: 15vh; /* Adjust this value as necessary for smaller screens */
   }
 
   @media (max-width: 768px) {
-    margin-top: 10vh;
-    /* Adjust this value as necessary for smaller screens */
+    margin-top: 10vh; /* Adjust this value as necessary for smaller screens */
   }
 
 }
@@ -359,40 +355,4 @@ pre {
   display: flex;
   justify-content: flex-end;
   flex: 1;
-}
-
-.about-container {
-  font-family: Arial, sans-serif;
-  padding: 40px;
-}
-
-.about-section {
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  padding: 30px;
-  margin-bottom: 40px; /* Increased space between sections */
-  background-color: #f9f9f9;
-}
-
-.about-section h2 {
-  font-size: 2em; /* Increased size for section titles */
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.about-section p {
-  text-align: justify;
-  line-height: 1.8; /* Slightly increased line spacing for readability */
-  color: #555;
-}
-
-.about-section ul {
-  list-style-type: disc; /* Added bullets to the list */
-  padding-left: 40px; /* Increased padding to align bullets properly */
-  margin-top: 15px; /* Added space before the list */
-}
-
-.about-section li {
-  margin-bottom: 20px; /* Increased space between list items */
 }

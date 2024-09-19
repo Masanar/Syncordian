@@ -47,7 +47,7 @@
           </th>
         </tr>
       </thead>
-      <tbody id="lines" phx-update="replace">
+      <tbody id="lines" phx-hook="InfinityScroll" phx-update="replace">
         <%= for {line, index} <- Enum.with_index(@lines, 0) do %>
           <tr id={"line-#{line.line_id}"}>
             <td><%= index %></td>

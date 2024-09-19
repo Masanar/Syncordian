@@ -23,7 +23,8 @@ defmodule Syncordian.Peer do
     pid: None,
     deleted_count: 0,
     deleted_limit: @delete_limit,
-    vector_clock: []
+    vector_clock: [],
+    supervisor_pid: None
   )
 
   @type peer ::
@@ -33,11 +34,19 @@ defmodule Syncordian.Peer do
             pid: pid(),
             deleted_count: integer(),
             deleted_limit: integer(),
-            vector_clock: [integer]
+            vector_clock: [integer],
+            supervisor_pid: pid()
           )
 
   ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
+
+  @spec get_peer_supervisor_pid(peer()) :: pid()
+  defp get_peer_supervisor_pid(peer), do: peer(peer, :supervisor_pid)
+
+  @spec set_peer_supervisor_pid(peer(), pid()) :: peer()
+  defp set_peer_supervisor_pid(peer, supervisor_pid),
+    do: peer(peer, supervisor_pid: supervisor_pid)
 
   # This is a private function used to get the pid of the peer.
   @spec get_peer_pid(peer()) :: pid()
@@ -205,6 +214,7 @@ defmodule Syncordian.Peer do
     pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, network_size, peer_id)
+    Process.send_after(pid, {:register_supervisor_pid}, 100)
     pid
   end
 
@@ -237,7 +247,7 @@ defmodule Syncordian.Peer do
     |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
-      Process.send_after(pid, message, Enum.random(10..20))
+      Process.send_after(pid, message, Enum.random(50..70))
     end)
   end
 
@@ -376,10 +386,12 @@ defmodule Syncordian.Peer do
             right_parent
           )
 
+        supervisor_pid = get_peer_supervisor_pid(peer)
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
         # TODO: Refactor this code, probably to many cases
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
+            send(supervisor_pid, {:deleted_valid_line})
             delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
           {false, false} ->
@@ -396,11 +408,11 @@ defmodule Syncordian.Peer do
 
             case valid_line? do
               true ->
-                IO.inspect("Deleted Stash process succeeded")
+                send(supervisor_pid, {:delete_stash_succeeded})
                 delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
               false ->
-                IO.inspect("Requesting a deletion requeue: #{line_deleted_id}")
+                send(supervisor_pid, {:delete_request_requeue})
 
                 send(
                   get_peer_pid(peer),
@@ -486,6 +498,8 @@ defmodule Syncordian.Peer do
             incoming_peer_id
           )
 
+        supervisor_pid = get_peer_supervisor_pid(peer)
+
         clock_distance =
           if clock_distance_usual == 0 do
             projection_distance(local_vector_clock, incoming_vc)
@@ -495,7 +509,7 @@ defmodule Syncordian.Peer do
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            # IO.inspect("Clock distance is greater than 1 insertion")
+            send(supervisor_pid, {:insertion_clock_distance_greater_than_one})
             send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
@@ -524,15 +538,12 @@ defmodule Syncordian.Peer do
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
+                    send(supervisor_pid, {:insertion_valid_line})
                     add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   {false, false} ->
-                    IO.puts(
-                      "Requesting requeue not valid" <>
-                        "line but attempts not reached yet"
-                    )
-
                     new_line = tick_line_insertion_attempts(line)
+                    send(supervisor_pid, {:insertion_request_requeue})
 
                     send(
                       get_peer_pid(peer),
@@ -549,8 +560,6 @@ defmodule Syncordian.Peer do
 
               # local_vc > incoming_vc
               false ->
-                IO.inspect("Wrong order of the vector clocks")
-
                 {valid_line?, _} =
                   stash_document_lines_insert(
                     document,
@@ -561,8 +570,7 @@ defmodule Syncordian.Peer do
 
                 case valid_line? do
                   true ->
-                    IO.inspect("Stash process succeeded")
-
+                    send(supervisor_pid, {:insertion_stash_succeeded})
                     add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   false ->
@@ -596,6 +604,12 @@ defmodule Syncordian.Peer do
       {:save_pid, info} ->
         info
         |> update_peer_pid(peer)
+        |> loop
+
+      {:register_supervisor_pid} ->
+        supervisor_pid = :global.whereis_name(:supervisor)
+
+        set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
       test ->

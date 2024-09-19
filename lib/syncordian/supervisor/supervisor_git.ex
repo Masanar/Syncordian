@@ -30,7 +30,14 @@ defmodule Syncordian.Supervisor do
     commit_group_map: %{},
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
-    commit_counter: 0
+    commit_counter: 0,
+    delete_valid_counter: 0,
+    delete_stash_counter: 0,
+    delete_requeue_counter: 0,
+    insert_distance_greater_than_one: 0,
+    insert_request_counter: 0,
+    insert_stash_counter: 0,
+    insert_valid_counter: 0
   )
 
   @doc """
@@ -167,7 +174,6 @@ defmodule Syncordian.Supervisor do
   """
   def init_peers(authors_list) do
     network_size = authors_list |> length()
-
     values =
       authors_list
       |> Enum.reduce({0, [], %{}}, fn author_id, {acc, add_pid, map_ids} ->
@@ -187,6 +193,7 @@ defmodule Syncordian.Supervisor do
 
   """
   def init() do
+    # TODO: Delete the call to "test"
     # Delete the all the files of the debug directory
     delete_contents("debug/documents")
 
@@ -213,11 +220,19 @@ defmodule Syncordian.Supervisor do
     pid
   end
 
-  def test_init() do
-    parsed_git_log = parser_git_log("test_index")
-    _list_of_commits = get_list_of_commits("test_index")
-    _commit_group_map = group_by_commit(parsed_git_log)
+  def print_supervisor_metadata(supervisor) do
+    IO.puts("***********************************************************************************")
+    IO.puts("Supervisor metadata, all this data is accumulated across all the commits and peers")
+    IO.puts("Total valid deletions: #{supervisor(supervisor, :delete_valid_counter)}")
+    IO.puts("Total valid deletions stash: #{supervisor(supervisor, :delete_stash_counter)}")
+    IO.puts("Total requeued lines due deletion: #{supervisor(supervisor, :delete_requeue_counter)}")
+    IO.puts("Total valid insertions: #{supervisor(supervisor, :insert_valid_counter)}")
+    IO.puts("Total insertions received with distance greater than one: #{supervisor(supervisor, :insert_distance_greater_than_one)}")
+    IO.puts("Total requeued lines due insertion: #{supervisor(supervisor, :insert_request_counter)}")
+    IO.puts("Total valid insertion stash: #{supervisor(supervisor, :insert_stash_counter)}")
+    IO.puts("***********************************************************************************")
   end
+
 
   def supervisor_loop(supervisor) do
     receive do
@@ -240,6 +255,7 @@ defmodule Syncordian.Supervisor do
           supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")
+          print_supervisor_metadata(supervisor)
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end
@@ -266,6 +282,56 @@ defmodule Syncordian.Supervisor do
       {:kill} ->
         IO.inspect("Receive killing supervisor")
         kill()
+
+      {:deleted_valid_line} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            delete_valid_counter: supervisor(supervisor, :delete_valid_counter) + 1
+          )
+        )
+
+      {:delete_stash_succeeded} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            delete_stash_counter: supervisor(supervisor, :delete_stash_counter) + 1
+          )
+        )
+
+      {:delete_request_requeue} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            delete_requeue_counter: supervisor(supervisor, :delete_requeue_counter) + 1
+          )
+        )
+
+      {:insertion_clock_distance_greater_than_one} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            insert_distance_greater_than_one:
+              supervisor(supervisor, :insert_distance_greater_than_one) + 1
+          )
+        )
+
+      {:insertion_valid_line} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            insert_valid_counter: supervisor(supervisor, :insert_valid_counter) + 1
+          )
+        )
+
+      {:insertion_request_requeue} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            insert_request_counter: supervisor(supervisor, :insert_request_counter) + 1
+          )
+        )
+
+      {:insertion_stash_succeeded} ->
+        supervisor_loop(
+          supervisor(supervisor,
+            insert_stash_counter: supervisor(supervisor, :insert_stash_counter) + 1
+          )
+        )
 
       _ ->
         IO.puts("Unknown message")

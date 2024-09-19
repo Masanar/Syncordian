@@ -6,15 +6,16 @@ defmodule Syncordian.Line_Object do
   require Record
   import Syncordian.Utilities
   @min_float 130.0
-  # @max_float 230_584_300_921_369.0
   @max_float 230_584_300_921.0
-  # @max_float   230_584_300.0
-  @max_insertion_attempts 5
+  # This insertion attempt value is used by the insertion and delete operations
+  # to know when to stop trying to insert/delete a line. May be a better name should be
+  # used for this value.
+  @max_insertion_attempts 20
   Record.defrecord(:line,
     line_id: 0.0,
     content: "",
     signature: "",
-    peer_id: None,
+    peer_id: 9_999_999,
     status: :aura,
     insertion_attempts: 0,
     commit_at: []
@@ -32,7 +33,8 @@ defmodule Syncordian.Line_Object do
             commit_at: Syncordian.Basic_Types.commit_list()
           )
 
-  @spec get_commit_at(Syncordian.Line_Object.line()) :: Syncordian.Basic_Types.commit_list()
+  @spec get_commit_at(Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.commit_list()
   def get_commit_at(line),
     do: line(line, :commit_at)
 
@@ -95,14 +97,18 @@ defmodule Syncordian.Line_Object do
   @doc """
     This function is a getter for the peer_id field of a line record
   """
-  @spec get_line_peer_id(Syncordian.Line_Object.line()) :: Syncordian.Basic_Types.peer_id()
+  @spec get_line_peer_id(Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.peer_id()
   def get_line_peer_id(line),
     do: line(line, :peer_id)
 
   @doc """
     This function is a setter for the peer_id field of a line record
   """
-  @spec set_line_peer_id(line(), new_peer_id :: Syncordian.Basic_Types.peer_id()) :: line()
+  @spec set_line_peer_id(
+          line(),
+          new_peer_id :: Syncordian.Basic_Types.peer_id()
+        ) :: line()
   def set_line_peer_id(line, new_peer_id) do
     line(line, peer_id: new_peer_id)
   end
@@ -111,8 +117,10 @@ defmodule Syncordian.Line_Object do
     This function creates the infimum line for the given peer id
     that is the absolute first line within peer's document
   """
-  @spec create_infimum_line(Syncordian.Basic_Types.peer_id(), network_size :: integer) ::
-          Syncordian.Line_Object.line()
+  @spec create_infimum_line(
+          Syncordian.Basic_Types.peer_id(),
+          network_size :: integer
+        ) :: Syncordian.Line_Object.line()
   def create_infimum_line(peer_id, network_size),
     do:
       line(
@@ -128,8 +136,10 @@ defmodule Syncordian.Line_Object do
     This function creates the supremum line for the given peer id
     that is the absolute last line within peer's document
   """
-  @spec create_supremum_line(Syncordian.Basic_Types.peer_id(), network_size :: integer) ::
-          Syncordian.Line_Object.line()
+  @spec create_supremum_line(
+          Syncordian.Basic_Types.peer_id(),
+          network_size :: integer
+        ) :: Syncordian.Line_Object.line()
   def create_supremum_line(peer_id, network_size),
     do:
       line(
@@ -154,6 +164,10 @@ defmodule Syncordian.Line_Object do
     commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
     line(line, commit_at: commit_at)
   end
+
+  @spec get_empty_line() :: Syncordian.Line_Object.line()
+  def get_empty_line() do line() end
+  def is_empty_line(line) do get_line_peer_id(line) == 9_999_999 end
 end
 
 defmodule Syncordian.Line do
@@ -171,8 +185,8 @@ defmodule Syncordian.Line do
     and the parent's content to create the line signature.
     There are two cases to consider:
       - If there is 'room' between the parent's ids, then the new line id is calculated
-       create_line_b randomly between the parent's ids and the signature is created using the parent's
-        content and the peer id.
+       create_line_b randomly between the parent's ids and the signature is created using
+        the parent's content and the peer id.
       - If there is no 'room' between the parent's ids, then...
   """
   @spec create_line_between_two_lines(
@@ -193,7 +207,7 @@ defmodule Syncordian.Line do
     empty_commit_list = List.duplicate(false, network_size)
 
     new_line_id =
-        get_random_range(right_parent_id, left_parent_id)
+      get_random_range(right_parent_id, left_parent_id)
 
     signature =
       create_signature_insert(
@@ -239,10 +253,12 @@ defmodule Syncordian.Line do
   @spec line_to_string(Syncordian.Line_Object.line()) :: String.t()
   # This is just for debugging purposes
   def line_to_string(line) do
-    "#{get_line_id(line)}" <> ", " <>
-    Integer.to_string(get_line_peer_id(line)) <> ", " <>
-    get_content(line) <> ", " <>
-    get_signature(line) <> ", " <> "#{get_line_status(line)}"
+    "#{get_line_id(line)}" <>
+      ", " <>
+      Integer.to_string(get_line_peer_id(line)) <>
+      ", " <>
+      get_content(line) <>
+      ", " <>
+      get_signature(line) <> ", " <> "#{get_line_status(line)}"
   end
-
 end

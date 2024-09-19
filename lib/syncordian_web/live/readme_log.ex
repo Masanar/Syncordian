@@ -7,7 +7,7 @@ defmodule SyncordianWeb.ReadmeLog do
   end
 
   defp fetch_readme_content do
-    readme_path = "test/git_log/ohmyzsh_README_git_log"
+    readme_path = "test/git_log/ohmyzsh_README_full_git_log"
 
     case File.read(readme_path) do
       {:ok, content} -> content

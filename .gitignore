@@ -34,12 +34,6 @@ syncordian-*.tar
 # In case you use Node.js/npm, you want to ignore these.
 # npm-debug.log
 # /assets/node_modules/
-/_build
-/cover
-/deps
-/.fetch
-erl_crash.dump
-*.ez
 *.beam
 /config/*.secret.exs
 .elixir_ls/
@@ -48,5 +42,4 @@ erl_crash.dump
 .devcontainer
 .github
 TODO.md
-# test.*
 

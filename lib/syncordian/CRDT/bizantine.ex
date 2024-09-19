@@ -7,6 +7,30 @@ defmodule Syncordian.Byzantine do
   """
   import Syncordian.Line_Object
 
+  # This function defines the hash function that is used to create the signatures
+  defp hash_function(content) do
+    :crypto.hash(:sha256, content) |> Base.encode16()
+  end
+
+  @doc """
+    This function is important just for seek of keeping the types consistent. The content
+    is just the name of my dog 🐕
+  """
+  @spec get_trivial_signature() :: Syncordian.Basic_Types.signature()
+  def get_trivial_signature(), do:  "Omega"
+
+  @doc """
+    This function checks if the signature is trivial by comparing it with the trivial
+    signature.
+  """
+  @spec is_trivial_signature(Syncordian.Basic_Types.signature()) :: boolean()
+  def is_trivial_signature(signature), do: signature == get_trivial_signature()
+
+  @doc """
+    This function checks if the delete signature is valid by comparing it with the
+    signature created by the left parent and right parent content. Because the delete
+    signature is created in such manner.
+  """
   @spec check_signature_delete(
           deleted_line_signature :: Syncordian.Basic_Types.signature(),
           left_parent :: Syncordian.Line_Object.line(),
@@ -22,9 +46,9 @@ defmodule Syncordian.Byzantine do
   end
 
   @doc """
-    As a security feature the signature the creation of the signature for the delete operation
-    is different from the insert operation. This function, create a signature just by using
-    the left parent and right parent signatures.
+    As a security feature the signature the creation of the signature for the delete
+    operation is different from the insert operation. This function, create a signature
+    just by using the left parent and right parent signatures.
   """
   @spec create_signature_delete(
           left_parent :: Syncordian.Line_Object.line(),
@@ -35,12 +59,13 @@ defmodule Syncordian.Byzantine do
     left_parent_signature = get_signature(left_parent)
     right_parent_signature = get_signature(right_parent)
     element = "#{left_parent_signature}#{right_parent_signature}"
-    :crypto.hash(:sha256, element) |> Base.encode16()
+    hash_function(element)
   end
 
   @doc """
-    This function checks if the signature is valid by comparing it with the signature created
-    by the left parent content, the new content, the right parent content and the peer id.
+    This function checks if the signature is valid by comparing it with the signature
+    created by the left parent content, the new content, the right parent content and the
+    peer id.
   """
   @spec check_signature_insert(
           left_parent :: Syncordian.Line_Object.line(),
@@ -107,6 +132,6 @@ defmodule Syncordian.Byzantine do
         peer_id
       ) do
     element = "#{left_parent_signature}#{new_content}#{right_parent_signature}#{peer_id}"
-    :crypto.hash(:sha256, element) |> Base.encode16()
+    hash_function(element)
   end
 end

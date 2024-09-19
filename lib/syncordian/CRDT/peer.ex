@@ -237,8 +237,7 @@ defmodule Syncordian.Peer do
     |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
-      # send(pid, message)
-      Process.send_after(pid, message, Enum.random(1..20))
+      Process.send_after(pid, message, Enum.random(10..20))
     end)
   end
 
@@ -335,9 +334,6 @@ defmodule Syncordian.Peer do
             nicolas_index =
               translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-            IO.puts("Vector clock after deletion")
-            IO.inspect(get_peer_vector_clock(peer))
-
             peer =
               document
               |> update_document_line_status(nicolas_index, :tombstone)
@@ -354,8 +350,6 @@ defmodule Syncordian.Peer do
 
             line_delete_signature = create_signature_delete(left_parent, right_parent)
             peer_vector_clock = get_peer_vector_clock(peer)
-            IO.puts("Vector clock before deletion")
-            IO.inspect(peer_vector_clock)
 
             send(
               get_peer_pid(peer),
@@ -383,7 +377,7 @@ defmodule Syncordian.Peer do
           )
 
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
-
+        # TODO: Refactor this code, probably to many cases
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
             delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)

@@ -1,7 +1,6 @@
 defmodule SyncordianWeb.Supervisor do
   use SyncordianWeb, :live_view
   import Syncordian.Supervisor
-  # @commit_button_disabled_time 8_000
 
   def mount(_params, session, socket) do
     socket =
@@ -13,7 +12,19 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_event("write_current_peers_document", _data, socket) do
-    send(socket.assigns.supervisor_pid, {:write_current_peers_document})
+    launched? = socket.assigns.launched
+
+    if launched? do
+      send(socket.assigns.supervisor_pid, {:write_current_peers_document})
+    else
+      IO.inspect("Supervisor not launched")
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("select_node", %{"byzantine_nodes" => byzantine_nodes}, socket) do
+    PhoenixLiveSession.put_session(socket, "byzantine_nodes", String.to_integer(byzantine_nodes))
     {:noreply, socket}
   end
 
@@ -26,7 +37,7 @@ defmodule SyncordianWeb.Supervisor do
         socket
       else
         IO.inspect("launching")
-        supervisor_pid = init()
+        supervisor_pid = init(socket.assigns.byzantine_nodes)
         PhoenixLiveSession.put_session(socket, "launched", true)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", supervisor_pid)
         PhoenixLiveSession.put_session(socket, "logs", [])
@@ -150,5 +161,6 @@ defmodule SyncordianWeb.Supervisor do
     |> assign(:launched, Map.get(session, "launched", false))
     |> assign(:supervisor_pid, Map.get(session, "supervisor_pid", ""))
     |> assign(:disable_next_commit, Map.get(session, "disable_next_commit", false))
+    |> assign(:byzantine_nodes, Map.get(session, "byzantine_nodes", 0))
   end
 end

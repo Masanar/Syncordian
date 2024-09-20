@@ -21,10 +21,11 @@ defmodule Syncordian.Supervisor do
 
   """
   require Record
-  import Syncordian.Metadata
   import Syncordian.Peer
+  import Syncordian.Metadata
   import Syncordian.GitParser
   import Syncordian.Utilities
+  import Syncordian.ByzantinePeer
 
   Record.defrecord(:supervisor,
     list_of_commits: [],
@@ -204,6 +205,19 @@ defmodule Syncordian.Supervisor do
     {elem(values, 1) |> Enum.reverse(), elem(values, 2)}
   end
 
+  @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::
+          Syncordian.Basic_Types.peer_id()
+  defp byzantine_peer_id(peer_id) do
+    peer_id * 23 + 71
+  end
+
+  @spec init_byzantine_peers(integer()) :: list()
+  defp init_byzantine_peers(0), do: []
+
+  defp init_byzantine_peers(byzantine_nodes) do
+    Enum.map(1..byzantine_nodes, fn x -> byzantine_peer_id(x) |> start_byzantine_peer() end)
+  end
+
   @doc """
     Initializes the supervisor and starts the process of applying edits.
 
@@ -213,7 +227,7 @@ defmodule Syncordian.Supervisor do
     supervisor.
 
   """
-  def init() do
+  def init(byzantine_nodes) do
     # TODO: Delete the call to "test"
     # Delete the all the files of the debug directory
     delete_contents("debug/documents")
@@ -235,6 +249,9 @@ defmodule Syncordian.Supervisor do
         pid_list_author_peers: pid_list_author_peers,
         map_peer_id_authors: map_peer_id_authors
       )
+
+    IO.puts("Byzantine nodes to start #{byzantine_nodes}")
+    init_byzantine_peers(byzantine_nodes)
 
     pid = spawn(__MODULE__, :supervisor_loop, [supervisor])
     :global.register_name(:supervisor, pid)

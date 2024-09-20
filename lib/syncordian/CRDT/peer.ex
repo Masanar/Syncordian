@@ -701,8 +701,9 @@ defmodule Syncordian.Peer do
 
         loop(peer)
 
-      _ ->
+      test ->
         IO.puts("Wrong message")
+        IO.inspect(test)
         loop(peer)
     end
   end

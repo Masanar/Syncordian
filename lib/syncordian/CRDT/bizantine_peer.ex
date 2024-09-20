@@ -77,8 +77,9 @@ defmodule Syncordian.ByzantinePeer do
     )
   end
 
-  @spec start(Syncordian.Basic_Types.peer_id()) :: pid
-  def start(peer_id) do
+  @spec start_byzantine_peer(Syncordian.Basic_Types.peer_id()) :: pid
+  def start_byzantine_peer(peer_id) do
+    IO.puts("Starting byzantine peer with id: #{peer_id}")
     pid = spawn(__MODULE__, :byzantine_peer_loop, [define(peer_id)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid)
@@ -96,6 +97,7 @@ defmodule Syncordian.ByzantinePeer do
         # message is ignored.
         if String.length(line_delete_signature) != 10 do
           byzantine_signature = generate_string()
+          IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast with a byzantine signature")
 
           perform_broadcast(
             byzantine_peer,
@@ -111,6 +113,7 @@ defmodule Syncordian.ByzantinePeer do
       {:receive_insert_broadcast, line, incoming_vc} ->
         if String.length(get_signature(line)) != 10 do
           byzantine_signature = generate_string()
+          IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast with a byzantine signature")
 
           perform_broadcast(
             byzantine_peer,

@@ -8,22 +8,36 @@
 
 <div class="container">
   <div class="button-container">
-    <div class="button-left">
-      <button class="button-89" role="button" phx-click="next_commit">Load next commit</button>
-      <button class="button-89" role="button" phx-click="all_commits">Send all commits</button>
-      <button class="button-89" role="button" phx-click="write_current_peers_document">
-        Write nodes documents
-      </button>
+    <div class="button-row">
+      <div class="button-left">
+        <button class="button-89" phx-click="next_commit">Load next commit</button>
+        <button class="button-89" phx-click="all_commits">Send all commits</button>
+        <button class="button-89" phx-click="launch">Launch Supervisor</button>
+        <button class="button-89" phx-click="kill">Kill Supervisor</button>
+      </div>
     </div>
-    <div class="button-right">
-      <button class="button-89" role="button" phx-click="launch">Launch Supervisor</button>
-      <button class="button-89" role="button" phx-click="kill">Kill Supervisor</button>
-      <button class="button-89" role="button" phx-click="collect_metadata">
-        Collect Metadata
-      </button>
-      <button class="button-89" role="button" phx-click="print_metadata">
-        Print Metadata
-      </button>
+
+    <div class="button-row">
+      <div class="button-left">
+        <button class="button-89" phx-click="collect_metadata">Collect Metadata</button>
+        <button class="button-89" phx-click="print_metadata">Print Metadata</button>
+        <button class="button-89" phx-click="write_current_peers_document">
+          Write nodes documents
+        </button>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <div class="button-left">
+        <label for="byzantine_nodes" class="button-89-label">Select Byzantine Nodes:</label>
+        <form phx-change="select_node">
+          <select class="button-89" name="byzantine_nodes">
+            <%= for i <- 0..12 do %>
+              <option value={i}><%= i %></option>
+            <% end %>
+          </select>
+        </form>
+      </div>
     </div>
   </div>
   <div class="table-wrapper">

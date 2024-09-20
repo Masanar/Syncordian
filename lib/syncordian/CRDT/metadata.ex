@@ -11,7 +11,9 @@ defmodule Syncordian.Metadata do
     insert_request_limit_counter: 0,
     insert_stash_counter: 0,
     insert_valid_counter: 0,
-    insert_stash_fail_counter: 0
+    insert_stash_fail_counter: 0,
+    byzantine_insert_counter: 0,
+    byzantine_delete_counter: 0
   )
 
   @type metadata ::
@@ -29,6 +31,7 @@ defmodule Syncordian.Metadata do
           )
   @spec print_metadata(metadata()) :: :ok
   def print_metadata(metadata) do
+    IO.puts("")
     IO.puts("---------------------------------------------------------------------------")
     IO.puts("Metadata Record:")
     IO.puts("  delete_valid_counter: #{metadata(metadata, :delete_valid_counter)}")
@@ -55,7 +58,19 @@ defmodule Syncordian.Metadata do
       "  insert_stash_fail_counter: #{metadata(metadata,
       :insert_stash_fail_counter)}"
     )
+
+    IO.puts(
+      "  byzantine_insert_counter: #{metadata(metadata,
+      :byzantine_insert_counter)}"
+    )
+
+    IO.puts(
+      "  byzantine_delete_counter: #{metadata(metadata,
+      :byzantine_delete_counter)}"
+    )
+
     IO.puts("---------------------------------------------------------------------------")
+    IO.puts("")
   end
 
   @spec merge_metadata(metadata(), metadata()) :: metadata()
@@ -90,16 +105,38 @@ defmodule Syncordian.Metadata do
           metadata(metadata2, :insert_valid_counter),
       insert_stash_fail_counter:
         metadata(metadata1, :insert_stash_fail_counter) +
-          metadata(metadata2, :insert_stash_fail_counter)
+          metadata(metadata2, :insert_stash_fail_counter),
+      byzantine_insert_counter:
+        metadata(metadata1, :byzantine_insert_counter) +
+          metadata(metadata2, :byzantine_insert_counter),
+      byzantine_delete_counter:
+        metadata(metadata1, :byzantine_delete_counter) +
+          metadata(metadata2, :byzantine_delete_counter)
     )
   end
 
+  @spec inc_byzantine_delete_counter(metadata()) :: metadata()
+  def inc_byzantine_delete_counter(metadata),
+    do:
+      metadata(metadata,
+        byzantine_delete_counter: metadata(metadata, :byzantine_delete_counter) + 1
+      )
+
+  @spec inc_byzantine_insert_counter(metadata()) :: metadata()
+  def inc_byzantine_insert_counter(metadata),
+    do:
+      metadata(metadata,
+        byzantine_insert_counter: metadata(metadata, :byzantine_insert_counter) + 1
+      )
+
+  @spec inc_insert_stash_fail_counter(metadata()) :: metadata()
   def inc_insert_stash_fail_counter(metadata),
     do:
       metadata(metadata,
         insert_stash_fail_counter: metadata(metadata, :insert_stash_fail_counter) + 1
       )
 
+  @spec inc_delete_requeue_limit_counter(metadata()) :: metadata()
   def inc_delete_requeue_limit_counter(metadata),
     do:
       metadata(

@@ -5,9 +5,16 @@ defmodule Syncordian.Utilities do
   """
 
   @doc """
-    Given a list, a index of the list, and a value, this function updates the value of the
-    list at the given index with the given value.
+    Generates a random string of a given length, is length is not provided, it defaults to
+    10.
   """
+  @spec generate_string(integer()) :: String.t()
+  def generate_string(length \\ 10) do
+    :crypto.strong_rand_bytes(length)
+    |> Base.encode16()
+    |> binary_part(0, length)
+  end
+
   @spec update_list_value([any()], integer, any) :: [any()]
   def update_list_value([head | tail], index, value),
     do: update_list_value([head | tail], index, value, 0)
@@ -21,10 +28,12 @@ defmodule Syncordian.Utilities do
   end
 
   def add_element_list_in_given_index(list, index, new_element) do
-    Enum.concat(Enum.take(list, index+1), [new_element | Enum.drop(list, index+1)])
+    Enum.concat(Enum.take(list, index + 1), [new_element | Enum.drop(list, index + 1)])
   end
+
   def get_less_than_one_positive_random() do
-    random = abs(:rand.normal(0,0.002))
+    random = abs(:rand.normal(0, 0.002))
+
     if random > 1 do
       get_less_than_one_positive_random()
     else
@@ -47,6 +56,7 @@ defmodule Syncordian.Utilities do
     directory
     |> Path.expand()
     |> File.ls!()
+    |> Enum.reject(&(&1 == ".gitignore"))  # Exclude the .gitignore file
     |> Enum.each(&delete_entry(Path.join(directory, &1)))
   end
 
@@ -55,7 +65,9 @@ defmodule Syncordian.Utilities do
       %File.Stat{type: :directory} ->
         File.ls!(path)
         |> Enum.each(&delete_entry(Path.join(path, &1)))
+
         File.rmdir!(path)
+
       _ ->
         File.rm!(path)
     end

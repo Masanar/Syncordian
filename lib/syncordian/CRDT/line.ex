@@ -94,6 +94,10 @@ defmodule Syncordian.Line_Object do
   def get_signature(line),
     do: line(line, :signature)
 
+  def update_line_signature(line, new_signature) do
+    line(line, signature: new_signature)
+  end
+
   @doc """
     This function is a getter for the peer_id field of a line record
   """
@@ -166,8 +170,13 @@ defmodule Syncordian.Line_Object do
   end
 
   @spec get_empty_line() :: Syncordian.Line_Object.line()
-  def get_empty_line() do line() end
-  def is_empty_line(line) do get_line_peer_id(line) == 9_999_999 end
+  def get_empty_line() do
+    line()
+  end
+
+  def is_empty_line(line) do
+    get_line_peer_id(line) == 9_999_999
+  end
 end
 
 defmodule Syncordian.Line do

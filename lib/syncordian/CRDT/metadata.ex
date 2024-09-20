@@ -27,6 +27,36 @@ defmodule Syncordian.Metadata do
             insert_valid_counter: integer(),
             insert_stash_fail_counter: integer()
           )
+  @spec print_metadata(metadata()) :: :ok
+  def print_metadata(metadata) do
+    IO.puts("---------------------------------------------------------------------------")
+    IO.puts("Metadata Record:")
+    IO.puts("  delete_valid_counter: #{metadata(metadata, :delete_valid_counter)}")
+    IO.puts("  delete_stash_counter: #{metadata(metadata, :delete_stash_counter)}")
+    IO.puts("  delete_requeue_counter: #{metadata(metadata, :delete_requeue_counter)}")
+    IO.puts("  delete_requeue_limit: #{metadata(metadata, :delete_requeue_limit)}")
+
+    IO.puts(
+      "  insert_distance_greater_than_one: #{metadata(metadata,
+      :insert_distance_greater_than_one)}"
+    )
+
+    IO.puts("  insert_request_counter: #{metadata(metadata, :insert_request_counter)}")
+
+    IO.puts(
+      "  insert_request_limit_counter: #{metadata(metadata,
+      :insert_request_limit_counter)}"
+    )
+
+    IO.puts("  insert_stash_counter: #{metadata(metadata, :insert_stash_counter)}")
+    IO.puts("  insert_valid_counter: #{metadata(metadata, :insert_valid_counter)}")
+
+    IO.puts(
+      "  insert_stash_fail_counter: #{metadata(metadata,
+      :insert_stash_fail_counter)}"
+    )
+    IO.puts("---------------------------------------------------------------------------")
+  end
 
   @spec merge_metadata(metadata(), metadata()) :: metadata()
   def merge_metadata(metadata1, metadata2) do

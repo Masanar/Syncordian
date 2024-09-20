@@ -255,7 +255,7 @@ defmodule Syncordian.Peer do
     |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
-      Process.send_after(pid, message, Enum.random(1..100))
+      Process.send_after(pid, message, Enum.random(10..30))
     end)
   end
 
@@ -383,6 +383,18 @@ defmodule Syncordian.Peer do
         document = get_peer_document(peer)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
+
+        # TODO: FIX: This is a bug that I have to fix, in this case if current_document_line?
+        # is true need to requeue the message
+        #         [error] Process #PID<0.694.0> raised an exception
+        # ** (ArgumentError) errors were found at the given arguments:
+
+        #   * 2nd argument: not a tuple
+
+        #     :erlang.element(2, nil)
+        #     (syncordian 0.1.0) lib/syncordian/CRDT/line.ex:81: Syncordian.Line_Object.get_line_id/1
+        #     (syncordian 0.1.0) lib/syncordian/CRDT/document.ex:93: Syncordian.Document.get_document_line_fathers/2
+        #     (syncordian 0.1.0) lib/syncordian/CRDT/peer.ex:388: Syncordian.Peer.loop/1
 
         [left_parent, right_parent] =
           get_document_line_fathers(document, current_document_line)
@@ -682,7 +694,11 @@ defmodule Syncordian.Peer do
         |> loop
 
       {:supervisor_request_metadata} ->
-        send(get_peer_supervisor_pid(peer), {:receive_metadata_from_peer, get_metadata(peer)})
+        send(
+          get_peer_supervisor_pid(peer),
+          {:receive_metadata_from_peer, get_metadata(peer), get_peer_id(peer)}
+        )
+
         loop(peer)
 
       _ ->

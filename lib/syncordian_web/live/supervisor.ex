@@ -35,6 +35,34 @@ defmodule SyncordianWeb.Supervisor do
     {:noreply, socket}
   end
 
+  def handle_event("collect_metadata", _data, socket) do
+    launched? = socket.assigns.launched
+    supervisor_pid = socket.assigns.supervisor_pid
+
+    if launched? do
+      IO.puts("Collecting metadata...")
+      IO.puts("Please wait until the process is finished...")
+      send(supervisor_pid, {:collect_metadata_from_peers})
+    else
+      IO.inspect("Supervisor not launched")
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("print_metadata", _data, socket) do
+    launched? = socket.assigns.launched
+    supervisor_pid = socket.assigns.supervisor_pid
+
+    if launched? do
+      send(supervisor_pid, {:print_supervisor_metadata})
+    else
+      IO.inspect("Supervisor not launched")
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event("kill", _data, socket) do
     launched? = socket.assigns.launched
     supervisor_pid = socket.assigns.supervisor_pid
@@ -106,7 +134,9 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_info({:limit_reached, _value}, socket) do
-    IO.inspect("Web supervisor: limit reached")
+    IO.puts("Web supervisor: limit reached")
+    IO.puts("--------------------------------")
+    IO.puts("")
     {:noreply, socket}
   end
 

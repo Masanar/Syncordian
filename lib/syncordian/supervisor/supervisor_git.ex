@@ -32,6 +32,7 @@ defmodule Syncordian.Supervisor do
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
     commit_counter: 0,
+    metadata_peer_count: 0,
     metadata: Syncordian.Metadata.metadata()
   )
 
@@ -42,14 +43,37 @@ defmodule Syncordian.Supervisor do
             pid_list_author_peers: list(),
             map_peer_id_authors: map(),
             commit_counter: integer(),
+            metadata_peer_count: integer(),
             metadata: Syncordian.Metadata.metadata()
           )
+
+  @spec get_metadata_peer_count(supervisor()) :: integer()
+  defp get_metadata_peer_count(supervisor),
+    do: supervisor(supervisor, :metadata_peer_count)
+
+  @spec inc_metadata_peer_count(supervisor()) :: supervisor()
+  defp inc_metadata_peer_count(supervisor) do
+    current_metadata_peer_count = get_metadata_peer_count(supervisor)
+    # This is not the best way to know when all the metadata has been collected, but it
+    # works for now.
+    if current_metadata_peer_count > 28 do
+      IO.puts("Supervisor: all metadata from peers collected")
+      IO.puts("")
+    end
+
+    supervisor(supervisor,
+      metadata_peer_count: current_metadata_peer_count + 1
+    )
+  end
 
   @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
   defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
 
   @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
-  defp update_metadata(metadata, supervisor), do: supervisor(supervisor, metadata: metadata)
+  defp update_metadata(metadata, supervisor) do
+    inc_metadata_peer_count(supervisor)
+    |> supervisor(metadata: metadata)
+  end
 
   # Parses a single edit and applies it to the specified peer.
   # ## Parameters
@@ -270,11 +294,16 @@ defmodule Syncordian.Supervisor do
         broadcast_to_all_peers(supervisor, {:supervisor_request_metadata})
         supervisor_loop(supervisor)
 
-      {:receive_metadata_from_peer, metadata} ->
-        get_metadata(supervisor)
+      {:receive_metadata_from_peer, metadata, _peer_id} ->
+        supervisor
+        |> get_metadata()
         |> merge_metadata(metadata)
         |> update_metadata(supervisor)
         |> supervisor_loop
+
+      {:print_supervisor_metadata} ->
+        get_metadata(supervisor) |> print_metadata
+        supervisor_loop(supervisor)
 
       {:kill} ->
         IO.inspect("Receive killing supervisor")

@@ -523,11 +523,32 @@ defmodule Syncordian.Peer do
             clock_distance_usual
           end
 
+        insertion_attempts_reach? = check_insertions_attempts(line)
+
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            send(peer_pid, {:insertion_clock_distance_greater_than_one})
-            send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
-            loop(peer)
+            # TODO: Refactor this code, doing the same as bellow. This was done because
+            # the byzantine peers generating cpu overload. GO BACK HERE AND FIX THIS
+            # AND CHECK IF THIS MAKES SENSE.
+            if insertion_attempts_reach? do
+              send(peer_pid, {:insertion_request_requeue_limit})
+              loop(peer)
+            else
+              new_line = tick_line_insertion_attempts(line)
+              # send(peer_pid, {:insertion_request_requeue})
+              send(peer_pid, {:insertion_clock_distance_greater_than_one})
+
+              send(
+                get_peer_pid(peer),
+                {:receive_insert_broadcast, new_line, incoming_vc}
+              )
+
+              loop(peer)
+            end
+
+            # IO.puts("The clock distance is greater than 1")
+            # send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
+            # loop(peer)
 
           {_, true} ->
             order_vc =
@@ -550,7 +571,6 @@ defmodule Syncordian.Peer do
                 #   - else delete the line from the queue and loop over
                 # TODO: check if the next code could be refactored into a function
                 valid_line? = check_signature_insert(left_parent, line, right_parent)
-                insertion_attempts_reach? = check_insertions_attempts(line)
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->

@@ -101,7 +101,7 @@ defmodule Syncordian.ByzantinePeer do
 
           perform_broadcast(
             byzantine_peer,
-            {:delete_line, line_deleted_id, byzantine_signature, attempt_count, incoming_vc}
+            {:receive_delete_broadcast, {line_deleted_id, byzantine_signature, attempt_count, incoming_vc}}
           )
         end
 

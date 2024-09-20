@@ -21,6 +21,7 @@ defmodule Syncordian.Supervisor do
 
   """
   require Record
+  import Syncordian.Metadata
   import Syncordian.Peer
   import Syncordian.GitParser
   import Syncordian.Utilities
@@ -31,28 +32,34 @@ defmodule Syncordian.Supervisor do
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
     commit_counter: 0,
-    delete_valid_counter: 0,
-    delete_stash_counter: 0,
-    delete_requeue_counter: 0,
-    insert_distance_greater_than_one: 0,
-    insert_request_counter: 0,
-    insert_stash_counter: 0,
-    insert_valid_counter: 0
+    metadata: Syncordian.Metadata.metadata()
   )
 
-  @doc """
-    Parses a single edit and applies it to the specified peer.
+  @type supervisor ::
+          record(:supervisor,
+            list_of_commits: list(),
+            commit_group_map: map(),
+            pid_list_author_peers: list(),
+            map_peer_id_authors: map(),
+            commit_counter: integer(),
+            metadata: Syncordian.Metadata.metadata()
+          )
 
-    ## Parameters
+  @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
+  defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
 
-    - `edit`: A map representing the edit to be parsed. It should contain the following
-      keys:
-      - `:op`: The operation to be performed. It can be `:insert` or `:delete`.
-      - `:content`: The content to be inserted (required for `:insert` operation).
-      - `:index`: The index of the line to be deleted (required for `:delete` operation).
-    - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
-  """
-  def parse_edit(edit, peer_pid, acc) do
+  @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
+  defp update_metadata(metadata, supervisor), do: supervisor(supervisor, metadata: metadata)
+
+  # Parses a single edit and applies it to the specified peer.
+  # ## Parameters
+  # - `edit`: A map representing the edit to be parsed. It should contain the following
+  #   keys:
+  #   - `:op`: The operation to be performed. It can be `:insert` or `:delete`.
+  #   - `:content`: The content to be inserted (required for `:insert` operation).
+  #   - `:index`: The index of the line to be deleted (required for `:delete` operation).
+  # - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
+  defp parse_edit(edit, peer_pid, acc) do
     # If want to know why the acc is reduced by 1 in the case of a delete operation and
     # increase by 1 in the case of an insert operation, please read the comets of
     # the parse_edits function just below.
@@ -82,10 +89,8 @@ defmodule Syncordian.Supervisor do
     end
   end
 
-  @doc """
-    Parses a list of edits and applies them to the specified peer.
-  """
-  def parse_edits(edits, peer_pid) do
+  # Parses a list of edits and applies them to the specified peer.
+  defp parse_edits(edits, peer_pid) do
     # For you to remember, just in case:
     # The first reduce goes through the list of edits, remember that a commit may have
     # several edits, that is several of the form @@ a,b c,d @. Further, the edits in the
@@ -106,45 +111,39 @@ defmodule Syncordian.Supervisor do
     end)
   end
 
-  @doc """
-    Starts the process of applying edits for a list of commits.
-
-    ## Parameters
-
-    - `commits`: A list of commit hashes representing the commits to be processed.
-    - `commit_group_map`: A map containing commit hashes as keys and commit groups as
-      values. Each commit group should contain the following keys:
-      - `:author_id`: The ID of the author who made the commit.
-      - `:position_changes`: A list of position changes to be applied.
-    - `map_peer_id_authors`: A map that maps author IDs(string) to peer IDs(integer).
-    - `pid_list_author_peers`: A list of peer PIDs corresponding to each author
-      ID(integer).
-
-    The function loops through the commits in order, retrieves the corresponding commit
-    group, and applies the position changes to the specified peer. The author ID is used
-    to determine the peer ID, which is then used to retrieve the peer PID from the
-    `pid_list_author_peers`. The position changes are applied using the `parse_edits/2`
-    function.
-
-  """
-  def edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
+  # Starts the process of applying edits for a list of commits.
+  # ## Parameters
+  # - `commits`: A list of commit hashes representing the commits to be processed.
+  # - `commit_group_map`: A map containing commit hashes as keys and commit groups as
+  #   values. Each commit group should contain the following keys:
+  #   - `:author_id`: The ID of the author who made the commit.
+  #   - `:position_changes`: A list of position changes to be applied.
+  # - `map_peer_id_authors`: A map that maps author IDs(string) to peer IDs(integer).
+  # - `pid_list_author_peers`: A list of peer PIDs corresponding to each author
+  #   ID(integer).
+  # The function loops through the commits in order, retrieves the corresponding commit
+  # group, and applies the position changes to the specified peer. The author ID is used
+  # to determine the peer ID, which is then used to retrieve the peer PID from the
+  # `pid_list_author_peers`. The position changes are applied using the `parse_edits/2`
+  # function.
+  defp edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
     [commit_group] = Map.get(commit_group_map, commit_hash)
     author_id = Map.get(commit_group, :author_id)
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    Process.sleep(300)
+    Process.sleep(500)
     author_id
   end
 
-  def save_current_documents(pid_list_author_peers) do
+  defp save_current_documents(pid_list_author_peers) do
     Enum.map(1..29, fn x ->
       save_content(Enum.at(pid_list_author_peers, x))
     end)
   end
 
-  def start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
+  defp start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
     commit_group_map = supervisor(supervisor, :commit_group_map)
     map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
     pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
@@ -154,26 +153,24 @@ defmodule Syncordian.Supervisor do
     send(live_view_pid, response)
   end
 
-  @doc """
-    Initializes the peers for the Syncordian system based on the list of authors.
+  # Initializes the peers for the Syncordian system based on the list of authors.
 
-    ## Parameters
+  # ## Parameters
 
-    - `authors_list`: A list of author IDs representing the authors in the system.
+  # - `authors_list`: A list of author IDs representing the authors in the system.
 
-    ## Returns
+  # ## Returns
 
-    A tuple containing two elements:
-    - The list of peer PIDs in reverse order.
-    - A map that maps author IDs(string) to peer IDs(integer).
+  # A tuple containing two elements:
+  # - The list of peer PIDs in reverse order.
+  # - A map that maps author IDs(string) to peer IDs(integer).
 
-    The function initializes the peers by creating a network of processes. Each author
-    is assigned a unique peer ID, and a corresponding peer process is started. The
-    author IDs are mapped to their respective peer IDs in the resulting map.
-
-  """
-  def init_peers(authors_list) do
+  # The function initializes the peers by creating a network of processes. Each author
+  # is assigned a unique peer ID, and a corresponding peer process is started. The
+  # author IDs are mapped to their respective peer IDs in the resulting map.
+  defp init_peers(authors_list) do
     network_size = authors_list |> length()
+
     values =
       authors_list
       |> Enum.reduce({0, [], %{}}, fn author_id, {acc, add_pid, map_ids} ->
@@ -220,19 +217,10 @@ defmodule Syncordian.Supervisor do
     pid
   end
 
-  def print_supervisor_metadata(supervisor) do
-    IO.puts("***********************************************************************************")
-    IO.puts("Supervisor metadata, all this data is accumulated across all the commits and peers")
-    IO.puts("Total valid deletions: #{supervisor(supervisor, :delete_valid_counter)}")
-    IO.puts("Total valid deletions stash: #{supervisor(supervisor, :delete_stash_counter)}")
-    IO.puts("Total requeued lines due deletion: #{supervisor(supervisor, :delete_requeue_counter)}")
-    IO.puts("Total valid insertions: #{supervisor(supervisor, :insert_valid_counter)}")
-    IO.puts("Total insertions received with distance greater than one: #{supervisor(supervisor, :insert_distance_greater_than_one)}")
-    IO.puts("Total requeued lines due insertion: #{supervisor(supervisor, :insert_request_counter)}")
-    IO.puts("Total valid insertion stash: #{supervisor(supervisor, :insert_stash_counter)}")
-    IO.puts("***********************************************************************************")
+  defp broadcast_to_all_peers(supervisor, message) do
+    pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
+    Enum.map(pid_list_author_peers, fn pid -> send(pid, message) end)
   end
-
 
   def supervisor_loop(supervisor) do
     receive do
@@ -255,7 +243,6 @@ defmodule Syncordian.Supervisor do
           supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
         else
           IO.puts("All commits processed")
-          print_supervisor_metadata(supervisor)
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end
@@ -279,59 +266,19 @@ defmodule Syncordian.Supervisor do
           supervisor_loop(supervisor)
         end
 
+      {:collect_metadata_from_peers} ->
+        broadcast_to_all_peers(supervisor, {:supervisor_request_metadata})
+        supervisor_loop(supervisor)
+
+      {:receive_metadata_from_peer, metadata} ->
+        get_metadata(supervisor)
+        |> merge_metadata(metadata)
+        |> update_metadata(supervisor)
+        |> supervisor_loop
+
       {:kill} ->
         IO.inspect("Receive killing supervisor")
         kill()
-
-      {:deleted_valid_line} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            delete_valid_counter: supervisor(supervisor, :delete_valid_counter) + 1
-          )
-        )
-
-      {:delete_stash_succeeded} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            delete_stash_counter: supervisor(supervisor, :delete_stash_counter) + 1
-          )
-        )
-
-      {:delete_request_requeue} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            delete_requeue_counter: supervisor(supervisor, :delete_requeue_counter) + 1
-          )
-        )
-
-      {:insertion_clock_distance_greater_than_one} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            insert_distance_greater_than_one:
-              supervisor(supervisor, :insert_distance_greater_than_one) + 1
-          )
-        )
-
-      {:insertion_valid_line} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            insert_valid_counter: supervisor(supervisor, :insert_valid_counter) + 1
-          )
-        )
-
-      {:insertion_request_requeue} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            insert_request_counter: supervisor(supervisor, :insert_request_counter) + 1
-          )
-        )
-
-      {:insertion_stash_succeeded} ->
-        supervisor_loop(
-          supervisor(supervisor,
-            insert_stash_counter: supervisor(supervisor, :insert_stash_counter) + 1
-          )
-        )
 
       _ ->
         IO.puts("Unknown message")

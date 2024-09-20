@@ -9,6 +9,7 @@ defmodule Syncordian.Peer do
   """
   # use TypeCheck
   require Record
+  import Syncordian.Metadata
   import Syncordian.Info
   import Syncordian.Line
   import Syncordian.Document
@@ -24,7 +25,8 @@ defmodule Syncordian.Peer do
     deleted_count: 0,
     deleted_limit: @delete_limit,
     vector_clock: [],
-    supervisor_pid: None
+    supervisor_pid: None,
+    metadata: Syncordian.Metadata.metadata()
   )
 
   @type peer ::
@@ -40,6 +42,12 @@ defmodule Syncordian.Peer do
 
   ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
+
+  @spec get_metadata(peer()) :: Syncordian.Metadata.metadata()
+  defp get_metadata(peer), do: peer(peer, :metadata)
+
+  @spec update_metadata(Syncordian.Metadata.metadata(), peer()) :: peer()
+  defp update_metadata(metadata, peer), do: peer(peer, metadata: metadata)
 
   @spec get_peer_supervisor_pid(peer()) :: pid()
   defp get_peer_supervisor_pid(peer), do: peer(peer, :supervisor_pid)
@@ -214,7 +222,7 @@ defmodule Syncordian.Peer do
     pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, network_size, peer_id)
-    Process.send_after(pid, {:register_supervisor_pid}, 100)
+    Process.send_after(pid, {:register_supervisor_pid}, 50)
     pid
   end
 
@@ -247,7 +255,7 @@ defmodule Syncordian.Peer do
     |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
     |> Enum.each(fn name ->
       pid = :global.whereis_name(name)
-      Process.send_after(pid, message, Enum.random(50..70))
+      Process.send_after(pid, message, Enum.random(1..100))
     end)
   end
 
@@ -386,12 +394,12 @@ defmodule Syncordian.Peer do
             right_parent
           )
 
-        supervisor_pid = get_peer_supervisor_pid(peer)
+        peer_pid = get_peer_pid(peer)
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
         # TODO: Refactor this code, probably to many cases
         case {valid_signature? and current_document_line?, max_attempts_reach?} do
           {true, false} ->
-            send(supervisor_pid, {:deleted_valid_line})
+            send(peer_pid, {:deleted_valid_line})
             delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
           {false, false} ->
@@ -408,11 +416,11 @@ defmodule Syncordian.Peer do
 
             case valid_line? do
               true ->
-                send(supervisor_pid, {:delete_stash_succeeded})
+                send(peer_pid, {:delete_stash_succeeded})
                 delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
               false ->
-                send(supervisor_pid, {:delete_request_requeue})
+                send(peer_pid, {:delete_request_requeue})
 
                 send(
                   get_peer_pid(peer),
@@ -424,10 +432,7 @@ defmodule Syncordian.Peer do
             end
 
           {_, true} ->
-            IO.inspect(
-              "A line has reach its deletion attempts limit! in peer #{get_peer_id(peer)} \n"
-            )
-
+            send(peer_pid, {:delete_request_limit})
             loop(peer)
         end
 
@@ -487,7 +492,6 @@ defmodule Syncordian.Peer do
         |> loop
 
       {:receive_insert_broadcast, line, incoming_vc} ->
-        # TODO: In some part the local vc of the incoming peer need to be updated
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_peer_vector_clock(peer)
 
@@ -498,7 +502,7 @@ defmodule Syncordian.Peer do
             incoming_peer_id
           )
 
-        supervisor_pid = get_peer_supervisor_pid(peer)
+        peer_pid = get_peer_pid(peer)
 
         clock_distance =
           if clock_distance_usual == 0 do
@@ -509,7 +513,7 @@ defmodule Syncordian.Peer do
 
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            send(supervisor_pid, {:insertion_clock_distance_greater_than_one})
+            send(peer_pid, {:insertion_clock_distance_greater_than_one})
             send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
             loop(peer)
 
@@ -538,12 +542,12 @@ defmodule Syncordian.Peer do
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
-                    send(supervisor_pid, {:insertion_valid_line})
+                    send(peer_pid, {:insertion_valid_line})
                     add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   {false, false} ->
                     new_line = tick_line_insertion_attempts(line)
-                    send(supervisor_pid, {:insertion_request_requeue})
+                    send(peer_pid, {:insertion_request_requeue})
 
                     send(
                       get_peer_pid(peer),
@@ -555,6 +559,7 @@ defmodule Syncordian.Peer do
                   {false, true} ->
                     # The line has reach the maximum number of attempts and it was not
                     # possible to check if the line is valid or not.
+                    send(peer_pid, {:insertion_request_requeue_limit})
                     loop(peer)
                 end
 
@@ -570,12 +575,11 @@ defmodule Syncordian.Peer do
 
                 case valid_line? do
                   true ->
-                    send(supervisor_pid, {:insertion_stash_succeeded})
+                    send(peer_pid, {:insertion_stash_succeeded})
                     add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
 
                   false ->
-                    IO.inspect("Stash process failed")
-                    IO.inspect("peer: #{get_peer_id(peer)} \n")
+                    send(peer_pid, {:insertion_stash_fail})
                     loop(peer)
                 end
             end
@@ -606,15 +610,83 @@ defmodule Syncordian.Peer do
         |> update_peer_pid(peer)
         |> loop
 
+      # All this messages are used to update the peer structure with the metadata of the
+      # messages to eventually just send one message to the supervisor. When the
+      # experiment is done. This is done to avoid the supervisor to be overwhelmed with
+      # messages. Probably this is not the best way to do it.
+
       {:register_supervisor_pid} ->
         supervisor_pid = :global.whereis_name(:supervisor)
 
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
-      test ->
+      {:deleted_valid_line} ->
+        get_metadata(peer)
+        |> inc_delete_valid_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:delete_stash_succeeded} ->
+        get_metadata(peer)
+        |> inc_delete_stash_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:delete_request_requeue} ->
+        get_metadata(peer)
+        |> inc_delete_requeue_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:delete_request_limit} ->
+        get_metadata(peer)
+        |> inc_delete_requeue_limit_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_clock_distance_greater_than_one} ->
+        get_metadata(peer)
+        |> inc_insert_distance_greater_than_one
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_valid_line} ->
+        get_metadata(peer)
+        |> inc_insert_valid_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_request_requeue} ->
+        get_metadata(peer)
+        |> inc_insert_request_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_request_requeue_limit} ->
+        get_metadata(peer)
+        |> inc_insert_request_limit_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_stash_succeeded} ->
+        get_metadata(peer)
+        |> inc_insert_stash_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:insertion_stash_fail} ->
+        get_metadata(peer)
+        |> inc_insert_stash_fail_counter
+        |> update_metadata(peer)
+        |> loop
+
+      {:supervisor_request_metadata} ->
+        send(get_peer_supervisor_pid(peer), {:receive_metadata_from_peer, get_metadata(peer)})
+        loop(peer)
+
+      _ ->
         IO.puts("Wrong message")
-        IO.inspect(test)
         loop(peer)
     end
   end

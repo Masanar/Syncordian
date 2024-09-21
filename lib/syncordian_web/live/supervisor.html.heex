@@ -33,7 +33,7 @@
         <form phx-change="select_node">
           <select class="button-89" name="byzantine_nodes">
             <%= for i <- 0..12 do %>
-              <option value={i}><%= i %></option>
+              <option value={i} selected={@byzantine_nodes == i}><%= i %></option>
             <% end %>
           </select>
         </form>

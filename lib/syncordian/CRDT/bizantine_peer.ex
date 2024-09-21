@@ -74,8 +74,8 @@ defmodule Syncordian.ByzantinePeer do
 
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      {:receive_delete_broadcast,
-       {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
+      # {:receive_delete_broadcast,
+      #  {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         # This is the way to prevent the feedback between the byzantine peers, the
         # signature from a valid peer muts be a hash from sha256 (or similar) and such
         # signatures have a length of 64 characters. Then is the signature is different

@@ -235,28 +235,13 @@ defmodule Syncordian.Peer do
 
   ################################ Peer utility ################################
 
-  # Function to filter weather the peer is the current peer, the supervisor or the storage
-  @spec should_filter_out?(any, pid) :: boolean
-  defp should_filter_out?(name, peer_pid) do
-    pid = :global.whereis_name(name)
-
-    pid == peer_pid or
-      pid == :global.whereis_name(:supervisor) or
-      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
-  end
-
   # Function to perform the filtering and broadcast messages to all peers in the network
   # except the current peer. or the supervisor.
   @spec perform_broadcast(peer(), any) :: any
   defp perform_broadcast(peer, message) do
     peer_pid = get_peer_pid(peer)
-
-    :global.registered_names()
-    |> Enum.filter(fn name -> not should_filter_out?(name, peer_pid) end)
-    |> Enum.each(fn name ->
-      pid = :global.whereis_name(name)
-      Process.send_after(pid, message, Enum.random(10..30))
-    end)
+    delay = Enum.random(10..30)
+    perform_broadcast(peer_pid, message, delay)
   end
 
   @doc """
@@ -342,7 +327,7 @@ defmodule Syncordian.Peer do
         case document_len - 1 <= index_position or document_len < 0 do
           true ->
             IO.puts("The to delete line does not exist! ")
-            IO.inspect("Index position: #{index_position} ")
+            IO.puts("Index position: #{index_position} ")
             IO.puts("Document length: #{document_len}")
             loop(peer)
 
@@ -395,6 +380,9 @@ defmodule Syncordian.Peer do
         #     (syncordian 0.1.0) lib/syncordian/CRDT/line.ex:81: Syncordian.Line_Object.get_line_id/1
         #     (syncordian 0.1.0) lib/syncordian/CRDT/document.ex:93: Syncordian.Document.get_document_line_fathers/2
         #     (syncordian 0.1.0) lib/syncordian/CRDT/peer.ex:388: Syncordian.Peer.loop/1
+        # IO.inspect(line_deleted_id)
+        # IO.inspect(line_delete_signature)
+        # IO.inspect(current_document_line)
 
         [left_parent, right_parent] =
           get_document_line_fathers(document, current_document_line)
@@ -545,9 +533,9 @@ defmodule Syncordian.Peer do
 
               loop(peer)
             end
-
             # IO.puts("The clock distance is greater than 1")
             # send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
+            # send(peer_pid, {:insertion_clock_distance_greater_than_one})
             # loop(peer)
 
           {_, true} ->
@@ -617,7 +605,7 @@ defmodule Syncordian.Peer do
             end
 
           {_, _} ->
-            IO.inspect("Something happen")
+            IO.puts("Something happen")
             loop(peer)
         end
 

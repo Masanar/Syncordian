@@ -1,0 +1,15 @@
+---------------------------------------------------------------------------
+Metadata Record:
+  delete_valid_counter: 5995
+  delete_stash_counter: 646
+  delete_requeue_counter: 0
+  delete_requeue_limit: 0
+  insert_distance_greater_than_one: 868677848
+  insert_request_counter: 18
+  insert_request_limit_counter: 17169
+  insert_stash_counter: 0
+  insert_valid_counter: 20358
+  insert_stash_fail_counter: 4701
+  byzantine_insert_counter: 729
+  byzantine_delete_counter: 0
+---------------------------------------------------------------------------

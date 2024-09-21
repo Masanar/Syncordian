@@ -11,7 +11,7 @@ defmodule SyncordianWeb.Node do
     peer_pid = :global.whereis_name(peer_id)
 
     case peer_pid do
-      :undefined -> IO.inspect("Node has not been started yet")
+      :undefined -> IO.puts("Node has not been started yet")
       _ -> send(peer_pid, {:request_live_view_document, self()})
     end
 
@@ -23,7 +23,7 @@ defmodule SyncordianWeb.Node do
   end
 
   def handle_info({:receive_live_view_document, document}, socket) do
-    IO.inspect("Received document")
+    IO.puts("Received document")
 
     lines =
       Enum.map(document, fn line ->

@@ -10,7 +10,8 @@ defmodule Syncordian.Line_Object do
   # This insertion attempt value is used by the insertion and delete operations
   # to know when to stop trying to insert/delete a line. May be a better name should be
   # used for this value.
-  @max_insertion_attempts 100
+  # TODO: Check this value
+  @max_insertion_attempts 50_000
   Record.defrecord(:line,
     line_id: 0.0,
     content: "",

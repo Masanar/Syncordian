@@ -4,6 +4,32 @@ defmodule Syncordian.Utilities do
       do not fit on the main modules.
   """
 
+
+  # Function to filter weather the peer is the current peer, the supervisor or the storage
+  @spec should_filter_out?(any, pid) :: boolean
+  defp should_filter_out?(name, peer_pid) do
+    pid = :global.whereis_name(name)
+
+    pid == peer_pid or
+      pid == :global.whereis_name(:supervisor) or
+      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
+  end
+
+  @doc """
+  Function to perform the filtering and broadcast messages to all peers in the network
+  except the current peer. or the supervisor.
+  """
+  @spec perform_broadcast(pid(), any, integer()) :: any
+  def perform_broadcast(pid, message, delay) do
+    :global.registered_names()
+    |> Enum.filter(fn name -> not should_filter_out?(name, pid) end)
+    |> Enum.each(fn name ->
+      pid = :global.whereis_name(name)
+      Process.send_after(pid, message, delay)
+    end)
+  end
+
+
   @doc """
     Generates a random string of a given length, is length is not provided, it defaults to
     10.

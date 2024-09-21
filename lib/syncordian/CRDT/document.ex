@@ -136,7 +136,7 @@ defmodule Syncordian.Document do
         [head | add_line_to_document(line, tail)]
 
       0 ->
-        IO.inspect("Line Error")
+        IO.puts("Line Error")
         document
 
       -1 ->
@@ -332,7 +332,7 @@ defmodule Syncordian.Document do
             result_right
 
           _ ->
-            IO.inspect("Error in the window_stash_check_signature")
+            IO.puts("Error in the window_stash_check_signature")
             result_right
         end
     end
@@ -384,7 +384,7 @@ defmodule Syncordian.Document do
         # This return is just to make the compiler (completeness) happy, if this ever
         # happens the code has a huge error.
         IO.puts("Error in the get_parents_by_index")
-        IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
+        IO.puts("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
         # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
         [
           get_document_line_by_index(document, len - 2),

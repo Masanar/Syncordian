@@ -17,7 +17,7 @@ defmodule SyncordianWeb.Supervisor do
     if launched? do
       send(socket.assigns.supervisor_pid, {:write_current_peers_document})
     else
-      IO.inspect("Supervisor not launched")
+      IO.puts("Supervisor not launched")
     end
 
     {:noreply, socket}
@@ -33,10 +33,10 @@ defmodule SyncordianWeb.Supervisor do
 
     socket =
       if launched? do
-        IO.inspect("Supervisor already launched")
+        IO.puts("Supervisor already launched")
         socket
       else
-        IO.inspect("launching")
+        IO.puts("launching")
         supervisor_pid = init(socket.assigns.byzantine_nodes)
         PhoenixLiveSession.put_session(socket, "launched", true)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", supervisor_pid)
@@ -55,7 +55,7 @@ defmodule SyncordianWeb.Supervisor do
       IO.puts("Please wait until the process is finished...")
       send(supervisor_pid, {:collect_metadata_from_peers})
     else
-      IO.inspect("Supervisor not launched")
+      IO.puts("Supervisor not launched")
     end
 
     {:noreply, socket}
@@ -66,9 +66,11 @@ defmodule SyncordianWeb.Supervisor do
     supervisor_pid = socket.assigns.supervisor_pid
 
     if launched? do
+      IO.puts("Printing metadata...")
+      IO.puts("Check /debub/metadata/ for the metadata files")
       send(supervisor_pid, {:print_supervisor_metadata})
     else
-      IO.inspect("Supervisor not launched")
+      IO.puts("Supervisor not launched")
     end
 
     {:noreply, socket}
@@ -80,13 +82,13 @@ defmodule SyncordianWeb.Supervisor do
 
     socket =
       if launched? do
-        IO.inspect("Killing supervisor")
+        IO.puts("Killing supervisor")
         send(supervisor_pid, {:kill})
         PhoenixLiveSession.put_session(socket, "launched", false)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", "")
         PhoenixLiveSession.put_session(socket, "logs", [])
       else
-        IO.inspect("Supervisor not launched")
+        IO.puts("Supervisor not launched")
         socket
       end
 
@@ -97,16 +99,16 @@ defmodule SyncordianWeb.Supervisor do
     socket =
       if socket.assigns.launched do
         if socket.assigns.disable_next_commit do
-          IO.inspect("Next commit disabled")
+          IO.puts("Next commit disabled")
           socket
         else
-          IO.inspect("Sending All Commits")
+          IO.puts("Sending All Commits")
           supervisor_pid = socket.assigns.supervisor_pid
-          send(supervisor_pid, {:send_all_commits, self()})
+          send(supervisor_pid, {:send_all_commits, self(), socket.assigns.byzantine_nodes})
           socket
         end
       else
-        IO.inspect("Supervisor not launched")
+        IO.puts("Supervisor not launched")
         socket
       end
 
@@ -117,16 +119,16 @@ defmodule SyncordianWeb.Supervisor do
     socket =
       if socket.assigns.launched do
         if socket.assigns.disable_next_commit do
-          IO.inspect("Next commit disabled")
+          IO.puts("Next commit disabled")
           socket
         else
-          IO.inspect("Sending next commit")
+          IO.puts("Sending next commit")
           supervisor_pid = socket.assigns.supervisor_pid
-          send(supervisor_pid, {:send_next_commit, self()})
+          send(supervisor_pid, {:send_next_commit, self(), socket.assigns.byzantine_nodes})
           socket
         end
       else
-        IO.inspect("Supervisor not launched")
+        IO.puts("Supervisor not launched")
         socket
       end
 

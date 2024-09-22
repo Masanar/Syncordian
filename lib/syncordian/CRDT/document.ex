@@ -297,44 +297,51 @@ defmodule Syncordian.Document do
         check_signature_insert(left_parent, incoming_line, right_parent)
       end
 
-    case check_value do
-      true ->
-        {true, {left_shift + window_center, right_shift + window_center}}
+    # TODO: I KNOW THIS IS NO THE CLEANEST WAY TO DO THIS, BUT I'M TIRED AND I WANT TO
+    # FIX THIS NOW. I WILL FIX THIS LATER. Just in case this change is recorded in the
+    # commit after f8ac522 syncordian repository.
+    if right_parent != nil do
+      case check_value do
+        true ->
+          {true, {left_shift + window_center, right_shift + window_center}}
 
-      false ->
-        new_left_shift = left_shift - 1
-        new_right_shift = right_shift + 1
+        false ->
+          new_left_shift = left_shift - 1
+          new_right_shift = right_shift + 1
 
-        result_left =
-          if window_center + new_left_shift >= 0 and
-               new_left_shift * -1 + right_shift <= window_size + 2 do
-            window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
-          else
-            not_found_value
+          result_left =
+            if window_center + new_left_shift >= 0 and
+                 new_left_shift * -1 + right_shift <= window_size + 2 do
+              window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
+            else
+              not_found_value
+            end
+
+          result_right =
+            if window_center + new_right_shift < document_length and
+                 left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
+              window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
+            else
+              not_found_value
+            end
+
+          case {elem(result_left, 0), elem(result_right, 0)} do
+            {false, false} ->
+              not_found_value
+
+            {true, false} ->
+              result_left
+
+            {false, true} ->
+              result_right
+
+            _ ->
+              IO.puts("Error in the window_stash_check_signature")
+              result_right
           end
-
-        result_right =
-          if window_center + new_right_shift < document_length and
-               left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
-            window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
-          else
-            not_found_value
-          end
-
-        case {elem(result_left, 0), elem(result_right, 0)} do
-          {false, false} ->
-            not_found_value
-
-          {true, false} ->
-            result_left
-
-          {false, true} ->
-            result_right
-
-          _ ->
-            IO.puts("Error in the window_stash_check_signature")
-            result_right
-        end
+      end
+    else
+      not_found_value
     end
   end
 

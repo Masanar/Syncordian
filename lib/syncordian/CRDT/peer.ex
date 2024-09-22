@@ -240,7 +240,7 @@ defmodule Syncordian.Peer do
   @spec perform_broadcast(peer(), any) :: any
   defp perform_broadcast(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = Enum.random(10..30)
+    delay = Enum.random(0..10)
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -366,6 +366,7 @@ defmodule Syncordian.Peer do
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
+        # IO.puts(line_deleted_id)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
 

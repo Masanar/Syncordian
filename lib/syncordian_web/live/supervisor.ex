@@ -15,6 +15,7 @@ defmodule SyncordianWeb.Supervisor do
     launched? = socket.assigns.launched
 
     if launched? do
+      IO.puts("Writing current peers document...")
       send(socket.assigns.supervisor_pid, {:write_current_peers_document})
     else
       IO.puts("Supervisor not launched")

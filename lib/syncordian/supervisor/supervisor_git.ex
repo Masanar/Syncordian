@@ -57,16 +57,22 @@ defmodule Syncordian.Supervisor do
   @spec inc_metadata_peer_count(supervisor()) :: supervisor()
   defp inc_metadata_peer_count(supervisor) do
     current_metadata_peer_count = get_metadata_peer_count(supervisor)
-    # This is not the best way to know when all the metadata has been collected, but it
-    # works for now.
-    if current_metadata_peer_count > 28 do
+
+    number_of_peers = length(supervisor(supervisor, :pid_list_author_peers))
+    byzantine_nodes = supervisor(supervisor, :byzantine_nodes)
+
+    if current_metadata_peer_count == number_of_peers + byzantine_nodes do
       IO.puts("Supervisor: all metadata from peers collected")
       IO.puts("")
-    end
 
-    supervisor(supervisor,
-      metadata_peer_count: current_metadata_peer_count + 1
-    )
+      supervisor(supervisor,
+        metadata_peer_count: current_metadata_peer_count + 1
+      )
+    else
+      supervisor(supervisor,
+        metadata_peer_count: 0
+      )
+    end
   end
 
   @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
@@ -166,8 +172,7 @@ defmodule Syncordian.Supervisor do
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    delay = len_position_changes(position_changes) * 50  + 4000 + (500 * byzantine_nodes)
-    IO.puts(delay)
+    delay = len_position_changes(position_changes) * 100 + 500 + 500 * byzantine_nodes
     Process.sleep(delay)
     author_id
   end
@@ -351,7 +356,7 @@ defmodule Syncordian.Supervisor do
 
       {:collect_metadata_from_peers} ->
         :global.whereis_name(:supervisor)
-        |> perform_broadcast({:supervisor_request_metadata}, 0)
+        |> perform_broadcast({:supervisor_request_metadata}, 0..0)
 
         supervisor_loop(supervisor)
 
@@ -363,7 +368,12 @@ defmodule Syncordian.Supervisor do
         |> supervisor_loop
 
       {:print_supervisor_metadata} ->
-        get_metadata(supervisor) |> save_metadata(supervisor(supervisor, :byzantine_nodes))
+        get_metadata(supervisor)
+        |> save_metadata(
+          supervisor(supervisor, :byzantine_nodes),
+          supervisor(supervisor, :commit_counter)
+        )
+
         supervisor_loop(supervisor)
 
       {:kill} ->

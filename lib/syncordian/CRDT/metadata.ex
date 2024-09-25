@@ -29,31 +29,34 @@ defmodule Syncordian.Metadata do
             insert_valid_counter: integer(),
             insert_stash_fail_counter: integer()
           )
-  @spec save_metadata(metadata(), integer()) :: :ok
-  def save_metadata(metadata, byzantine_nodes) do
+  @spec save_metadata(metadata(), integer(), integer()) :: :ok
+  def save_metadata(metadata, byzantine_nodes, current_commit) do
     current_date_unix = System.os_time(:second) |> to_string()
 
-    metadata_string = """
-    ---------------------------------------------------------------------------
-    Metadata Record:
-      delete_valid_counter: #{metadata(metadata, :delete_valid_counter)}
-      delete_stash_counter: #{metadata(metadata, :delete_stash_counter)}
-      delete_requeue_counter: #{metadata(metadata, :delete_requeue_counter)}
-      delete_requeue_limit: #{metadata(metadata, :delete_requeue_limit)}
-      insert_distance_greater_than_one: #{metadata(metadata, :insert_distance_greater_than_one)}
-      insert_request_counter: #{metadata(metadata, :insert_request_counter)}
-      insert_request_limit_counter: #{metadata(metadata, :insert_request_limit_counter)}
-      insert_stash_counter: #{metadata(metadata, :insert_stash_counter)}
-      insert_valid_counter: #{metadata(metadata, :insert_valid_counter)}
-      insert_stash_fail_counter: #{metadata(metadata, :insert_stash_fail_counter)}
-      byzantine_insert_counter: #{metadata(metadata, :byzantine_insert_counter)}
-      byzantine_delete_counter: #{metadata(metadata, :byzantine_delete_counter)}
-    ---------------------------------------------------------------------------
-    """
+    metadata_map = %{
+      "delete_valid_counter" => metadata(metadata, :delete_valid_counter),
+      "delete_stash_counter" => metadata(metadata, :delete_stash_counter),
+      "delete_requeue_counter" => metadata(metadata, :delete_requeue_counter),
+      "delete_requeue_limit" => metadata(metadata, :delete_requeue_limit),
+      "insert_distance_greater_than_one" => metadata(metadata, :insert_distance_greater_than_one),
+      "insert_request_counter" => metadata(metadata, :insert_request_counter),
+      "insert_request_limit_counter" => metadata(metadata, :insert_request_limit_counter),
+      "insert_stash_counter" => metadata(metadata, :insert_stash_counter),
+      "insert_valid_counter" => metadata(metadata, :insert_valid_counter),
+      "insert_stash_fail_counter" => metadata(metadata, :insert_stash_fail_counter),
+      "byzantine_insert_counter" => metadata(metadata, :byzantine_insert_counter),
+      "byzantine_delete_counter" => metadata(metadata, :byzantine_delete_counter),
+      "byzantine_nodes" => byzantine_nodes,
+      "current_commit" => current_commit,
+      "timestamp" => current_date_unix
+    }
+
+    metadata_json = Jason.encode!(metadata_map, pretty: true)
 
     File.write(
-      "debug/metadata/byzantine_nodes_#{byzantine_nodes}_#{current_date_unix}",
-      metadata_string
+      "debug/metadata/byzantine_nodes_" <>
+        "#{byzantine_nodes}_commit_#{current_commit}_#{current_date_unix}.json",
+      metadata_json
     )
   end
 

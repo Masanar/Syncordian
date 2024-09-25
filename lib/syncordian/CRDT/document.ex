@@ -89,6 +89,7 @@ defmodule Syncordian.Document do
           Syncordian.Line_Object.line()
         ) ::
           [Syncordian.Line_Object.line()]
+  def get_document_line_fathers(_, nil), do: [nil, nil]
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)

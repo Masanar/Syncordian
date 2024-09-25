@@ -61,18 +61,20 @@ defmodule Syncordian.Supervisor do
     number_of_peers = length(supervisor(supervisor, :pid_list_author_peers))
     byzantine_nodes = supervisor(supervisor, :byzantine_nodes)
 
-    if current_metadata_peer_count == number_of_peers + byzantine_nodes do
-      IO.puts("Supervisor: all metadata from peers collected")
-      IO.puts("")
+    new_supervisor =
+      if current_metadata_peer_count + 1 == number_of_peers + byzantine_nodes do
+        IO.puts("Supervisor: all metadata from peers collected")
+        IO.puts("")
 
-      supervisor(supervisor,
-        metadata_peer_count: current_metadata_peer_count + 1
-      )
-    else
-      supervisor(supervisor,
-        metadata_peer_count: 0
-      )
-    end
+        supervisor(supervisor,
+          metadata_peer_count: 0
+        )
+      else
+        supervisor(supervisor,
+          metadata_peer_count: current_metadata_peer_count + 1
+        )
+      end
+    new_supervisor
   end
 
   @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
@@ -172,7 +174,7 @@ defmodule Syncordian.Supervisor do
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    delay = len_position_changes(position_changes) * 100 + 500 + 500 * byzantine_nodes
+    delay = len_position_changes(position_changes) * 10 + 500 + 500 * byzantine_nodes
     Process.sleep(delay)
     author_id
   end

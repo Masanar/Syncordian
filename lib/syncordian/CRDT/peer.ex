@@ -240,7 +240,7 @@ defmodule Syncordian.Peer do
   @spec perform_broadcast_peer(peer(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = 0..10
+    delay = 10..30
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -414,24 +414,8 @@ defmodule Syncordian.Peer do
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
-        # IO.puts(line_deleted_id)
         current_document_line = get_document_line_by_line_id(document, line_deleted_id)
         current_document_line? = current_document_line != nil
-
-        # TODO: FIX: This is a bug that I have to fix, in this case if current_document_line?
-        # is true need to requeue the message
-        #         [error] Process #PID<0.694.0> raised an exception
-        # ** (ArgumentError) errors were found at the given arguments:
-
-        #   * 2nd argument: not a tuple
-
-        #     :erlang.element(2, nil)
-        #     (syncordian 0.1.0) lib/syncordian/CRDT/line.ex:81: Syncordian.Line_Object.get_line_id/1
-        #     (syncordian 0.1.0) lib/syncordian/CRDT/document.ex:93: Syncordian.Document.get_document_line_fathers/2
-        #     (syncordian 0.1.0) lib/syncordian/CRDT/peer.ex:388: Syncordian.Peer.loop/1
-        # IO.inspect(line_deleted_id)
-        # IO.inspect(line_delete_signature)
-        # IO.inspect(current_document_line)
 
         [left_parent, right_parent] =
           get_document_line_fathers(document, current_document_line)
@@ -445,13 +429,28 @@ defmodule Syncordian.Peer do
 
         peer_pid = get_peer_pid(peer)
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
-        # TODO: Refactor this code, probably to many cases
-        case {valid_signature? and current_document_line?, max_attempts_reach?} do
-          {true, false} ->
+
+        requeue = fn ->
+          send(peer_pid, {:delete_request_requeue})
+
+          send(
+            get_peer_pid(peer),
+            {:receive_delete_broadcast,
+             {line_deleted_id, line_delete_signature, attempt_count + 1, incoming_vc}}
+          )
+
+          loop(peer)
+        end
+
+        case {current_document_line?, valid_signature?, max_attempts_reach?} do
+          {false, _, _} ->
+            requeue.()
+
+          {_, true, false} ->
             send(peer_pid, {:deleted_valid_line})
             delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
-          {false, false} ->
+          {_, false, false} ->
             local_vector_clock = get_peer_vector_clock(peer)
 
             {valid_line?, _} =
@@ -469,18 +468,10 @@ defmodule Syncordian.Peer do
                 delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
               false ->
-                send(peer_pid, {:delete_request_requeue})
-
-                send(
-                  get_peer_pid(peer),
-                  {:receive_delete_broadcast,
-                   {line_deleted_id, line_delete_signature, attempt_count + 1, incoming_vc}}
-                )
-
-                loop(peer)
+                requeue.()
             end
 
-          {_, true} ->
+          {_, _, true} ->
             send(peer_pid, {:delete_request_limit})
             loop(peer)
         end
@@ -708,7 +699,8 @@ defmodule Syncordian.Peer do
           {:receive_metadata_from_peer, get_metadata(peer), get_peer_id(peer)}
         )
 
-        loop(peer)
+        update_metadata(Syncordian.Metadata.metadata(), peer)
+        |> loop()
 
       test ->
         IO.puts("Wrong message")

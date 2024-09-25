@@ -11,7 +11,7 @@ defmodule Syncordian.Line_Object do
   # to know when to stop trying to insert/delete a line. May be a better name should be
   # used for this value.
   # TODO: Check this value
-  @max_insertion_attempts 25_000
+  @max_insertion_attempts 50_000
   Record.defrecord(:line,
     line_id: 0.0,
     content: "",

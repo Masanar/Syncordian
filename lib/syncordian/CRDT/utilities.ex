@@ -19,11 +19,12 @@ defmodule Syncordian.Utilities do
   Function to perform the filtering and broadcast messages to all peers in the network
   except the current peer. or the supervisor.
   """
-  @spec perform_broadcast(pid(), any, integer()) :: any
-  def perform_broadcast(pid, message, delay) do
+  @spec perform_broadcast(pid(), any, any) :: any
+  def perform_broadcast(pid, message, range) do
     :global.registered_names()
     |> Enum.filter(fn name -> not should_filter_out?(name, pid) end)
     |> Enum.each(fn name ->
+      delay = Enum.random(range)
       pid = :global.whereis_name(name)
       Process.send_after(pid, message, delay)
     end)

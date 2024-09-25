@@ -237,10 +237,10 @@ defmodule Syncordian.Peer do
 
   # Function to perform the filtering and broadcast messages to all peers in the network
   # except the current peer. or the supervisor.
-  @spec perform_broadcast(peer(), any) :: any
-  defp perform_broadcast(peer, message) do
+  @spec perform_broadcast_peer(peer(), any) :: any
+  defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = Enum.random(0..10)
+    delay = 0..10
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -363,6 +363,54 @@ defmodule Syncordian.Peer do
             tick_peer_deleted_count(peer)
         end
 
+      # TODO: Delete the test_index, the global_position and current_delete_ops
+      {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
+        document = get_peer_document(peer)
+        peer_id = get_peer_id(peer)
+
+        nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+
+        [left_parent, right_parent] =
+          get_parents_by_index(
+            document,
+            nicolas_index
+          )
+
+        new_line =
+          create_line_between_two_lines(
+            content,
+            left_parent,
+            right_parent,
+            peer_id
+          )
+
+        peer =
+          new_line
+          |> add_line_to_document(document)
+          |> update_peer_document(peer)
+          |> tick_individual_peer_clock
+
+        current_vector_clock = get_peer_vector_clock(peer)
+
+        send(
+          get_peer_pid(peer),
+          {:send_insert_broadcast, {new_line, current_vector_clock}}
+        )
+
+        loop(peer)
+
+      {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
+        perform_broadcast_peer(
+          peer,
+          {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
+        )
+
+        loop(peer)
+
+      {:send_delete_broadcast, delete_line_info} ->
+        perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_line_info})
+        loop(peer)
+
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
@@ -437,61 +485,6 @@ defmodule Syncordian.Peer do
             loop(peer)
         end
 
-      {:send_delete_broadcast, delete_line_info} ->
-        perform_broadcast(peer, {:receive_delete_broadcast, delete_line_info})
-        loop(peer)
-
-      # This correspond to the insert process do it by the peer
-      # TODO: Delete the test_index, the global_position and current_delete_ops
-      {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
-        document = get_peer_document(peer)
-        peer_id = get_peer_id(peer)
-
-        nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
-
-        [left_parent, right_parent] =
-          get_parents_by_index(
-            document,
-            nicolas_index
-          )
-
-        new_line =
-          create_line_between_two_lines(
-            content,
-            left_parent,
-            right_parent,
-            peer_id
-          )
-
-        peer =
-          new_line
-          |> add_line_to_document(document)
-          |> update_peer_document(peer)
-          |> tick_individual_peer_clock
-
-        current_vector_clock = get_peer_vector_clock(peer)
-
-        send(
-          get_peer_pid(peer),
-          {:send_insert_broadcast, {new_line, current_vector_clock}}
-        )
-
-        loop(peer)
-
-      {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
-        perform_broadcast(
-          peer,
-          {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
-        )
-
-        loop(peer)
-
-      {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
-        get_peer_document(peer)
-        |> update_document_line_commit_at(inserted_line_id, received_peer_id)
-        |> update_peer_document(peer)
-        |> loop
-
       {:receive_insert_broadcast, line, incoming_vc} ->
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_peer_vector_clock(peer)
@@ -534,10 +527,11 @@ defmodule Syncordian.Peer do
 
               loop(peer)
             end
-            # IO.puts("The clock distance is greater than 1")
-            # send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
-            # send(peer_pid, {:insertion_clock_distance_greater_than_one})
-            # loop(peer)
+
+          # IO.puts("The clock distance is greater than 1")
+          # send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
+          # send(peer_pid, {:insertion_clock_distance_greater_than_one})
+          # loop(peer)
 
           {_, true} ->
             order_vc =
@@ -610,9 +604,11 @@ defmodule Syncordian.Peer do
             loop(peer)
         end
 
-      {:print, _} ->
-        IO.inspect(peer)
-        loop(peer)
+      {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
+        get_peer_document(peer)
+        |> update_document_line_commit_at(inserted_line_id, received_peer_id)
+        |> update_peer_document(peer)
+        |> loop
 
       {:print_content, :document} ->
         print_document_content(get_peer_document(peer), peer(peer, :peer_id))
@@ -630,6 +626,10 @@ defmodule Syncordian.Peer do
         info
         |> update_peer_pid(peer)
         |> loop
+
+      {:print, _} ->
+        IO.inspect(peer)
+        loop(peer)
 
       # All this messages are used to update the peer structure with the metadata of the
       # messages to eventually just send one message to the supervisor. When the

@@ -12,13 +12,28 @@ if [ "${#FILES[@]}" -lt 2 ]; then
   exit 0
 fi
 
-# Use the first file as a reference
-REFERENCE_FILE="${FILES[0]}"
+# Use the first file as a reference, excluding .gitignore
+REFERENCE_FILE=""
+for FILE in "${FILES[@]}"; do
+  if [[ "$(basename "$FILE")" != ".gitignore" ]]; then
+    REFERENCE_FILE="$FILE"
+    break
+  fi
+done
+
+# Ensure we found a valid reference file
+if [ -z "$REFERENCE_FILE" ]; then
+  echo "No valid reference file found."
+  exit 1
+fi
+
 # Loop through all the files and compare with the reference file
 for FILE in "${FILES[@]}"; do
-  if ! cmp -s "$REFERENCE_FILE" "$FILE"; then
-    echo "The files are not identical. Mismatch found in: $FILE"
-    exit 1
+  if [[ "$(basename "$FILE")" != ".gitignore" ]]; then
+    if ! cmp -s "$REFERENCE_FILE" "$FILE"; then
+      echo "The files are not identical. Mismatch found in: $FILE"
+      exit 1
+    fi
   fi
 done
 

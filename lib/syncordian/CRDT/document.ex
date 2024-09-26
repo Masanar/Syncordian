@@ -90,6 +90,7 @@ defmodule Syncordian.Document do
         ) ::
           [Syncordian.Line_Object.line()]
   def get_document_line_fathers(_, nil), do: [nil, nil]
+
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
@@ -403,6 +404,8 @@ defmodule Syncordian.Document do
 
   # The -1 is because the last line is the supremum
   def translate_git_index_to_syncordian_index([], 0, 0, index), do: index - 1
+
+  def translate_git_index_to_syncordian_index([], _, _, _), do: -1
 
   def translate_git_index_to_syncordian_index([h | t], 0, 0, index) do
     line_status = get_line_status(h)

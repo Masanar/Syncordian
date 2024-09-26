@@ -240,7 +240,8 @@ defmodule Syncordian.Peer do
   @spec perform_broadcast_peer(peer(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = 10..30
+    # delay = 10..30
+    delay = 0..0
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -277,11 +278,11 @@ defmodule Syncordian.Peer do
   defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id) do
     document = get_peer_document(peer)
 
-    send_confirmation_line_insertion(
-      get_peer_id(peer),
-      incoming_peer_id,
-      get_line_id(line)
-    )
+    # send_confirmation_line_insertion(
+    #   get_peer_id(peer),
+    #   incoming_peer_id,
+    #   get_line_id(line)
+    # )
 
     add_line_to_document(line, document)
     |> update_peer_document(peer)
@@ -337,30 +338,38 @@ defmodule Syncordian.Peer do
             nicolas_index =
               translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-            peer =
-              document
-              |> update_document_line_status(nicolas_index, :tombstone)
-              |> update_document_line_peer_id(nicolas_index, peer_id)
-              |> update_peer_document(peer)
+            if nicolas_index == -1 do
+              # Due byzantine peers or network issues the line was not inserted in the
+              # document of the peer, need to requeue the local delete operation.
+              IO.puts("Line delete line was not found in the document with index: #{test_index}")
+              get_peer_pid(peer) |> send({:delete_line, [index_position, test_index, 0, 0]})
+              loop(peer)
+            else
+              peer =
+                document
+                |> update_document_line_status(nicolas_index, :tombstone)
+                |> update_document_line_peer_id(nicolas_index, peer_id)
+                |> update_peer_document(peer)
 
-            line_deleted =
-              get_document_line_by_index(document, nicolas_index)
+              line_deleted =
+                get_document_line_by_index(document, nicolas_index)
 
-            line_deleted_id = line_deleted |> get_line_id
+              line_deleted_id = line_deleted |> get_line_id
 
-            [left_parent, right_parent] =
-              get_document_line_fathers(document, line_deleted)
+              [left_parent, right_parent] =
+                get_document_line_fathers(document, line_deleted)
 
-            line_delete_signature = create_signature_delete(left_parent, right_parent)
-            peer_vector_clock = get_peer_vector_clock(peer)
+              line_delete_signature = create_signature_delete(left_parent, right_parent)
+              peer_vector_clock = get_peer_vector_clock(peer)
 
-            send(
-              get_peer_pid(peer),
-              {:send_delete_broadcast,
-               {line_deleted_id, line_delete_signature, 0, peer_vector_clock}}
-            )
+              send(
+                get_peer_pid(peer),
+                {:send_delete_broadcast,
+                 {line_deleted_id, line_delete_signature, 0, peer_vector_clock}}
+              )
 
-            tick_peer_deleted_count(peer)
+              tick_peer_deleted_count(peer)
+            end
         end
 
       # TODO: Delete the test_index, the global_position and current_delete_ops
@@ -370,34 +379,45 @@ defmodule Syncordian.Peer do
 
         nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-        [left_parent, right_parent] =
-          get_parents_by_index(
-            document,
-            nicolas_index
+        if nicolas_index == -1 do
+          # Due byzantine peers or network issues the line was not inserted in the
+          # document of the peer, need to requeue the local delete operation.
+          IO.puts(
+            "Line insert was not found in the document with index: #{test_index} and content: #{content}"
           )
 
-        new_line =
-          create_line_between_two_lines(
-            content,
-            left_parent,
-            right_parent,
-            peer_id
+          get_peer_pid(peer) |> send({:insert, [content, 0, test_index, 0, 0]})
+          loop(peer)
+        else
+          [left_parent, right_parent] =
+            get_parents_by_index(
+              document,
+              nicolas_index
+            )
+
+          new_line =
+            create_line_between_two_lines(
+              content,
+              left_parent,
+              right_parent,
+              peer_id
+            )
+
+          peer =
+            new_line
+            |> add_line_to_document(document)
+            |> update_peer_document(peer)
+            |> tick_individual_peer_clock
+
+          current_vector_clock = get_peer_vector_clock(peer)
+
+          send(
+            get_peer_pid(peer),
+            {:send_insert_broadcast, {new_line, current_vector_clock}}
           )
 
-        peer =
-          new_line
-          |> add_line_to_document(document)
-          |> update_peer_document(peer)
-          |> tick_individual_peer_clock
-
-        current_vector_clock = get_peer_vector_clock(peer)
-
-        send(
-          get_peer_pid(peer),
-          {:send_insert_broadcast, {new_line, current_vector_clock}}
-        )
-
-        loop(peer)
+          loop(peer)
+        end
 
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         perform_broadcast_peer(
@@ -430,13 +450,14 @@ defmodule Syncordian.Peer do
         peer_pid = get_peer_pid(peer)
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
 
-        requeue = fn ->
+        requeue = fn x ->
+          IO.puts("requeue delete request")
           send(peer_pid, {:delete_request_requeue})
 
           send(
             get_peer_pid(peer),
             {:receive_delete_broadcast,
-             {line_deleted_id, line_delete_signature, attempt_count + 1, incoming_vc}}
+             {line_deleted_id, line_delete_signature, attempt_count + x, incoming_vc}}
           )
 
           loop(peer)
@@ -444,9 +465,11 @@ defmodule Syncordian.Peer do
 
         case {current_document_line?, valid_signature?, max_attempts_reach?} do
           {false, _, _} ->
-            requeue.()
+            IO.puts("The line to delete does not exist")
+            requeue.(1)
 
           {_, true, false} ->
+            IO.puts("The delete signature is valid")
             send(peer_pid, {:deleted_valid_line})
             delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
@@ -464,11 +487,16 @@ defmodule Syncordian.Peer do
 
             case valid_line? do
               true ->
+                IO.puts("The delete signature is valid when stashed")
                 send(peer_pid, {:delete_stash_succeeded})
                 delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
 
               false ->
-                requeue.()
+                IO.puts(
+                  "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
+                )
+
+                requeue.(5)
             end
 
           {_, _, true} ->
@@ -507,8 +535,12 @@ defmodule Syncordian.Peer do
               send(peer_pid, {:insertion_request_requeue_limit})
               loop(peer)
             else
-              new_line = tick_line_insertion_attempts(line)
-              # send(peer_pid, {:insertion_request_requeue})
+              new_line = tick_line_insertion_attempts(line, 1)
+
+              if Enum.random(0..1_000) == 0 do
+                IO.puts("The clock distance is greater than 1")
+              end
+
               send(peer_pid, {:insertion_clock_distance_greater_than_one})
 
               send(
@@ -518,11 +550,6 @@ defmodule Syncordian.Peer do
 
               loop(peer)
             end
-
-          # IO.puts("The clock distance is greater than 1")
-          # send(get_peer_pid(peer), {:receive_insert_broadcast, line, incoming_vc})
-          # send(peer_pid, {:insertion_clock_distance_greater_than_one})
-          # loop(peer)
 
           {_, true} ->
             order_vc =
@@ -553,13 +580,13 @@ defmodule Syncordian.Peer do
 
                   {false, false} ->
                     new_line = tick_line_insertion_attempts(line)
-                    send(peer_pid, {:insertion_request_requeue})
 
-                    send(
-                      get_peer_pid(peer),
-                      {:receive_insert_broadcast, new_line, incoming_vc}
+                    IO.puts(
+                      "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
                     )
 
+                    send(peer_pid, {:insertion_request_requeue})
+                    send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
                     loop(peer)
 
                   {false, true} ->

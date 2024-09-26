@@ -1,0 +1,17 @@
+{
+  "byzantine_delete_counter": 0,
+  "byzantine_insert_counter": 603,
+  "byzantine_nodes": 5,
+  "current_commit": 70,
+  "delete_requeue_counter": 0,
+  "delete_requeue_limit": 0,
+  "delete_stash_counter": 240,
+  "delete_valid_counter": 6401,
+  "insert_distance_greater_than_one": 83864554,
+  "insert_request_counter": 0,
+  "insert_request_limit_counter": 16763,
+  "insert_stash_counter": 0,
+  "insert_stash_fail_counter": 1327,
+  "insert_valid_counter": 20358,
+  "timestamp": "1727307297"
+}

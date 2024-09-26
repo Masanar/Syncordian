@@ -174,7 +174,8 @@ defmodule Syncordian.Supervisor do
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    delay = len_position_changes(position_changes) * 10 + 500 + 500 * byzantine_nodes
+    # delay = len_position_changes(position_changes) * 100 + 3000 + 1000 * byzantine_nodes
+    delay = 3000
     Process.sleep(delay)
     author_id
   end
@@ -279,9 +280,11 @@ defmodule Syncordian.Supervisor do
         pid_list_author_peers: pid_list_author_peers,
         map_peer_id_authors: map_peer_id_authors
       )
+    IO.inspect(pid_list_author_peers)
 
     IO.puts("Byzantine nodes to start #{byzantine_nodes}")
     init_byzantine_peers(byzantine_nodes)
+
 
     pid = spawn(__MODULE__, :supervisor_loop, [supervisor])
     :global.register_name(:supervisor, pid)

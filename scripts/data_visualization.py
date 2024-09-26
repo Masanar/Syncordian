@@ -53,7 +53,7 @@ def read_json_files(directory):
         if key == "delete_valid_counter":
             new_metrics["Delete_Valid_Messages"] = metrics[key]
         if key == "insert_distance_greater_than_one":    
-            new_metrics["Insert_Distance_Greater_Than_One"] = metrics[key]
+            new_metrics["Ahead_of_Local_Clock"] = metrics[key]
         if key == "insert_valid_counter":
             new_metrics["Insert_Valid_Messages"] = metrics[key]
 

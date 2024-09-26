@@ -74,49 +74,51 @@ defmodule Syncordian.ByzantinePeer do
 
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      # {:receive_delete_broadcast,
-      #  {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
-      #   # This is the way to prevent the feedback between the byzantine peers, the
-      #   # signature from a valid peer muts be a hash from sha256 (or similar) and such
-      #   # signatures have a length of 64 characters. Then is the signature is different
-      #   # from 10 (the length of a signature from a byzantine peer) then the signature is
-      #   # valid and the message is broadcasted to the network. In the other case the
-      #   # message is ignored.
-      #   # if String.length(line_delete_signature) != 10 and send?() do
-      #   if String.length(line_delete_signature) != 10 and send?() do
-      #     byzantine_signature = generate_string()
+      {:receive_delete_broadcast,
+       {line_deleted_id, line_delete_signature, _, incoming_vc}} ->
+        # This is the way to prevent the feedback between the byzantine peers, the
+        # signature from a valid peer muts be a hash from sha256 (or similar) and such
+        # signatures have a length of 64 characters. Then is the signature is different
+        # from 10 (the length of a signature from a byzantine peer) then the signature is
+        # valid and the message is broadcasted to the network. In the other case the
+        # message is ignored.
+        # if String.length(line_delete_signature) != 10 and send?() do
+        if String.length(line_delete_signature) != 10 and send?() do
+          byzantine_signature = generate_string()
 
-      #     perform_broadcast_byzantine(
-      #       byzantine_peer,
-      #       {:receive_delete_broadcast,
-      #        {line_deleted_id, byzantine_signature, attempt_count, incoming_vc}}
-      #     )
+          perform_broadcast_byzantine(
+            byzantine_peer,
+            {:receive_delete_broadcast,
+             {line_deleted_id, byzantine_signature, 500, incoming_vc}}
+          )
+          IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
 
-      #     get_metadata(byzantine_peer)
-      #     |> inc_byzantine_delete_counter()
-      #     |> update_metadata(byzantine_peer)
-      #     |> byzantine_peer_loop()
-      #   else
-      #     byzantine_peer_loop(byzantine_peer)
-      #   end
+          get_metadata(byzantine_peer)
+          |> inc_byzantine_delete_counter()
+          |> update_metadata(byzantine_peer)
+          |> byzantine_peer_loop()
+        else
+          byzantine_peer_loop(byzantine_peer)
+        end
 
-      # {:receive_insert_broadcast, line, incoming_vc} ->
-      #   if String.length(get_signature(line)) != 10 and send?() do
-      #     byzantine_signature = generate_string()
+      {:receive_insert_broadcast, line, incoming_vc} ->
+        if String.length(get_signature(line)) != 10 and send?() do
+          byzantine_signature = generate_string()
+          new_line = tick_line_insertion_attempts(line, 500)
 
-      #     perform_broadcast_byzantine(
-      #       byzantine_peer,
-      #       {:receive_insert_broadcast, update_line_signature(line, byzantine_signature),
-      #        incoming_vc}
-      #     )
-
-      #     get_metadata(byzantine_peer)
-      #     |> inc_byzantine_insert_counter()
-      #     |> update_metadata(byzantine_peer)
-      #     |> byzantine_peer_loop()
-      #   else
-      #     byzantine_peer_loop(byzantine_peer)
-      #   end
+          perform_broadcast_byzantine(
+            byzantine_peer,
+            {:receive_insert_broadcast, update_line_signature(new_line, byzantine_signature),
+             incoming_vc}
+          )
+          IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")
+          get_metadata(byzantine_peer)
+          |> inc_byzantine_insert_counter()
+          |> update_metadata(byzantine_peer)
+          |> byzantine_peer_loop()
+        else
+          byzantine_peer_loop(byzantine_peer)
+        end
 
       {:save_pid, pid} ->
         pid
@@ -129,7 +131,8 @@ defmodule Syncordian.ByzantinePeer do
           {:receive_metadata_from_peer, get_metadata(byzantine_peer), get_peer_id(byzantine_peer)}
         )
 
-        byzantine_peer_loop(byzantine_peer)
+        update_metadata(Syncordian.Metadata.metadata(), byzantine_peer)
+        |> byzantine_peer_loop()
 
       _ ->
         byzantine_peer_loop(byzantine_peer)

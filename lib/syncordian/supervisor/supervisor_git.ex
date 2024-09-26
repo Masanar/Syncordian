@@ -175,7 +175,7 @@ defmodule Syncordian.Supervisor do
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
     # delay = len_position_changes(position_changes) * 100 + 3000 + 1000 * byzantine_nodes
-    delay = 3000
+    delay = 1000
     Process.sleep(delay)
     author_id
   end

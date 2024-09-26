@@ -468,7 +468,7 @@ defmodule Syncordian.Peer do
         case {current_document_line?, valid_signature?, max_attempts_reach?} do
           {false, _, _} ->
             IO.puts("The line to delete does not exist")
-            requeue.(10)
+            requeue.(1)
 
           {_, true, false} ->
             IO.puts("The delete signature is valid")
@@ -482,14 +482,20 @@ defmodule Syncordian.Peer do
           {_, false, false} ->
             local_vector_clock = get_peer_vector_clock(peer)
 
-            {valid_line?, _} =
-              stash_document_lines_delete(
-                document,
-                line_deleted_id,
-                line_delete_signature,
-                local_vector_clock,
-                incoming_vc
-              )
+            valid_line? =
+              if String.length(line_delete_signature) == 10 do
+                false
+              else
+                {v?, _} =
+                  stash_document_lines_delete(
+                    document,
+                    line_deleted_id,
+                    line_delete_signature,
+                    local_vector_clock,
+                    incoming_vc
+                  )
+                v?
+              end
 
             case valid_line? do
               true ->
@@ -506,7 +512,7 @@ defmodule Syncordian.Peer do
                   "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
                 )
 
-                requeue.(100)
+                requeue.(10)
             end
 
           {_, _, true} ->

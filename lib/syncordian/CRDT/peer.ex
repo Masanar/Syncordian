@@ -341,7 +341,7 @@ defmodule Syncordian.Peer do
             if nicolas_index == -1 do
               # Due byzantine peers or network issues the line was not inserted in the
               # document of the peer, need to requeue the local delete operation.
-              IO.puts("Line delete line was not found in the document with index: #{test_index}")
+              # IO.puts("Line delete line was not found in the document with index: #{test_index}")
               get_peer_pid(peer) |> send({:delete_line, [index_position, test_index, 0, 0]})
               loop(peer)
             else
@@ -382,9 +382,9 @@ defmodule Syncordian.Peer do
         if nicolas_index == -1 do
           # Due byzantine peers or network issues the line was not inserted in the
           # document of the peer, need to requeue the local delete operation.
-          IO.puts(
-            "Line insert was not found in the document with index: #{test_index} and content: #{content}"
-          )
+          # IO.puts(
+          #   "Line insert was not found in the document with index: #{test_index} and content: #{content}"
+          # )
 
           get_peer_pid(peer) |> send({:insert, [content, 0, test_index, 0, 0]})
           loop(peer)
@@ -450,7 +450,7 @@ defmodule Syncordian.Peer do
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
 
         requeue = fn x ->
-          IO.puts("requeue delete request")
+          # IO.puts("requeue delete request")
 
           send(
             get_peer_pid(peer),
@@ -467,11 +467,11 @@ defmodule Syncordian.Peer do
 
         case {current_document_line?, valid_signature?, max_attempts_reach?} do
           {false, _, _} ->
-            IO.puts("The line to delete does not exist")
+            # IO.puts("The line to delete does not exist")
             requeue.(1)
 
           {_, true, false} ->
-            IO.puts("The delete signature is valid")
+            # IO.puts("The delete signature is valid")
             # send(peer_pid, {:deleted_valid_line})
 
             get_metadata(peer)
@@ -499,7 +499,7 @@ defmodule Syncordian.Peer do
 
             case valid_line? do
               true ->
-                IO.puts("The delete signature is valid when stashed")
+                # IO.puts("The delete signature is valid when stashed")
                 # send(peer_pid, {:delete_stash_succeeded})
 
                 get_metadata(peer)
@@ -508,9 +508,9 @@ defmodule Syncordian.Peer do
                 |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
               false ->
-                IO.puts(
-                  "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
-                )
+                # IO.puts(
+                #   "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
+                # )
 
                 requeue.(10)
             end
@@ -605,9 +605,9 @@ defmodule Syncordian.Peer do
                   {false, false} ->
                     new_line = tick_line_insertion_attempts(line)
 
-                    IO.puts(
-                      "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
-                    )
+                    # IO.puts(
+                    #   "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
+                    # )
 
                     # send(peer_pid, {:insertion_request_requeue})
 

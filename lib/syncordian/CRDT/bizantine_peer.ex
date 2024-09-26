@@ -44,7 +44,7 @@ defmodule Syncordian.ByzantinePeer do
   @spec perform_broadcast_byzantine(byzantine_peer(), any) :: any
   defp perform_broadcast_byzantine(byzantine_peer, message) do
     peer_pid = get_peer_pid(byzantine_peer)
-    delay = 20..70
+    delay = 70..100
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -89,7 +89,7 @@ defmodule Syncordian.ByzantinePeer do
           perform_broadcast_byzantine(
             byzantine_peer,
             {:receive_delete_broadcast,
-             {line_deleted_id, byzantine_signature, 500, incoming_vc}}
+             {line_deleted_id, byzantine_signature, 4_000, incoming_vc}}
           )
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
 
@@ -104,7 +104,7 @@ defmodule Syncordian.ByzantinePeer do
       {:receive_insert_broadcast, line, incoming_vc} ->
         if String.length(get_signature(line)) != 10 and send?() do
           byzantine_signature = generate_string()
-          new_line = tick_line_insertion_attempts(line, 500)
+          new_line = tick_line_insertion_attempts(line, 4_000)
 
           perform_broadcast_byzantine(
             byzantine_peer,

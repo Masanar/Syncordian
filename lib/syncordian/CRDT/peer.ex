@@ -447,12 +447,10 @@ defmodule Syncordian.Peer do
             right_parent
           )
 
-        peer_pid = get_peer_pid(peer)
         max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
 
         requeue = fn x ->
           IO.puts("requeue delete request")
-          send(peer_pid, {:delete_request_requeue})
 
           send(
             get_peer_pid(peer),
@@ -460,18 +458,26 @@ defmodule Syncordian.Peer do
              {line_deleted_id, line_delete_signature, attempt_count + x, incoming_vc}}
           )
 
-          loop(peer)
+          # send(peer_pid, {:delete_request_requeue})
+          get_metadata(peer)
+          |> inc_delete_requeue_counter
+          |> update_metadata(peer)
+          |> loop
         end
 
         case {current_document_line?, valid_signature?, max_attempts_reach?} do
           {false, _, _} ->
             IO.puts("The line to delete does not exist")
-            requeue.(1)
+            requeue.(10)
 
           {_, true, false} ->
             IO.puts("The delete signature is valid")
-            send(peer_pid, {:deleted_valid_line})
-            delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
+            # send(peer_pid, {:deleted_valid_line})
+
+            get_metadata(peer)
+            |> inc_delete_valid_counter
+            |> update_metadata(peer)
+            |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
           {_, false, false} ->
             local_vector_clock = get_peer_vector_clock(peer)
@@ -488,20 +494,28 @@ defmodule Syncordian.Peer do
             case valid_line? do
               true ->
                 IO.puts("The delete signature is valid when stashed")
-                send(peer_pid, {:delete_stash_succeeded})
-                delete_valid_line_to_document_and_loop(peer, document, line_deleted_id)
+                # send(peer_pid, {:delete_stash_succeeded})
+
+                get_metadata(peer)
+                |> inc_delete_stash_counter
+                |> update_metadata(peer)
+                |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
               false ->
                 IO.puts(
                   "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
                 )
 
-                requeue.(5)
+                requeue.(100)
             end
 
           {_, _, true} ->
-            send(peer_pid, {:delete_request_limit})
-            loop(peer)
+            # send(peer_pid, {:delete_request_limit})
+
+            get_metadata(peer)
+            |> inc_delete_requeue_limit_counter
+            |> update_metadata(peer)
+            |> loop
         end
 
       {:receive_insert_broadcast, line, incoming_vc} ->
@@ -514,8 +528,6 @@ defmodule Syncordian.Peer do
             incoming_vc,
             incoming_peer_id
           )
-
-        peer_pid = get_peer_pid(peer)
 
         clock_distance =
           if clock_distance_usual == 0 do
@@ -532,23 +544,25 @@ defmodule Syncordian.Peer do
             # the byzantine peers generating cpu overload. GO BACK HERE AND FIX THIS
             # AND CHECK IF THIS MAKES SENSE.
             if insertion_attempts_reach? do
-              send(peer_pid, {:insertion_request_requeue_limit})
-              loop(peer)
+              # send(peer_pid, {:insertion_request_requeue_limit})
+              get_metadata(peer)
+              |> inc_insert_request_limit_counter
+              |> update_metadata(peer)
+              |> loop
             else
               new_line = tick_line_insertion_attempts(line, 1)
 
-              if Enum.random(0..1_000) == 0 do
-                IO.puts("The clock distance is greater than 1")
-              end
-
-              send(peer_pid, {:insertion_clock_distance_greater_than_one})
+              # send(peer_pid, {:insertion_clock_distance_greater_than_one})
 
               send(
                 get_peer_pid(peer),
                 {:receive_insert_broadcast, new_line, incoming_vc}
               )
 
-              loop(peer)
+              get_metadata(peer)
+              |> inc_insert_distance_greater_than_one
+              |> update_metadata(peer)
+              |> loop
             end
 
           {_, true} ->
@@ -575,8 +589,12 @@ defmodule Syncordian.Peer do
 
                 case {valid_line?, insertion_attempts_reach?} do
                   {true, false} ->
-                    send(peer_pid, {:insertion_valid_line})
-                    add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
+                    # send(peer_pid, {:insertion_valid_line})
+
+                    get_metadata(peer)
+                    |> inc_insert_valid_counter
+                    |> update_metadata(peer)
+                    |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
 
                   {false, false} ->
                     new_line = tick_line_insertion_attempts(line)
@@ -585,15 +603,26 @@ defmodule Syncordian.Peer do
                       "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
                     )
 
-                    send(peer_pid, {:insertion_request_requeue})
-                    send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
-                    loop(peer)
+                    # send(peer_pid, {:insertion_request_requeue})
+
+                    get_metadata(peer)
+                    |> inc_insert_request_counter
+                    |> update_metadata(peer)
+                    |> loop
+
+                  # TODO: uncomment this code when the test is done
+                  # send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
+                  # loop(peer)
 
                   {false, true} ->
                     # The line has reach the maximum number of attempts and it was not
                     # possible to check if the line is valid or not.
-                    send(peer_pid, {:insertion_request_requeue_limit})
-                    loop(peer)
+                    # send(peer_pid, {:insertion_request_requeue_limit})
+
+                    get_metadata(peer)
+                    |> inc_insert_request_limit_counter
+                    |> update_metadata(peer)
+                    |> loop
                 end
 
               # local_vc > incoming_vc
@@ -608,12 +637,20 @@ defmodule Syncordian.Peer do
 
                 case valid_line? do
                   true ->
-                    send(peer_pid, {:insertion_stash_succeeded})
-                    add_valid_line_to_document_and_loop(peer, line, incoming_peer_id)
+                    # send(peer_pid, {:insertion_stash_succeeded})
+
+                    get_metadata(peer)
+                    |> inc_insert_stash_counter
+                    |> update_metadata(peer)
+                    |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
 
                   false ->
-                    send(peer_pid, {:insertion_stash_fail})
-                    loop(peer)
+                    # send(peer_pid, {:insertion_stash_fail})
+
+                    get_metadata(peer)
+                    |> inc_insert_stash_fail_counter
+                    |> update_metadata(peer)
+                    |> loop
                 end
             end
 
@@ -660,65 +697,65 @@ defmodule Syncordian.Peer do
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
-      {:deleted_valid_line} ->
-        get_metadata(peer)
-        |> inc_delete_valid_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:deleted_valid_line} ->
+      #   get_metadata(peer)
+      #   |> inc_delete_valid_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:delete_stash_succeeded} ->
-        get_metadata(peer)
-        |> inc_delete_stash_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:delete_stash_succeeded} ->
+      #   get_metadata(peer)
+      #   |> inc_delete_stash_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:delete_request_requeue} ->
-        get_metadata(peer)
-        |> inc_delete_requeue_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:delete_request_requeue} ->
+      #   get_metadata(peer)
+      #   |> inc_delete_requeue_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:delete_request_limit} ->
-        get_metadata(peer)
-        |> inc_delete_requeue_limit_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:delete_request_limit} ->
+      #   get_metadata(peer)
+      #   |> inc_delete_requeue_limit_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_clock_distance_greater_than_one} ->
-        get_metadata(peer)
-        |> inc_insert_distance_greater_than_one
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_clock_distance_greater_than_one} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_distance_greater_than_one
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_valid_line} ->
-        get_metadata(peer)
-        |> inc_insert_valid_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_valid_line} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_valid_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_request_requeue} ->
-        get_metadata(peer)
-        |> inc_insert_request_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_request_requeue} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_request_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_request_requeue_limit} ->
-        get_metadata(peer)
-        |> inc_insert_request_limit_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_request_requeue_limit} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_request_limit_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_stash_succeeded} ->
-        get_metadata(peer)
-        |> inc_insert_stash_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_stash_succeeded} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_stash_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
-      {:insertion_stash_fail} ->
-        get_metadata(peer)
-        |> inc_insert_stash_fail_counter
-        |> update_metadata(peer)
-        |> loop
+      # {:insertion_stash_fail} ->
+      #   get_metadata(peer)
+      #   |> inc_insert_stash_fail_counter
+      #   |> update_metadata(peer)
+      #   |> loop
 
       {:supervisor_request_metadata} ->
         send(

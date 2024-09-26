@@ -4,7 +4,6 @@ defmodule Syncordian.Utilities do
       do not fit on the main modules.
   """
 
-
   # Function to filter weather the peer is the current peer, the supervisor or the storage
   @spec should_filter_out?(any, pid) :: boolean
   defp should_filter_out?(name, peer_pid) do
@@ -30,7 +29,6 @@ defmodule Syncordian.Utilities do
     end)
   end
 
-
   @doc """
     Generates a random string of a given length, is length is not provided, it defaults to
     10.
@@ -54,9 +52,15 @@ defmodule Syncordian.Utilities do
     end
   end
 
-  def add_element_list_in_given_index(list, index, new_element) do
-    Enum.concat(Enum.take(list, index + 1), [new_element | Enum.drop(list, index + 1)])
+  def add_element_list_in_given_index(list, 0, new_element),
+    do: [hd(list) | [new_element | tl(list)]]
+  def add_element_list_in_given_index([head | tail], index, new_element) when index > 0 do
+    [head | add_element_list_in_given_index(tail, index - 1, new_element)]
   end
+
+  # def add_element_list_in_given_index(list, index, new_element) do
+  #   Enum.concat(Enum.take(list, index + 1), [new_element | Enum.drop(list, index + 1)])
+  # end
 
   def get_less_than_one_positive_random() do
     random = abs(:rand.normal(0, 0.002))
@@ -83,7 +87,8 @@ defmodule Syncordian.Utilities do
     directory
     |> Path.expand()
     |> File.ls!()
-    |> Enum.reject(&(&1 == ".gitignore"))  # Exclude the .gitignore file
+    # Exclude the .gitignore file
+    |> Enum.reject(&(&1 == ".gitignore"))
     |> Enum.each(&delete_entry(Path.join(directory, &1)))
   end
 

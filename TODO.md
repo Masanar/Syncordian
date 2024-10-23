@@ -4,8 +4,9 @@ Check list to track the progress and current working on
 
 ## Woking on
 
-I think tha the global_position also must be shifted with the advance of the commits
-you are having more and more tombstones to take into account (?)
+El envio de metadata directo al supervisor esta causando demora en el envio de commits
+mas bien que cada peer guarde su propia metadata y cuando se lo pidan ahi si se lo envien
+al superviosr
 
 
 ## Pending

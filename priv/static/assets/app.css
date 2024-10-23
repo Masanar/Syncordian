@@ -1707,6 +1707,16 @@ select{
 
 /* CSS */
 
+.button-89-label {
+  display: inline-block;
+  margin-right: 10px;
+  font-size: 16px;
+  /* Match the button font size */
+  line-height: 40px;
+  /* Match the height of the button */
+  vertical-align: middle;
+}
+
 .button-89 {
   --b: 3px;
   /* border thickness */
@@ -1931,7 +1941,31 @@ pre {
   }
 }
 
-.button-left {
+.button-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px;
+  gap: 20px;
+  /* Adds space between rows */
+}
+
+.button-row {
+  display: flex;
+  justify-content: center;
+  /* Center buttons horizontally */
+  gap: 15px;
+  /* Adds space between buttons */
+}
+
+.button-left,
+.button-right {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* .button-left {
   display: flex;
   justify-content: flex-start;
   flex: 1;
@@ -1941,7 +1975,7 @@ pre {
   display: flex;
   justify-content: flex-end;
   flex: 1;
-}
+} */
 
 .about-container {
   font-family: Arial, sans-serif;

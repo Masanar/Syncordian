@@ -29,6 +29,7 @@ Before running the project, make sure you have the following installed:
 ```bash
 git clone git@github.com:Masanar/Syncordian.git 
 cd syncordian
+mkdir -p debug/documents
 ```
 
 2. Install the project dependencies:

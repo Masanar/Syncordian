@@ -36,6 +36,11 @@ defmodule Syncordian.Byzantine do
           left_parent :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line()
         ) :: boolean()
+  # This two definition were introduce due to the byzantine peer, see fix in the function
+  # window_stash_check_signature. This was made just after commit f8ac522 syncordian
+  # repository
+  def check_signature_delete(_, nil, _) , do: false
+  def check_signature_delete(_, _, nil) , do: false
   def check_signature_delete(
         deleted_line_signature,
         left_parent,

@@ -89,6 +89,8 @@ defmodule Syncordian.Document do
           Syncordian.Line_Object.line()
         ) ::
           [Syncordian.Line_Object.line()]
+  def get_document_line_fathers(_, nil), do: [nil, nil]
+
   def get_document_line_fathers(document, line) do
     index = get_document_index_by_line_id(document, get_line_id(line))
     left_parent = get_document_line_by_index(document, index - 1)
@@ -113,11 +115,29 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.status()
         ) ::
           Syncordian.Basic_Types.document()
-  def update_document_line_status(document, index, new_value) do
-    line = get_document_line_by_index(document, index)
-    updated_line = set_line_status(line, new_value)
-    Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  @spec update_document_line_status(
+          Syncordian.Basic_Types.document(),
+          integer(),
+          any()
+        ) :: Syncordian.Basic_Types.document()
+  def update_document_line_status([head | tail], index, new_value) do
+    update_document_line_status_rec([head | tail], index, new_value, 0)
   end
+
+  defp update_document_line_status_rec([head | tail], index, new_value, current_index) do
+    if current_index == index do
+      updated_line = set_line_status(head, new_value)
+      [updated_line | tail]
+    else
+      [head | update_document_line_status_rec(tail, index, new_value, current_index + 1)]
+    end
+  end
+
+  # def update_document_line_status(document, index, new_value) do
+  #   line = get_document_line_by_index(document, index)
+  #   updated_line = set_line_status(line, new_value)
+  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  # end
 
   @doc """
     This function returns the length of the document
@@ -136,7 +156,7 @@ defmodule Syncordian.Document do
         [head | add_line_to_document(line, tail)]
 
       0 ->
-        IO.inspect("Line Error")
+        IO.puts("Line Error")
         document
 
       -1 ->
@@ -166,11 +186,24 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.document()
         ) ::
           Syncordian.Basic_Types.document()
-  def update_document_line_by_line(updated_line, document) do
+  def update_document_line_by_line(updated_line, [head | tail]) do
     line_id = get_line_id(updated_line)
-    index = get_document_index_by_line_id(document, line_id)
-    Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+    update_document_line_by_line_rec(updated_line, line_id, [head | tail], 0)
   end
+
+  defp update_document_line_by_line_rec(updated_line, line_id, [head | tail], index) do
+    if get_line_id(head) == line_id do
+      [updated_line | tail]
+    else
+      [head | update_document_line_by_line_rec(updated_line, line_id, tail, index + 1)]
+    end
+  end
+
+  # def update_document_line_by_line(updated_line, document) do
+  #   line_id = get_line_id(updated_line)
+  #   index = get_document_index_by_line_id(document, line_id)
+  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  # end
 
   @doc """
     Given a document and a index, this function change the status of the line at the given
@@ -182,11 +215,20 @@ defmodule Syncordian.Document do
           Syncordian.Basic_Types.peer_id()
         ) ::
           Syncordian.Basic_Types.document()
-  def update_document_line_peer_id(document, index, new_peer_id) do
-    line = get_document_line_by_index(document, index)
-    updated_line = set_line_peer_id(line, new_peer_id)
-    Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  def update_document_line_peer_id([head | tail], 0, new_peer_id) do
+    updated_line = set_line_peer_id(head, new_peer_id)
+    [updated_line | tail]
   end
+
+  def update_document_line_peer_id([head | tail], index, new_peer_id) when index > 0 do
+    [head | update_document_line_peer_id(tail, index - 1, new_peer_id)]
+  end
+
+  # def update_document_line_peer_id(document, index, new_peer_id) do
+  #   line = get_document_line_by_index(document, index)
+  #   updated_line = set_line_peer_id(line, new_peer_id)
+  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
+  # end
 
   @spec stash_document_lines_insert(
           document :: Syncordian.Basic_Types.document(),
@@ -277,7 +319,6 @@ defmodule Syncordian.Document do
           left_shift :: integer(),
           right_shift :: integer()
         ) :: {boolean(), {integer(), integer()}}
-
   defp window_stash_check_signature(
          fix_parameter =
            {document_length, window_size, window_center, document, incoming_line,
@@ -297,29 +338,31 @@ defmodule Syncordian.Document do
         check_signature_insert(left_parent, incoming_line, right_parent)
       end
 
-    case check_value do
-      true ->
+    if right_parent != nil do
+      if check_value do
         {true, {left_shift + window_center, right_shift + window_center}}
-
-      false ->
+      else
         new_left_shift = left_shift - 1
         new_right_shift = right_shift + 1
 
+        within_left_bounds? =
+          window_center + new_left_shift >= 0 and
+            new_left_shift * -1 + right_shift <= window_size + 2
+
+        within_right_bounds? =
+          window_center + new_right_shift < document_length and
+            left_shift * -1 + new_right_shift <= window_size + 2
+
+        # Only compute left and right if within bounds
         result_left =
-          if window_center + new_left_shift >= 0 and
-               new_left_shift * -1 + right_shift <= window_size + 2 do
-            window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
-          else
-            not_found_value
-          end
+          if within_left_bounds?,
+            do: window_stash_check_signature(fix_parameter, new_left_shift, right_shift),
+            else: not_found_value
 
         result_right =
-          if window_center + new_right_shift < document_length and
-               left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
-            window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
-          else
-            not_found_value
-          end
+          if within_right_bounds? and not elem(result_left, 0),
+            do: window_stash_check_signature(fix_parameter, left_shift, new_right_shift),
+            else: not_found_value
 
         case {elem(result_left, 0), elem(result_right, 0)} do
           {false, false} ->
@@ -332,11 +375,81 @@ defmodule Syncordian.Document do
             result_right
 
           _ ->
-            IO.inspect("Error in the window_stash_check_signature")
+            IO.puts("Error in window_stash_check_signature")
             result_right
         end
+      end
+    else
+      not_found_value
     end
   end
+
+  # defp window_stash_check_signature(
+  #        fix_parameter =
+  #          {document_length, window_size, window_center, document, incoming_line,
+  #           line_delete_signature},
+  #        left_shift \\ -1,
+  #        right_shift \\ 1
+  #      ) do
+  #   left_parent = get_document_line_by_index(document, window_center + left_shift)
+  #   right_parent = get_document_line_by_index(document, window_center + right_shift)
+
+  #   not_found_value = {false, {0, 0}}
+
+  #   check_value =
+  #     if is_empty_line(incoming_line) do
+  #       check_signature_delete(line_delete_signature, left_parent, right_parent)
+  #     else
+  #       check_signature_insert(left_parent, incoming_line, right_parent)
+  #     end
+
+  #   # TODO: I KNOW THIS IS NO THE CLEANEST WAY TO DO THIS, BUT I'M TIRED AND I WANT TO
+  #   # FIX THIS NOW. I WILL FIX THIS LATER. Just in case this change is recorded in the
+  #   # commit after f8ac522 syncordian repository.
+  #   if right_parent != nil do
+  #     case check_value do
+  #       true ->
+  #         {true, {left_shift + window_center, right_shift + window_center}}
+
+  #       false ->
+  #         new_left_shift = left_shift - 1
+  #         new_right_shift = right_shift + 1
+
+  #         result_left =
+  #           if window_center + new_left_shift >= 0 and
+  #                new_left_shift * -1 + right_shift <= window_size + 2 do
+  #             window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
+  #           else
+  #             not_found_value
+  #           end
+
+  #         result_right =
+  #           if window_center + new_right_shift < document_length and
+  #                left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
+  #             window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
+  #           else
+  #             not_found_value
+  #           end
+
+  #         case {elem(result_left, 0), elem(result_right, 0)} do
+  #           {false, false} ->
+  #             not_found_value
+
+  #           {true, false} ->
+  #             result_left
+
+  #           {false, true} ->
+  #             result_right
+
+  #           _ ->
+  #             IO.puts("Error in the window_stash_check_signature")
+  #             result_right
+  #         end
+  #     end
+  #   else
+  #     not_found_value
+  #   end
+  # end
 
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index. The line_pos_index_status is the status of the line in the
@@ -384,7 +497,7 @@ defmodule Syncordian.Document do
         # This return is just to make the compiler (completeness) happy, if this ever
         # happens the code has a huge error.
         IO.puts("Error in the get_parents_by_index")
-        IO.inspect("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
+        IO.puts("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
         # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
         [
           get_document_line_by_index(document, len - 2),
@@ -395,6 +508,8 @@ defmodule Syncordian.Document do
 
   # The -1 is because the last line is the supremum
   def translate_git_index_to_syncordian_index([], 0, 0, index), do: index - 1
+
+  def translate_git_index_to_syncordian_index([], _, _, _), do: -1
 
   def translate_git_index_to_syncordian_index([h | t], 0, 0, index) do
     line_status = get_line_status(h)

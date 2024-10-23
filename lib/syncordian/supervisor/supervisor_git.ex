@@ -22,30 +22,79 @@ defmodule Syncordian.Supervisor do
   """
   require Record
   import Syncordian.Peer
+  import Syncordian.Metadata
   import Syncordian.GitParser
   import Syncordian.Utilities
+  import Syncordian.ByzantinePeer
 
   Record.defrecord(:supervisor,
     list_of_commits: [],
     commit_group_map: %{},
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
-    commit_counter: 0
+    commit_counter: 0,
+    metadata_peer_count: 0,
+    byzantine_nodes: 0,
+    metadata: Syncordian.Metadata.metadata()
   )
 
-  @doc """
-    Parses a single edit and applies it to the specified peer.
+  @type supervisor ::
+          record(:supervisor,
+            list_of_commits: list(),
+            commit_group_map: map(),
+            pid_list_author_peers: list(),
+            map_peer_id_authors: map(),
+            commit_counter: integer(),
+            metadata_peer_count: integer(),
+            byzantine_nodes: integer(),
+            metadata: Syncordian.Metadata.metadata()
+          )
 
-    ## Parameters
+  @spec get_metadata_peer_count(supervisor()) :: integer()
+  defp get_metadata_peer_count(supervisor),
+    do: supervisor(supervisor, :metadata_peer_count)
 
-    - `edit`: A map representing the edit to be parsed. It should contain the following
-      keys:
-      - `:op`: The operation to be performed. It can be `:insert` or `:delete`.
-      - `:content`: The content to be inserted (required for `:insert` operation).
-      - `:index`: The index of the line to be deleted (required for `:delete` operation).
-    - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
-  """
-  def parse_edit(edit, peer_pid, acc) do
+  @spec inc_metadata_peer_count(supervisor()) :: supervisor()
+  defp inc_metadata_peer_count(supervisor) do
+    current_metadata_peer_count = get_metadata_peer_count(supervisor)
+
+    number_of_peers = length(supervisor(supervisor, :pid_list_author_peers))
+    byzantine_nodes = supervisor(supervisor, :byzantine_nodes)
+
+    new_supervisor =
+      if current_metadata_peer_count + 1 == number_of_peers + byzantine_nodes do
+        IO.puts("Supervisor: all metadata from peers collected")
+        IO.puts("")
+
+        supervisor(supervisor,
+          metadata_peer_count: 0
+        )
+      else
+        supervisor(supervisor,
+          metadata_peer_count: current_metadata_peer_count + 1
+        )
+      end
+    new_supervisor
+  end
+
+  @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
+  defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
+
+  @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
+  defp update_metadata(metadata, supervisor) do
+    inc_metadata_peer_count(supervisor)
+    |> supervisor(metadata: metadata)
+  end
+
+  # Parses a single edit and applies it to the specified peer.
+  # ## Parameters
+  # - `edit`: A map representing the edit to be parsed. It should contain the following
+  #   keys:
+  #   - `:op`: The operation to be performed. It can be `:insert` or `:delete`.
+  #   - `:content`: The content to be inserted (required for `:insert` operation).
+  #   - `:index`: The index of the line to be deleted (required for `:delete` operation).
+  # - `peer_pid`: The process identifier (PID) of the peer to apply the edit to.
+  defp parse_edit(edit, peer_pid, acc) do
     # If want to know why the acc is reduced by 1 in the case of a delete operation and
     # increase by 1 in the case of an insert operation, please read the comets of
     # the parse_edits function just below.
@@ -75,10 +124,8 @@ defmodule Syncordian.Supervisor do
     end
   end
 
-  @doc """
-    Parses a list of edits and applies them to the specified peer.
-  """
-  def parse_edits(edits, peer_pid) do
+  # Parses a list of edits and applies them to the specified peer.
+  defp parse_edits(edits, peer_pid) do
     # For you to remember, just in case:
     # The first reduce goes through the list of edits, remember that a commit may have
     # several edits, that is several of the form @@ a,b c,d @. Further, the edits in the
@@ -99,73 +146,85 @@ defmodule Syncordian.Supervisor do
     end)
   end
 
-  @doc """
-    Starts the process of applying edits for a list of commits.
-
-    ## Parameters
-
-    - `commits`: A list of commit hashes representing the commits to be processed.
-    - `commit_group_map`: A map containing commit hashes as keys and commit groups as
-      values. Each commit group should contain the following keys:
-      - `:author_id`: The ID of the author who made the commit.
-      - `:position_changes`: A list of position changes to be applied.
-    - `map_peer_id_authors`: A map that maps author IDs(string) to peer IDs(integer).
-    - `pid_list_author_peers`: A list of peer PIDs corresponding to each author
-      ID(integer).
-
-    The function loops through the commits in order, retrieves the corresponding commit
-    group, and applies the position changes to the specified peer. The author ID is used
-    to determine the peer ID, which is then used to retrieve the peer PID from the
-    `pid_list_author_peers`. The position changes are applied using the `parse_edits/2`
-    function.
-
-  """
-  def edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers) do
+  # Starts the process of applying edits for a list of commits.
+  # ## Parameters
+  # - `commits`: A list of commit hashes representing the commits to be processed.
+  # - `commit_group_map`: A map containing commit hashes as keys and commit groups as
+  #   values. Each commit group should contain the following keys:
+  #   - `:author_id`: The ID of the author who made the commit.
+  #   - `:position_changes`: A list of position changes to be applied.
+  # - `map_peer_id_authors`: A map that maps author IDs(string) to peer IDs(integer).
+  # - `pid_list_author_peers`: A list of peer PIDs corresponding to each author
+  #   ID(integer).
+  # The function loops through the commits in order, retrieves the corresponding commit
+  # group, and applies the position changes to the specified peer. The author ID is used
+  # to determine the peer ID, which is then used to retrieve the peer PID from the
+  # `pid_list_author_peers`. The position changes are applied using the `parse_edits/2`
+  # function.
+  defp edit(
+         commit_hash,
+         commit_group_map,
+         map_peer_id_authors,
+         pid_list_author_peers,
+         byzantine_nodes
+       ) do
     [commit_group] = Map.get(commit_group_map, commit_hash)
     author_id = Map.get(commit_group, :author_id)
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid)
-    Process.sleep(300)
+    # delay = len_position_changes(position_changes) * 100 + 1000 + 1000 * byzantine_nodes
+    delay = 2000
+    Process.sleep(delay)
     author_id
   end
 
-  def save_current_documents(pid_list_author_peers) do
+  defp len_position_changes(position_changes) do
+    Enum.reduce(position_changes, 0, fn x, acc -> acc + length(x) end)
+  end
+
+  defp save_current_documents(pid_list_author_peers) do
     Enum.map(1..29, fn x ->
       save_content(Enum.at(pid_list_author_peers, x))
     end)
   end
 
-  def start_edit(commit_count, supervisor, live_view_pid, list_of_commits) do
+  defp start_edit(commit_count, supervisor, live_view_pid, list_of_commits, byzantine_nodes) do
     commit_group_map = supervisor(supervisor, :commit_group_map)
     map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
     pid_list_author_peers = supervisor(supervisor, :pid_list_author_peers)
     commit_hash = Enum.at(list_of_commits, commit_count)
-    author_id = edit(commit_hash, commit_group_map, map_peer_id_authors, pid_list_author_peers)
+
+    author_id =
+      edit(
+        commit_hash,
+        commit_group_map,
+        map_peer_id_authors,
+        pid_list_author_peers,
+        byzantine_nodes
+      )
+
     response = {:commit_inserted, %{hash: commit_hash, author: author_id}}
     send(live_view_pid, response)
   end
 
-  @doc """
-    Initializes the peers for the Syncordian system based on the list of authors.
+  # Initializes the peers for the Syncordian system based on the list of authors.
 
-    ## Parameters
+  # ## Parameters
 
-    - `authors_list`: A list of author IDs representing the authors in the system.
+  # - `authors_list`: A list of author IDs representing the authors in the system.
 
-    ## Returns
+  # ## Returns
 
-    A tuple containing two elements:
-    - The list of peer PIDs in reverse order.
-    - A map that maps author IDs(string) to peer IDs(integer).
+  # A tuple containing two elements:
+  # - The list of peer PIDs in reverse order.
+  # - A map that maps author IDs(string) to peer IDs(integer).
 
-    The function initializes the peers by creating a network of processes. Each author
-    is assigned a unique peer ID, and a corresponding peer process is started. The
-    author IDs are mapped to their respective peer IDs in the resulting map.
-
-  """
-  def init_peers(authors_list) do
+  # The function initializes the peers by creating a network of processes. Each author
+  # is assigned a unique peer ID, and a corresponding peer process is started. The
+  # author IDs are mapped to their respective peer IDs in the resulting map.
+  defp init_peers(authors_list) do
     network_size = authors_list |> length()
 
     values =
@@ -177,6 +236,19 @@ defmodule Syncordian.Supervisor do
     {elem(values, 1) |> Enum.reverse(), elem(values, 2)}
   end
 
+  @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::
+          Syncordian.Basic_Types.peer_id()
+  defp byzantine_peer_id(peer_id) do
+    peer_id * 23 + 71
+  end
+
+  @spec init_byzantine_peers(integer()) :: list()
+  defp init_byzantine_peers(0), do: []
+
+  defp init_byzantine_peers(byzantine_nodes) do
+    Enum.map(1..byzantine_nodes, fn x -> byzantine_peer_id(x) |> start_byzantine_peer() end)
+  end
+
   @doc """
     Initializes the supervisor and starts the process of applying edits.
 
@@ -186,7 +258,8 @@ defmodule Syncordian.Supervisor do
     supervisor.
 
   """
-  def init() do
+  def init(byzantine_nodes) do
+    # TODO: Delete the call to "test"
     # Delete the all the files of the debug directory
     delete_contents("debug/documents")
 
@@ -207,16 +280,15 @@ defmodule Syncordian.Supervisor do
         pid_list_author_peers: pid_list_author_peers,
         map_peer_id_authors: map_peer_id_authors
       )
+    IO.inspect(pid_list_author_peers)
+
+    IO.puts("Byzantine nodes to start #{byzantine_nodes}")
+    init_byzantine_peers(byzantine_nodes)
+
 
     pid = spawn(__MODULE__, :supervisor_loop, [supervisor])
     :global.register_name(:supervisor, pid)
     pid
-  end
-
-  def test_init() do
-    parsed_git_log = parser_git_log("test_index")
-    _list_of_commits = get_list_of_commits("test_index")
-    _commit_group_map = group_by_commit(parsed_git_log)
   end
 
   def supervisor_loop(supervisor) do
@@ -225,46 +297,92 @@ defmodule Syncordian.Supervisor do
         save_current_documents(supervisor(supervisor, :pid_list_author_peers))
         supervisor_loop(supervisor)
 
-      {:send_all_commits, live_view_pid} ->
+      {:send_all_commits, live_view_pid, byzantine_nodes} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
         if supervisor_counter < length(list_of_commits) do
-          IO.inspect(
+          IO.puts(
             "Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}"
           )
 
-          start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
-          send(self(), {:send_all_commits, live_view_pid})
-          supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
+          start_edit(
+            supervisor_counter,
+            supervisor,
+            live_view_pid,
+            list_of_commits,
+            byzantine_nodes
+          )
+
+          send(self(), {:send_all_commits, live_view_pid, byzantine_nodes})
+
+          supervisor_loop(
+            supervisor(supervisor,
+              commit_counter: supervisor_counter + 1,
+              byzantine_nodes: byzantine_nodes
+            )
+          )
         else
           IO.puts("All commits processed")
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end
 
-      {:send_next_commit, live_view_pid} ->
+      {:send_next_commit, live_view_pid, byzantine_nodes} ->
         supervisor_counter = supervisor(supervisor, :commit_counter)
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
         if supervisor_counter < length(list_of_commits) do
-          IO.inspect(
+          IO.puts(
             "Sending next commit, current counter:  #{supervisor_counter}/#{length_of_commits}"
           )
 
-          start_edit(supervisor_counter, supervisor, live_view_pid, list_of_commits)
+          start_edit(
+            supervisor_counter,
+            supervisor,
+            live_view_pid,
+            list_of_commits,
+            byzantine_nodes
+          )
 
-          supervisor_loop(supervisor(supervisor, commit_counter: supervisor_counter + 1))
+          supervisor_loop(
+            supervisor(supervisor,
+              commit_counter: supervisor_counter + 1,
+              byzantine_nodes: byzantine_nodes
+            )
+          )
         else
           IO.puts("All commits processed")
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end
+
+      {:collect_metadata_from_peers} ->
+        :global.whereis_name(:supervisor)
+        |> perform_broadcast({:supervisor_request_metadata}, 0..0)
+
+        supervisor_loop(supervisor)
+
+      {:receive_metadata_from_peer, metadata, _peer_id} ->
+        supervisor
+        |> get_metadata()
+        |> merge_metadata(metadata)
+        |> update_metadata(supervisor)
+        |> supervisor_loop
+
+      {:print_supervisor_metadata} ->
+        get_metadata(supervisor)
+        |> save_metadata(
+          supervisor(supervisor, :byzantine_nodes),
+          supervisor(supervisor, :commit_counter)
+        )
+
+        supervisor_loop(supervisor)
 
       {:kill} ->
-        IO.inspect("Receive killing supervisor")
+        IO.puts("Receive killing supervisor")
         kill()
 
       _ ->

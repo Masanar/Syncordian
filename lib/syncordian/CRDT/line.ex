@@ -10,7 +10,8 @@ defmodule Syncordian.Line_Object do
   # This insertion attempt value is used by the insertion and delete operations
   # to know when to stop trying to insert/delete a line. May be a better name should be
   # used for this value.
-  @max_insertion_attempts 20
+  # TODO: Check this value
+  @max_insertion_attempts 10_000
   Record.defrecord(:line,
     line_id: 0.0,
     content: "",
@@ -57,6 +58,10 @@ defmodule Syncordian.Line_Object do
   def tick_line_insertion_attempts(line),
     do: line(line, insertion_attempts: line(line, :insertion_attempts) + 1)
 
+  @spec tick_line_insertion_attempts(line(), integer()) :: line()
+  def tick_line_insertion_attempts(line, acc),
+    do: line(line, insertion_attempts: line(line, :insertion_attempts) + acc)
+
   @spec get_line_insertion_attempts(line()) :: integer()
   def get_line_insertion_attempts(line), do: line(line, :insertion_attempts)
 
@@ -93,6 +98,10 @@ defmodule Syncordian.Line_Object do
   @spec get_signature(Syncordian.Line_Object.line()) :: Syncordian.Basic_Types.signature()
   def get_signature(line),
     do: line(line, :signature)
+
+  def update_line_signature(line, new_signature) do
+    line(line, signature: new_signature)
+  end
 
   @doc """
     This function is a getter for the peer_id field of a line record
@@ -166,8 +175,13 @@ defmodule Syncordian.Line_Object do
   end
 
   @spec get_empty_line() :: Syncordian.Line_Object.line()
-  def get_empty_line() do line() end
-  def is_empty_line(line) do get_line_peer_id(line) == 9_999_999 end
+  def get_empty_line() do
+    line()
+  end
+
+  def is_empty_line(line) do
+    get_line_peer_id(line) == 9_999_999
+  end
 end
 
 defmodule Syncordian.Line do

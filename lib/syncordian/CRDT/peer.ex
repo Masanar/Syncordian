@@ -494,6 +494,7 @@ defmodule Syncordian.Peer do
                     local_vector_clock,
                     incoming_vc
                   )
+
                 v?
               end
 
@@ -504,6 +505,8 @@ defmodule Syncordian.Peer do
 
                 get_metadata(peer)
                 |> inc_delete_stash_counter
+                |> update_metadata(peer)
+                |> inc_delete_valid_counter
                 |> update_metadata(peer)
                 |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
@@ -692,76 +695,11 @@ defmodule Syncordian.Peer do
         IO.inspect(peer)
         loop(peer)
 
-      # All this messages are used to update the peer structure with the metadata of the
-      # messages to eventually just send one message to the supervisor. When the
-      # experiment is done. This is done to avoid the supervisor to be overwhelmed with
-      # messages. Probably this is not the best way to do it.
-
       {:register_supervisor_pid} ->
         supervisor_pid = :global.whereis_name(:supervisor)
 
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
-
-      # {:deleted_valid_line} ->
-      #   get_metadata(peer)
-      #   |> inc_delete_valid_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:delete_stash_succeeded} ->
-      #   get_metadata(peer)
-      #   |> inc_delete_stash_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:delete_request_requeue} ->
-      #   get_metadata(peer)
-      #   |> inc_delete_requeue_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:delete_request_limit} ->
-      #   get_metadata(peer)
-      #   |> inc_delete_requeue_limit_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_clock_distance_greater_than_one} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_distance_greater_than_one
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_valid_line} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_valid_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_request_requeue} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_request_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_request_requeue_limit} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_request_limit_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_stash_succeeded} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_stash_counter
-      #   |> update_metadata(peer)
-      #   |> loop
-
-      # {:insertion_stash_fail} ->
-      #   get_metadata(peer)
-      #   |> inc_insert_stash_fail_counter
-      #   |> update_metadata(peer)
-      #   |> loop
 
       {:supervisor_request_metadata} ->
         send(

@@ -6,7 +6,7 @@
   "delete_requeue_counter": 384810,
   "delete_requeue_limit": 3810,
   "delete_stash_counter": 139,
-  "delete_valid_counter": 6502,
+  "delete_valid_counter": 6561,
   "insert_distance_greater_than_one": 12690957,
   "insert_request_counter": 0,
   "insert_request_limit_counter": 12450,

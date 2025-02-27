@@ -1,5 +1,6 @@
 defmodule Syncordian.Metadata do
   require Record
+  import Syncordian.Utilities
 
   Record.defrecord(:metadata,
     delete_valid_counter: 0,
@@ -13,7 +14,9 @@ defmodule Syncordian.Metadata do
     insert_valid_counter: 0,
     insert_stash_fail_counter: 0,
     byzantine_insert_counter: 0,
-    byzantine_delete_counter: 0
+    byzantine_delete_counter: 0,
+    heap_size: 0,
+    message_queue_length: 0
   )
 
   @type metadata ::
@@ -27,12 +30,12 @@ defmodule Syncordian.Metadata do
             insert_request_limit_counter: integer(),
             insert_stash_counter: integer(),
             insert_valid_counter: integer(),
-            insert_stash_fail_counter: integer()
+            insert_stash_fail_counter: integer(),
+            heap_size: integer(),
+            message_queue_length: integer()
           )
-  @spec save_metadata(metadata(), integer(), integer()) :: :ok
-  def save_metadata(metadata, byzantine_nodes, current_commit) do
-    current_date_unix = System.os_time(:second) |> to_string()
 
+  defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
     metadata_map = %{
       "delete_valid_counter" => metadata(metadata, :delete_valid_counter),
       "delete_stash_counter" => metadata(metadata, :delete_stash_counter),
@@ -46,18 +49,44 @@ defmodule Syncordian.Metadata do
       "insert_stash_fail_counter" => metadata(metadata, :insert_stash_fail_counter),
       "byzantine_insert_counter" => metadata(metadata, :byzantine_insert_counter),
       "byzantine_delete_counter" => metadata(metadata, :byzantine_delete_counter),
+      "heap_size" => metadata(metadata, :heap_size),
+      "message_queue_length" => metadata(metadata, :message_queue_length),
       "byzantine_nodes" => byzantine_nodes,
       "current_commit" => current_commit,
       "timestamp" => current_date_unix
     }
 
-    metadata_json = Jason.encode!(metadata_map, pretty: true)
+    Jason.encode!(metadata_map, pretty: true)
+  end
 
-    File.write(
-      "debug/metadata/byzantine_nodes_" <>
-        "#{byzantine_nodes}_commit_#{current_commit}_#{current_date_unix}.json",
-      metadata_json
-    )
+  # Saves metadata to a file with a path based on the given parameters.
+  defp save_metadata_to_file(metadata, current_commit, byzantine_nodes, path_prefix) do
+    current_date_unix = System.os_time(:second) |> to_string()
+
+    metadata_json =
+      get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes)
+
+    filename =
+      "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_commit_#{current_commit}_#{current_date_unix}.json"
+
+    File.write(filename, metadata_json)
+  end
+
+  @doc """
+    Saves metadata for an individual peer. This function is used for keep track of just
+    one peer's metadata.
+  """
+  def save_metadata_one_peer(metadata, current_commit) do
+    save_metadata_to_file(metadata, current_commit, 0, "debug/metadata/individual_memory_peer/")
+  end
+
+  @doc """
+    Saves metadata with specified number of byzantine nodes. This function is ment to
+    be use by the supervisor for saving the agregated info of all the peers.
+  """
+  @spec save_metadata(metadata(), integer(), integer()) :: :ok
+  def save_metadata(metadata, byzantine_nodes, current_commit) do
+    save_metadata_to_file(metadata, current_commit, byzantine_nodes, "debug/metadata/supervisor/")
   end
 
   @spec merge_metadata(metadata(), metadata()) :: metadata()
@@ -98,8 +127,18 @@ defmodule Syncordian.Metadata do
           metadata(metadata2, :byzantine_insert_counter),
       byzantine_delete_counter:
         metadata(metadata1, :byzantine_delete_counter) +
-          metadata(metadata2, :byzantine_delete_counter)
+          metadata(metadata2, :byzantine_delete_counter),
+      heap_size: metadata(metadata1, :heap_size) + metadata(metadata2, :heap_size),
+      message_queue_length:
+        metadata(metadata1, :message_queue_length) +
+          metadata(metadata2, :message_queue_length)
     )
+  end
+
+  @spec update_memory_info(metadata(), Syncordian.Basic_Types.peer_id()) :: metadata()
+  def update_memory_info(metadata, peer_pid) do
+    [heap_size, message_queue_len] = peer_pid |> process_memory_info()
+    metadata(metadata, heap_size: heap_size, message_queue_length: message_queue_len)
   end
 
   @spec inc_byzantine_delete_counter(metadata()) :: metadata()

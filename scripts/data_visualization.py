@@ -15,13 +15,13 @@ metric_properties_map = {
     },
     "insert_valid_counter": {"name": "Valid insert messages", "color": "#9d0208", "linestyle": "-"},  # Crimson
     "byzantine_delete_counter": {
-        "name": "Delete messages Byzantine nodes",
+        "name": "Delete messages Distrusted nodes",
         "color": "#e85d04",  # Bright Red
         "linestyle": "-.",
         "linewidth": 1,
     },
     "byzantine_insert_counter": {
-        "name": "Insert messages Byzantine nodes",
+        "name": "Insert messages Distrusted nodes",
         "color": "#3d405b",  # Orange Red
         "linestyle": ":",
         "linewidth": 1.2,
@@ -183,8 +183,8 @@ def main():
     plot_metrics(
         x_axis_byzantine,
         metrics_byzantine,
-        "Number of Byzantine Nodes",
-        "Normalized Metric Values Over Byzantine Nodes",
+        "Number of Distrusted Nodes",
+        "Normalized Metric Values Over Distrusted Nodes",
     )
 
 if __name__ == "__main__":

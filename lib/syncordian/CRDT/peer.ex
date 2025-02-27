@@ -606,7 +606,7 @@ defmodule Syncordian.Peer do
                     |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
 
                   {false, false} ->
-                    new_line = tick_line_insertion_attempts(line)
+                    # new_line = tick_line_insertion_attempts(line)
 
                     # IO.puts(
                     #   "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
@@ -702,13 +702,36 @@ defmodule Syncordian.Peer do
         |> loop
 
       {:supervisor_request_metadata} ->
+        peer_pid = get_peer_pid(peer)
+
+        updated_memory_metadata =
+          peer
+          |> get_metadata()
+          |> update_memory_info(peer_pid)
+
         send(
           get_peer_supervisor_pid(peer),
-          {:receive_metadata_from_peer, get_metadata(peer), get_peer_id(peer)}
+          {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
 
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
         update_metadata(Syncordian.Metadata.metadata(), peer)
         |> loop()
+
+      {:save_individual_peer_metadata, current_commit} ->
+        peer_pid = get_peer_pid(peer)
+
+        peer
+        |> get_metadata()
+        |> update_memory_info(peer_pid)
+        |> save_metadata_one_peer(current_commit)
+
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
+        update_metadata(Syncordian.Metadata.metadata(), peer)
+        |> loop()
+
 
       test ->
         IO.puts("Wrong message")

@@ -54,6 +54,7 @@ defmodule Syncordian.Utilities do
 
   def add_element_list_in_given_index(list, 0, new_element),
     do: [hd(list) | [new_element | tl(list)]]
+
   def add_element_list_in_given_index([head | tail], index, new_element) when index > 0 do
     [head | add_element_list_in_given_index(tail, index - 1, new_element)]
   end
@@ -111,5 +112,25 @@ defmodule Syncordian.Utilities do
   def kill do
     :global.registered_names()
     |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
+  end
+
+  @doc """
+    Function to get the process memory information returns given a list of process names.
+    Returns a list of tuples with the total heap size and the message queue length.
+    Overloaded function to get the memory information of a single process.
+  """
+  def process_memory_info(process_info = [_head | _tail]) do
+    process_info
+    |> Enum.map(fn x ->
+      [total_heap_size: s, message_queue_len: m] =
+        Process.info(x, [:total_heap_size, :message_queue_len])
+      [s, m]
+    end)
+  end
+
+  def process_memory_info(single_process_name) do
+    [total_heap_size: s, message_queue_len: m] =
+    Process.info(single_process_name, [:total_heap_size, :message_queue_len])
+    [s, m]
   end
 end

@@ -1,5 +1,5 @@
 defmodule Syncordian.Fugue.Node do
-  @null_id     {"", 0}
+  @null_id     {"root", 0}
   @left_value  :left
   @right_value :right
   @tombstone   :tombstone
@@ -36,7 +36,8 @@ defmodule Syncordian.Fugue.Node do
   def get_tombstone(), do: @tombstone
 
   # Getters
-  @spec get_id(t) :: node_ID
+  @spec get_id(t | nil) :: node_ID
+  def get_id(nil), do: @null_id
   def get_id(%__MODULE__{id: id}), do: id
 
   @spec get_value(t) :: node_value

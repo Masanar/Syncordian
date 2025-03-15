@@ -60,7 +60,8 @@ defmodule Syncordian.Fugue.Tree do
             else: []
 
         right_values = recursion.(right)
-
+        # TODO: ++ is O(n) is could be optimized by using acc in the reduce, but this
+        #       implies to make a reverse: first right, then node, then left.
         left_values ++ node_value ++ right_values
 
       nil ->

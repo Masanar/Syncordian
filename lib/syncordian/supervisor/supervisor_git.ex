@@ -271,7 +271,8 @@ defmodule Syncordian.Supervisor do
     parsed_git_log = parser_git_log("test")
     list_of_commits = get_list_of_commits("test")
     commit_group_map = group_by_commit(parsed_git_log)
-
+    # TODO: Review this variables, there are some that were used in the test, now
+    # they are not used.
     # Instance all the 30 peers independent  the number of commits in the test file
     temporal_git_log = parser_git_log("ohmyzsh_README_full_git_log")
     {_, authors_list} = group_by_author(temporal_git_log)

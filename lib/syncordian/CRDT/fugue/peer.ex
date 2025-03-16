@@ -1,4 +1,4 @@
-defmodule Syncordian.Fugue.Peer do
+defmodule Syncordian.CRDT.Fugue.Peer do
   @moduledoc """
   A lightweight Fugue peer module that replicates the core structure of Syncordian.Peer:
   - Starts a peer process
@@ -12,23 +12,26 @@ defmodule Syncordian.Fugue.Peer do
     do not know how to do so in Elixir. Maybe by using macros? I do not know.
   """
   import Syncordian.Metadata
-  import Syncordian.Fugue.Tree
+  import Syncordian.Utilities
+  import Syncordian.CRDT.Fugue.Tree
   import Syncordian.Basic_Types
 
   defstruct peer_id: nil,
-            document: Syncordian.Fugue.Tree.new(),
+            document: Syncordian.CRDT.Fugue.Tree.new(),
             pid: nil,
             deleted_count: 0,
             supervisor_pid: nil,
-            metadata: Syncordian.Metadata.metadata()
+            metadata: Syncordian.Metadata.metadata(),
+            counter: 0
 
   @type t :: %__MODULE__{
           peer_id: Syncordian.Basic_Types.peer_id(),
-          document: Syncordian.Fugue.Tree.t(),
+          document: Syncordian.CRDT.Fugue.Tree.t(),
           pid: pid() | nil,
-          deleted_count: non_neg_integer(),
+          deleted_count: integer(),
           supervisor_pid: pid() | nil,
-          metadata: Syncordian.Metadata.metadata()
+          metadata: Syncordian.Metadata.metadata(),
+          counter: integer()
         }
 
   @type peer_fugue :: t
@@ -81,7 +84,7 @@ defmodule Syncordian.Fugue.Peer do
   @doc """
   Returns the Fugue tree (document) maintained by this peer.
   """
-  @spec get_peer_document(peer_fugue()) :: Syncordian.Fugue.Tree.t()
+  @spec get_peer_document(peer_fugue()) :: Syncordian.CRDT.Fugue.Tree.t()
   def get_peer_document(%__MODULE__{document: document}), do: document
 
   @doc """
@@ -93,7 +96,7 @@ defmodule Syncordian.Fugue.Peer do
   @doc """
   Updates the peer's Fugue tree (document) with a new tree structure.
   """
-  @spec update_peer_document(Syncordian.Fugue.Tree.t(), peer_fugue()) :: peer_fugue()
+  @spec update_peer_document(Syncordian.CRDT.Fugue.Tree.t(), peer_fugue()) :: peer_fugue()
   def update_peer_document(document, %__MODULE__{} = peer),
     do: %{peer | document: document}
 
@@ -199,6 +202,28 @@ defmodule Syncordian.Fugue.Peer do
 
 
   ########################################################################################
+
+  ################################ Peer utility ################################
+
+  # Function to perform the filtering and broadcast messages to all peers in the network
+  # except the current peer. or the supervisor. This one is define here because here the
+  # delay makes sense to be define and then use the perform_broadcast function of the
+  # utilities module.
+  @spec perform_broadcast_peer(peer_fugue(), any) :: any
+  defp perform_broadcast_peer(peer, message) do
+    peer_pid = get_peer_pid(peer)
+    # delay = 10..30
+    delay = 0..0
+    perform_broadcast(peer_pid, message, delay)
+  end
+
+  ########################################################################################
+
+  @spec loop(peer_fugue()) :: any
+
+  def loop(peer) do
+    :ok
+  end
 
 
 end

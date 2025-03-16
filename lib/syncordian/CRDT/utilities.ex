@@ -3,6 +3,21 @@ defmodule Syncordian.Utilities do
       This module provides utility functions used in the Syncordian implementation, that
       do not fit on the main modules.
   """
+  @debug true
+
+  @spec debug_print(String.t(), any()) :: any
+  def debug_print(message, content) do
+    case @debug do
+      true ->
+        IO.puts("")
+        IO.puts("**********")
+        IO.puts("DEBUG----> #{message}")
+        IO.inspect(content)
+        IO.puts("**********")
+        IO.puts("")
+      false -> :ok
+    end
+  end
 
   # Function to filter weather the peer is the current peer, the supervisor or the storage
   @spec should_filter_out?(any, pid) :: boolean

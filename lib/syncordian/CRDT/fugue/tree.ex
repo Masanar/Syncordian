@@ -1,23 +1,23 @@
-defmodule Syncordian.Fugue.Tree do
+defmodule Syncordian.CRDT.Fugue.Tree do
   @moduledoc """
-  This module defines the `Syncordian.Fugue.Tree` structure and provides utility functions
+  This module defines the `Syncordian.CRDT.Fugue.Tree` structure and provides utility functions
   for creating, manipulating, and querying a CRDT-based tree structure.
 
-  The tree is composed of nodes (`Syncordian.Fugue.Node`) and maintains a map of node IDs
+  The tree is composed of nodes (`Syncordian.CRDT.Fugue.Node`) and maintains a map of node IDs
   to their corresponding entries. Each entry contains:
   - The node itself.
   - A list of left child node IDs.
   - A list of right child node IDs.
 
   ## Types
-  - `node_fugue`: Represents a node in the tree (`Syncordian.Fugue.Node.t()`).
+  - `node_fugue`: Represents a node in the tree (`Syncordian.CRDT.Fugue.Node.t()`).
   - `node_value_list`: A list of node values.
   - `node_id_list`: A list of node IDs.
   - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
-
-  alias Syncordian.Fugue.Node
+  import Syncordian.Utilities, only: [debug_print: 2]
+  alias Syncordian.CRDT.Fugue.Node
 
   defstruct nodes: %{}
 
@@ -149,7 +149,12 @@ defmodule Syncordian.Fugue.Tree do
   def node_i_position_from_values(tree, position) do
     case traverse(tree) do
       [] -> get_root(tree) || Node.root()
-      list -> Enum.at(list, position) || get_root(tree)
+      list ->
+        cond do
+          position == -1 -> get_root(tree)
+          position >= length(list) -> List.last(list) || get_root(tree)
+          true -> Enum.at(list, position) || get_root(tree)
+        end
     end
   end
 
@@ -164,6 +169,7 @@ defmodule Syncordian.Fugue.Tree do
   A new list with the node ID inserted at the correct position.
   """
   @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: node_id_list()
+  def insert_index_on_node_id_list(node_ID, []) ,do: [node_ID]
   def insert_index_on_node_id_list(node_ID, node_id_list) do
     index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
     List.insert_at(node_id_list, index, node_ID)
@@ -235,13 +241,15 @@ defmodule Syncordian.Fugue.Tree do
       # TODO: This patter should be mactched else the function will never halt!!!!
       # SUPER IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
       {^root_node, [],[]} ->
-        []
+        if include_tombstones,
+          do: [root_node],
+          else: []
       {node, left, right} ->
         left_values = recursion.(left)
 
         node_value =
           if Node.get_value(node) != Node.get_tombstone() or include_tombstones,
-            do: [Node.get_value(node)],
+            do: [node],
             else: []
 
         right_values = recursion.(right)

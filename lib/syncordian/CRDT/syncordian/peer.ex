@@ -236,7 +236,9 @@ defmodule Syncordian.Peer do
   ################################ Peer utility ################################
 
   # Function to perform the filtering and broadcast messages to all peers in the network
-  # except the current peer. or the supervisor.
+  # except the current peer. or the supervisor. This one is define here because here the
+  # delay makes sense to be define and then use the perform_broadcast function of the
+  # utilities module.
   @spec perform_broadcast_peer(peer(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
@@ -252,6 +254,7 @@ defmodule Syncordian.Peer do
     When the message is received by the sending peer it is handled by the loop function
     of the peer module.
   """
+  # TODO: This function is never use!
   @spec send_confirmation_line_insertion(
           receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
           sending_peer_id :: Syncordian.Basic_Types.peer_id(),

@@ -1,6 +1,6 @@
-defmodule Syncordian.Fugue.Node do
+defmodule Syncordian.CRDT.Fugue.Node do
   @moduledoc """
-  This module defines the `Syncordian.Fugue.Node` structure and provides utility functions
+  This module defines the `Syncordian.CRDT.Fugue.Node` structure and provides utility functions
   for creating, manipulating, and querying nodes in a CRDT-based tree (fugue) structure.
 
   A node represents an element in the tree and contains the following fields:

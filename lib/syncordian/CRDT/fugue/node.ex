@@ -111,6 +111,9 @@ defmodule Syncordian.Fugue.Node do
   def get_id(nil), do: @null_id
   def get_id(%__MODULE__{id: id}), do: id
 
+  @spec get_number_id(node_ID) :: integer()
+  def get_number_id({_, id}), do: id
+
   @doc """
   Retrieves the value of the given node.
 

@@ -11,9 +11,9 @@ defmodule Syncordian.Fugue.Tree do
 
   ## Types
   - `node_fugue`: Represents a node in the tree (`Syncordian.Fugue.Node.t()`).
-  - `nodeValue_list`: A list of node values.
-  - `nodeID_List`: A list of node IDs.
-  - `node_entry`: A tuple `{node_fugue, nodeID_List, nodeID_List}` representing a node and its children.
+  - `node_value_list`: A list of node values.
+  - `node_id_list`: A list of node IDs.
+  - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
 
@@ -22,9 +22,9 @@ defmodule Syncordian.Fugue.Tree do
   defstruct nodes: %{}
 
   @type node_fugue :: Node.t()
-  @type nodeValue_list :: [Node.node_value()]
-  @type nodeID_List :: [Node.node_ID()]
-  @type node_entry :: {node_fugue(), nodeID_List(), nodeID_List()}
+  @type node_value_list :: [Node.node_value()]
+  @type node_id_list :: [Node.node_ID()]
+  @type node_entry :: {node_fugue(), node_id_list(), node_id_list()}
   @type t :: %__MODULE__{
           nodes: %{Node.node_ID() => node_entry}
         }
@@ -44,6 +44,28 @@ defmodule Syncordian.Fugue.Tree do
       nodes: %{root.id => {root, [], []}}
     }
   end
+
+  @doc """
+  Inserts a new node into the tree.
+
+  This function is used internally to add a new node to the tree's `nodes` map.
+
+  ## Parameters
+  - `tree`: The tree to update.
+  - `node`: The node to insert.
+  - `left`: A list of IDs representing the left children of the node.
+  - `right`: A list of IDs representing the right children of the node.
+
+  ## Returns
+  A new
+  """
+  @spec put_node(tree(), node_fugue(), node_id_list(), node_id_list()) :: tree()
+  def put_node(tree, node, left, right) do
+    %{nodes: nodes} = tree
+    new_nodes = Map.put(nodes, Node.get_id(node), {node, left, right})
+    %__MODULE__{nodes: new_nodes}
+  end
+
 
   @doc """
   Retrieves the map of nodes in the tree.
@@ -166,11 +188,11 @@ defmodule Syncordian.Fugue.Tree do
       traverse(tree, id) ++ acc
     end
 
-    recursion = fn nodeId_List ->
-      Enum.reduce(nodeId_List, [], traverse_acc_reduce)
+    recursion = fn node_id_list ->
+      Enum.reduce(node_id_list, [], traverse_acc_reduce)
     end
 
-    case get_full_node(get_tree_nodes(tree), id) do
+    case get_full_node(tree, id) do
       {node, left, right} ->
         left_values = recursion.(left)
 
@@ -189,18 +211,14 @@ defmodule Syncordian.Fugue.Tree do
     end
   end
 
-  @doc """
-  Checks if a right child exists for a given node ID.
-
-  ## Parameters
-  - `tree`: The tree to check.
-  - `id`: The ID of the node to check.
-
-  ## Returns
-  `true` if a right child exists, `false` otherwise.
-  """
   @spec right_child_exists?(tree(), Node.node_ID()) :: boolean()
   defp right_child_exists?(tree, id) do
+    # Checks if a right child exists for a given node ID.
+    ## Parameters
+    # - `tree`: The tree to check.
+    # - `id`: The ID of the node to check.
+    ## Returns
+    # `true` if a right child exists, `false` otherwise.
     Enum.any?(get_tree_nodes(tree), fn
       {_id, {node, _left, _right}} ->
         Node.get_parent(node) == id and Node.get_side(node) == Node.get_right_value()
@@ -254,12 +272,46 @@ defmodule Syncordian.Fugue.Tree do
     end
   end
 
+  @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: integer()
+  defp insert_index_on_node_id_list(node_ID, node_id_list) do
+    # Inserts a node ID into a sorted list of node IDs while maintaining the order.
+    ## Parameters
+    # - `node_ID`: The node ID to insert.
+    # - `node_id_list`: The sorted list of node IDs.
+    ## Returns
+    # A new list with the node ID inserted in the correct position.
+    index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
+    List.insert_at(node_id_list, index, node_ID)
+  end
+
+  @doc """
+  Inserts a node into the tree at the correct position based on its parent and side.
+
+  This function updates the tree's structure by adding the node to the appropriate
+  sibling lists of its parent.
+
+  ## Parameters
+  - `tree`: The tree to update.
+  - `node`: The node to insert.
+
+  ## Returns
+  A new tree struct with the node inserted.
+  """
   @spec insert_local(tree(), node_fugue()) :: tree()
   def insert_local(tree, node) do
+    node_id = Node.get_id(node)
     node_side = Node.get_side(node)
     node_parent = Node.get_parent(node)
-    {parent, left_sibs, right_sibs}= get_full_node(get_tree_nodes(tree), node_parent)
+    {parent, left_sibs, right_sibs} = get_full_node(tree, node_parent)
+    new_right_sibs = if node_side == Node.get_right_value(),
+                     do: insert_index_on_node_id_list(node_id, right_sibs),
+                     else: right_sibs
+    new_left_sibs  = if node_side == Node.get_left_value(),
+                     do: insert_index_on_node_id_list(node_id, left_sibs),
+                     else: left_sibs
 
+    put_node(tree, parent, new_left_sibs, new_right_sibs)
+    |> put_node(node, [], [])
   end
 
   # THE END

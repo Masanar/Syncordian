@@ -60,12 +60,11 @@ defmodule Syncordian.Fugue.Tree do
   A new
   """
   @spec put_node(tree(), node_fugue(), node_id_list(), node_id_list()) :: tree()
-  def put_node(tree, node, left, right) do
+  def put_node(tree, node, left \\ [], right \\ []) do
     %{nodes: nodes} = tree
     new_nodes = Map.put(nodes, Node.get_id(node), {node, left, right})
     %__MODULE__{nodes: new_nodes}
   end
-
 
   @doc """
   Retrieves the map of nodes in the tree.
@@ -225,6 +224,36 @@ defmodule Syncordian.Fugue.Tree do
     end)
   end
 
+  @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
+  defp node_i_position_from_values(tree, position) do
+    # Retrieves the node at a specific position from the list of nodes in the tree.
+    # This function traverses the tree to get a list of nodes and returns the node
+    # at the specified position. If the position is out of bounds or the tree is empty,
+    # it returns the root node.
+    ## Parameters
+    # - `tree`: The tree to retrieve the node from.
+    # - `position`: The position of the node in the list (0-based index).
+
+    ## Returns
+    # The node at the specified position, or the root node if the position is invalid.
+    case traverse(tree) do
+      [] -> get_root(tree) || Node.root()
+      list -> Enum.at(list, position) || get_root(tree)
+    end
+  end
+
+  @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: node_id_list()
+  defp insert_index_on_node_id_list(node_ID, node_id_list) do
+    # Inserts a node ID into a sorted list of node IDs while maintaining the order.
+    ## Parameters
+    # - `node_ID`: The node ID to insert.
+    # - `node_id_list`: The sorted list of node IDs.
+    ## Returns
+    # A new list with the node ID inserted in the correct position.
+    index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
+    List.insert_at(node_id_list, index, node_ID)
+  end
+
   @doc """
   Inserts a new node into the tree.
 
@@ -242,11 +271,7 @@ defmodule Syncordian.Fugue.Tree do
   def insert(tree, replica_id, counter, position, value) do
     id = {replica_id, counter}
 
-    left_origin =
-      case traverse(tree) do
-        [] -> get_root(tree) || Node.root()
-        list -> Enum.at(list, position - 1) || get_root(tree)
-      end
+    left_origin = node_i_position_from_values(tree, position - 1)
 
     left_origin_id = Node.get_id(left_origin)
 
@@ -258,6 +283,7 @@ defmodule Syncordian.Fugue.Tree do
       end)
 
     right_origin = Enum.at(full_traversal, left_origin_index + 1)
+
     right_origin_id =
       if right_origin,
         do: Node.get_id(right_origin),
@@ -270,18 +296,6 @@ defmodule Syncordian.Fugue.Tree do
       true ->
         Node.new(id, value, right_origin_id, Node.get_left_value())
     end
-  end
-
-  @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: integer()
-  defp insert_index_on_node_id_list(node_ID, node_id_list) do
-    # Inserts a node ID into a sorted list of node IDs while maintaining the order.
-    ## Parameters
-    # - `node_ID`: The node ID to insert.
-    # - `node_id_list`: The sorted list of node IDs.
-    ## Returns
-    # A new list with the node ID inserted in the correct position.
-    index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
-    List.insert_at(node_id_list, index, node_ID)
   end
 
   @doc """
@@ -303,16 +317,38 @@ defmodule Syncordian.Fugue.Tree do
     node_side = Node.get_side(node)
     node_parent = Node.get_parent(node)
     {parent, left_sibs, right_sibs} = get_full_node(tree, node_parent)
-    new_right_sibs = if node_side == Node.get_right_value(),
-                     do: insert_index_on_node_id_list(node_id, right_sibs),
-                     else: right_sibs
-    new_left_sibs  = if node_side == Node.get_left_value(),
-                     do: insert_index_on_node_id_list(node_id, left_sibs),
-                     else: left_sibs
+
+    new_right_sibs =
+      if node_side == Node.get_right_value(),
+        do: insert_index_on_node_id_list(node_id, right_sibs),
+        else: right_sibs
+
+    new_left_sibs =
+      if node_side == Node.get_left_value(),
+        do: insert_index_on_node_id_list(node_id, left_sibs),
+        else: left_sibs
 
     put_node(tree, parent, new_left_sibs, new_right_sibs)
-    |> put_node(node, [], [])
+    |> put_node(node)
   end
 
-  # THE END
+  @doc """
+  Deletes a node from the tree by its position.
+
+  This function retrieves the node at the specified position in the tree and returns its ID.
+  Note that this function does not actually remove the node from the tree structure; it only
+  retrieves the ID of the node at the given position.
+
+  ## Parameters
+  - `tree`: The tree from which to delete the node.
+  - `position`: The position of the node to delete (0-based index).
+
+  ## Returns
+  The ID of the node at the specified position.
+  """
+  @spec delete(tree(), integer()) :: Node.node_ID()
+  def delete(tree, position) do
+    node = node_i_position_from_values(tree, position)
+    Node.get_id(node)
+  end
 end

@@ -132,98 +132,6 @@ defmodule Syncordian.Fugue.Tree do
     end
   end
 
-  @doc """
-  Retrieves all node values in the tree.
-
-  ## Parameters
-  - `tree`: The tree to retrieve values from.
-
-  ## Returns
-  A list of node values.
-  """
-  @spec values(tree()) :: [node_fugue()]
-  def values(tree), do: traverse(tree)
-
-  @doc """
-  Traverses the tree and retrieves all nodes.
-
-  ## Parameters
-  - `tree`: The tree to traverse.
-
-  ## Returns
-  A list of nodes in the tree.
-  """
-  @spec traverse(tree()) :: [node_fugue()]
-  def traverse(tree), do: traverse(tree, Node.get_null_id())
-
-  @doc """
-  Traverses the tree and retrieves all nodes, including tombstones.
-
-  ## Parameters
-  - `tree`: The tree to traverse.
-
-  ## Returns
-  A list of nodes in the tree, including tombstones.
-  """
-  @spec full_traverse(tree()) :: [node_fugue()]
-  def full_traverse(tree) do
-    traverse(tree, Node.get_null_id(), true)
-  end
-
-  @doc """
-  Traverses the tree starting from a specific node ID.
-
-  ## Parameters
-  - `tree`: The tree to traverse.
-  - `id`: The ID of the starting node.
-  - `tombstone`: Whether to include tombstones in the traversal.
-
-  ## Returns
-  A list of nodes in the tree starting from the given node ID.
-  """
-  @spec traverse(tree(), Node.node_ID(), boolean()) :: [node_fugue()]
-  def traverse(tree, id, tombstone \\ false) do
-    traverse_acc_reduce = fn id, acc ->
-      traverse(tree, id) ++ acc
-    end
-
-    recursion = fn node_id_list ->
-      Enum.reduce(node_id_list, [], traverse_acc_reduce)
-    end
-
-    case get_full_node(tree, id) do
-      {node, left, right} ->
-        left_values = recursion.(left)
-
-        node_value =
-          if Node.get_value(node) != Node.get_tombstone() or tombstone,
-            do: [Node.get_value(node)],
-            else: []
-
-        right_values = recursion.(right)
-        # TODO: ++ is O(n) is could be optimized by using acc in the reduce, but this
-        #       implies to make a reverse: first right, then node, then left.
-        left_values ++ node_value ++ right_values
-
-      nil ->
-        []
-    end
-  end
-
-  @spec right_child_exists?(tree(), Node.node_ID()) :: boolean()
-  defp right_child_exists?(tree, id) do
-    # Checks if a right child exists for a given node ID.
-    ## Parameters
-    # - `tree`: The tree to check.
-    # - `id`: The ID of the node to check.
-    ## Returns
-    # `true` if a right child exists, `false` otherwise.
-    Enum.any?(get_tree_nodes(tree), fn
-      {_id, {node, _left, _right}} ->
-        Node.get_parent(node) == id and Node.get_side(node) == Node.get_right_value()
-    end)
-  end
-
   @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
   defp node_i_position_from_values(tree, position) do
     # Retrieves the node at a specific position from the list of nodes in the tree.
@@ -253,6 +161,103 @@ defmodule Syncordian.Fugue.Tree do
     index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
     List.insert_at(node_id_list, index, node_ID)
   end
+
+  @doc """
+  Traverses the tree and retrieves all nodes, including tombstones.
+
+  ## Parameters
+  - `tree`: The tree to traverse.
+
+  ## Returns
+  A list of nodes in the tree, including tombstones.
+  """
+  @spec full_traverse(tree()) :: [node_fugue()]
+  def full_traverse(tree) do
+    traverse(tree, Node.get_null_id(), true)
+  end
+
+  ########################### CRDT Functions ##################################
+
+  @doc """
+  Retrieves all node values in the tree.
+
+  ## Parameters
+  - `tree`: The tree to retrieve values from.
+
+  ## Returns
+  A list of node values.
+  """
+  @spec values(tree()) :: [node_fugue()]
+  def values(tree), do: traverse(tree)
+
+  @doc """
+  Traverses the tree and retrieves all nodes.
+
+  ## Parameters
+  - `tree`: The tree to traverse.
+
+  ## Returns
+  A list of nodes in the tree.
+  """
+  @spec traverse(tree()) :: [node_fugue()]
+  def traverse(tree), do: traverse(tree, Node.get_null_id())
+
+
+  @doc """
+  Traverses the tree starting from a specific node ID.
+
+  ## Parameters
+  - `tree`: The tree to traverse.
+  - `id`: The ID of the starting node.
+  - `tombstone`: Whether to include tombstones in the traversal.
+
+  ## Returns
+  A list of nodes in the tree starting from the given node ID.
+  """
+  @spec traverse(tree(), Node.node_ID(), boolean()) :: [node_fugue()]
+  def traverse(tree, id, tombstone \\ false) do
+    traverse_acc_reduce = fn id, acc ->
+      traverse(tree, id) ++ acc
+    end
+
+    recursion = fn node_id_list ->
+      Enum.reduce(node_id_list, [], traverse_acc_reduce)
+    end
+    root_node = Node.root()
+    case get_full_node(tree, id) do
+      # TODO: This patter should be mactched else the function will never halt!!!!
+      # SUPER IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
+      {^root_node, [],[]} ->
+        []
+      {node, left, right} ->
+        left_values = recursion.(left)
+
+        node_value =
+          if Node.get_value(node) != Node.get_tombstone() or tombstone,
+            do: [Node.get_value(node)],
+            else: []
+
+        right_values = recursion.(right)
+        # TODO: ++ is O(n) is could be optimized by using acc in the reduce, but this
+        #       implies to make a reverse: first right, then node, then left.
+        left_values ++ node_value ++ right_values
+    end
+  end
+
+  @spec right_child_exists?(tree(), Node.node_ID()) :: boolean()
+  defp right_child_exists?(tree, id) do
+    # Checks if a right child exists for a given node ID.
+    ## Parameters
+    # - `tree`: The tree to check.
+    # - `id`: The ID of the node to check.
+    ## Returns
+    # `true` if a right child exists, `false` otherwise.
+    Enum.any?(get_tree_nodes(tree), fn
+      {_id, {node, _left, _right}} ->
+        Node.get_parent(node) == id and Node.get_side(node) == Node.get_right_value()
+    end)
+  end
+
 
   @doc """
   Inserts a new node into the tree.

@@ -132,32 +132,39 @@ defmodule Syncordian.Fugue.Tree do
     end
   end
 
-  @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
-  defp node_i_position_from_values(tree, position) do
-    # Retrieves the node at a specific position from the list of nodes in the tree.
-    # This function traverses the tree to get a list of nodes and returns the node
-    # at the specified position. If the position is out of bounds or the tree is empty,
-    # it returns the root node.
-    ## Parameters
-    # - `tree`: The tree to retrieve the node from.
-    # - `position`: The position of the node in the list (0-based index).
+  @doc """
+  Retrieves the node at a specific position from the list of nodes in the tree.
+  This function traverses the tree to get a list of nodes and returns the node
+  at the specified position. If the position is out of bounds or the tree is empty,
+  it returns the root node.
 
-    ## Returns
-    # The node at the specified position, or the root node if the position is invalid.
+  ## Parameters
+  - `tree`: The tree to retrieve the node from.
+  - `position`: The position of the node in the list (0-based index).
+
+  ## Returns
+  The node at the specified position, or the root node if the position is invalid.
+  """
+  @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
+  def node_i_position_from_values(tree, position) do
     case traverse(tree) do
       [] -> get_root(tree) || Node.root()
       list -> Enum.at(list, position) || get_root(tree)
     end
   end
 
+  @doc """
+  Inserts a node ID into a sorted list of node IDs while maintaining the order.
+
+  ## Parameters
+  - `node_ID`: The node ID to insert.
+  - `node_id_list`: The sorted list of node IDs.
+
+  ## Returns
+  A new list with the node ID inserted at the correct position.
+  """
   @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: node_id_list()
-  defp insert_index_on_node_id_list(node_ID, node_id_list) do
-    # Inserts a node ID into a sorted list of node IDs while maintaining the order.
-    ## Parameters
-    # - `node_ID`: The node ID to insert.
-    # - `node_id_list`: The sorted list of node IDs.
-    ## Returns
-    # A new list with the node ID inserted in the correct position.
+  def insert_index_on_node_id_list(node_ID, node_id_list) do
     index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
     List.insert_at(node_id_list, index, node_ID)
   end
@@ -243,15 +250,18 @@ defmodule Syncordian.Fugue.Tree do
         left_values ++ node_value ++ right_values
     end
   end
+  @doc """
+  Checks if a right child exists for a given node ID.
 
+  ## Parameters
+  - `tree`: The tree to check.
+  - `id`: The ID of the node to check.
+
+  ## Returns
+  `true` if a right child exists, `false` otherwise.
+  """
   @spec right_child_exists?(tree(), Node.node_ID()) :: boolean()
-  defp right_child_exists?(tree, id) do
-    # Checks if a right child exists for a given node ID.
-    ## Parameters
-    # - `tree`: The tree to check.
-    # - `id`: The ID of the node to check.
-    ## Returns
-    # `true` if a right child exists, `false` otherwise.
+  def right_child_exists?(tree, id) do
     Enum.any?(get_tree_nodes(tree), fn
       {_id, {node, _left, _right}} ->
         Node.get_parent(node) == id and Node.get_side(node) == Node.get_right_value()
@@ -355,5 +365,27 @@ defmodule Syncordian.Fugue.Tree do
   def delete(tree, position) do
     node = node_i_position_from_values(tree, position)
     Node.get_id(node)
+  end
+
+  @doc """
+  Marks a node as deleted in the tree by setting its value to a tombstone.
+
+  This function updates the specified node in the tree by replacing its value with
+  a tombstone marker. The node itself is not removed from the tree structure, but
+  its value is marked as deleted.
+
+  ## Parameters
+  - `tree`: The tree to update.
+  - `node_ID`: The ID of the node to mark as deleted.
+
+  ## Returns
+  A new tree struct with the specified node marked as deleted.
+  """
+  @spec delete_local(tree(), Node.node_ID()) :: tree()
+  def delete_local(tree, node_ID) do
+    tombstone_value = Node.get_tombstone()
+    {node, ls, rs} = get_full_node(tree, node_ID)
+    updated_node = Node.set_value(node, tombstone_value)
+    put_node(tree, updated_node, ls, rs)
   end
 end

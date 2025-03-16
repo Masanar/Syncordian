@@ -23,12 +23,16 @@ defmodule Syncordian.Fugue.Peer do
           pid: pid() | nil,
           deleted_count: non_neg_integer(),
           supervisor_pid: pid() | nil,
-          metadata: map()
+          metadata: Syncordian.Metadata.metadata()
         }
 
   @type peer_fugue :: t
 
-  @spec new(peer_id(), document(), pid(), supervisor_pid(), metadata()) :: peer_fugue()
+  @spec new(Syncordian.Basic_Types.peer_id(),
+            Syncordian.Fugue.Tree.t(),
+            pid(),
+            pid(),
+            Syncordian.Metadata.metadata()) :: peer_fugue()
   def new(peer_id, document, pid, supervisor_pid, metadata) do
     %__MODULE__{
       peer_id: peer_id,

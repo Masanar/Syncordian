@@ -216,13 +216,13 @@ defmodule Syncordian.Fugue.Tree do
   ## Parameters
   - `tree`: The tree to traverse.
   - `id`: The ID of the starting node.
-  - `tombstone`: Whether to include tombstones in the traversal.
+  - `include_tombstones`: Whether to include tombstones in the traversal.
 
   ## Returns
   A list of nodes in the tree starting from the given node ID.
   """
   @spec traverse(tree(), Node.node_ID(), boolean()) :: [node_fugue()]
-  def traverse(tree, id, tombstone \\ false) do
+  def traverse(tree, id, include_tombstones \\ false) do
     traverse_acc_reduce = fn id, acc ->
       traverse(tree, id) ++ acc
     end
@@ -240,7 +240,7 @@ defmodule Syncordian.Fugue.Tree do
         left_values = recursion.(left)
 
         node_value =
-          if Node.get_value(node) != Node.get_tombstone() or tombstone,
+          if Node.get_value(node) != Node.get_tombstone() or include_tombstones,
             do: [Node.get_value(node)],
             else: []
 

@@ -324,7 +324,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
           {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
 
-        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # TODO: Refactor this part to be a function, currently it is duplicated
         # in :supervisor_request_metadata and :save_individual_peer_metadata
 
         # Here the metadata get 'restarted' to the default values, remember that
@@ -341,7 +341,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         |> update_memory_info(peer_pid)
         |> save_metadata_one_peer(current_commit)
 
-        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # TODO: Refactor this part to be a function, currently it is duplicated
         # in :supervisor_request_metadata and :save_individual_peer_metadata
         # Here the metadata get 'restarted' to the default values, remember that
         # the supervisor is the one that gather all the peers data. This reset is

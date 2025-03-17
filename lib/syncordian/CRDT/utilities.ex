@@ -102,7 +102,6 @@ defmodule Syncordian.Utilities do
     directory
     |> Path.expand()
     |> File.ls!()
-    # Exclude the .gitignore file
     |> Enum.reject(&(&1 == ".gitignore"))
     |> Enum.each(&delete_entry(Path.join(directory, &1)))
   end
@@ -187,4 +186,16 @@ defmodule Syncordian.Utilities do
       do_translate_index(t, target - 1, tombstones, index + 1, is_tombstone?)
     end
   end
+
+  @spec identify_peer_module(Syncordian.Basic_Types.crdt_id()) :: module
+  def identify_peer_module(crdt_id) do
+    case crdt_id do
+      :syncordian -> Syncordian.Peer
+      :fugue -> Syncordian.CRDT.Fugue.Peer
+      :treedoc -> Syncordian.CRDT.Treedoc.Peer
+      :logoot -> Syncordian.CRDT.Logoot.Peer
+      _ -> Syncordian.Peer
+    end
+  end
+
 end

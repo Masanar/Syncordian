@@ -85,4 +85,6 @@ defmodule Syncordian.Basic_Types do
   #         }
 
   @type git_document_index :: integer()
+
+  @type crdt_id :: :syncordian | :fugue | :treedoc | :logoot | nil
 end

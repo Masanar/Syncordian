@@ -14,7 +14,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   import Syncordian.Metadata
   import Syncordian.Utilities
   import Syncordian.Basic_Types
-  alias Syncordian.CRDT.Fugue.{Tree, Node, Info}
+  alias Syncordian.CRDT.Fugue.{Tree, Info}
 
   defstruct peer_id: nil,
             document: Syncordian.CRDT.Fugue.Tree.new(),
@@ -231,8 +231,9 @@ defmodule Syncordian.CRDT.Fugue.Peer do
       ###################################### Delete related messages
       {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
-        git_index_translated = Tree.translate_git_index_to_fugue_index(document, index, 0, 0)
-        delete_node_id = Tree.delete(document, git_index_translated) |> Node.get_id()
+        full_document_traverse = Tree.full_traverse(document)
+        git_index_translated = Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
+        delete_node_id = Tree.delete(document, git_index_translated)
         updated_peer = Tree.delete_local(document, delete_node_id) |> update_peer_document(peer)
         send( get_peer_pid(peer), {:send_delete_broadcast, delete_node_id})
         loop(updated_peer)
@@ -251,7 +252,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         peer_id = get_peer_id(peer)
         document = get_peer_document(peer)
         current_counter = get_peer_counter(peer)
-        git_index_translated = Tree.translate_git_index_to_fugue_index(document, index, 0, 0)
+        full_document_traverse = Tree.full_traverse(document)
+        git_index_translated = Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
         insert_node = Tree.insert(document, peer_id, current_counter, git_index_translated, content)
 
         send(get_peer_pid(peer), {:send_insert_broadcast, insert_node })
@@ -277,9 +279,9 @@ defmodule Syncordian.CRDT.Fugue.Peer do
       ###################################### Gathering info related messages
 
       {:print_content, :document} ->
-        peer_pid = get_peer_pid(peer)
+        peer_id = get_peer_id(peer)
         get_peer_document(peer)
-        |> Info.print_tree_content(peer_pid)
+        |> Info.print_tree_content(peer_id)
         loop(peer)
 
       {:save_content, :document} ->

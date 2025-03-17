@@ -324,6 +324,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
+      # ✅
       {:delete_line, [index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
@@ -376,6 +377,7 @@ defmodule Syncordian.Peer do
         end
 
       # TODO: Delete the test_index, the global_position and current_delete_ops
+      # ✅
       {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
@@ -421,7 +423,7 @@ defmodule Syncordian.Peer do
 
           loop(peer)
         end
-
+      # ✅
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         perform_broadcast_peer(
           peer,
@@ -429,11 +431,11 @@ defmodule Syncordian.Peer do
         )
 
         loop(peer)
-
+      # ✅
       {:send_delete_broadcast, delete_line_info} ->
         perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_line_info})
         loop(peer)
-
+      # ✅
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
@@ -530,6 +532,7 @@ defmodule Syncordian.Peer do
             |> loop
         end
 
+      # ✅
       {:receive_insert_broadcast, line, incoming_vc} ->
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_peer_vector_clock(peer)
@@ -670,40 +673,46 @@ defmodule Syncordian.Peer do
             IO.puts("Something happen")
             loop(peer)
         end
-
+      # ✅ Not needed in Fugue
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
         get_peer_document(peer)
         |> update_document_line_commit_at(inserted_line_id, received_peer_id)
         |> update_peer_document(peer)
         |> loop
-
+      # ✅
       {:print_content, :document} ->
         print_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
+      # ✅
       {:save_content, :document} ->
         save_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
+      # ✅
       {:request_live_view_document, live_view_pid} ->
         send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
         loop(peer)
 
+      # ✅
       {:save_pid, info} ->
         info
         |> update_peer_pid(peer)
         |> loop
 
+      # ✅
       {:print, _} ->
         IO.inspect(peer)
         loop(peer)
 
+      # ✅
       {:register_supervisor_pid} ->
         supervisor_pid = :global.whereis_name(:supervisor)
 
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
+      # ✅
       {:supervisor_request_metadata} ->
         peer_pid = get_peer_pid(peer)
 

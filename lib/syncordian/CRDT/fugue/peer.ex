@@ -13,8 +13,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   """
   import Syncordian.Metadata
   import Syncordian.Utilities
-  import Syncordian.CRDT.Fugue.Tree
   import Syncordian.Basic_Types
+  alias Syncordian.CRDT.Fugue.{Tree, Node, Info}
 
   defstruct peer_id: nil,
             document: Syncordian.CRDT.Fugue.Tree.new(),
@@ -43,6 +43,15 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   def new(peer_id), do: %__MODULE__{ peer_id: peer_id, }
 
   ############################# Peer Data Structure Interface ############################
+
+  @spec get_peer_counter(peer_fugue()) :: integer()
+  def get_peer_counter(%__MODULE__{counter: counter}), do: counter
+
+  @spec increment_peer_counter(peer_fugue()) :: peer_fugue()
+  def increment_peer_counter(%__MODULE__{} = peer) do
+    new_counter = get_peer_counter(peer) + 1
+    %{peer | counter: new_counter}
+  end
 
   @doc """
   Retrieves the metadata of the Fugue peer.
@@ -174,12 +183,9 @@ defmodule Syncordian.CRDT.Fugue.Peer do
 
   """
   @spec insert(pid, String.t(), integer, integer, integer, integer) :: any
-  def insert(pid, content, index_position, test_index, global_position, current_delete_ops),
+  def insert(pid, content, _index_position, test_index, _global_position, _current_delete_ops),
     do:
-      send(
-        pid,
-        {:insert, [content, index_position, test_index, global_position, current_delete_ops]}
-      )
+      send( pid, {:insert, [content, test_index]})
 
   # This is a private function used to save the pid of the peer in the record.
   @spec save_peer_pid(pid, integer) :: any
@@ -221,7 +227,133 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   # These peer are not going to be 'attack' by byzantine peers
   @spec loop(peer_fugue()) :: any
   def loop(peer) do
-    :ok
+    receive do
+      ###################################### Delete related messages
+      {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
+        document = get_peer_document(peer)
+        git_index_translated = Tree.translate_git_index_to_fugue_index(document, index, 0, 0)
+        delete_node_id = Tree.delete(document, git_index_translated) |> Node.get_id()
+        updated_peer = Tree.delete_local(document, delete_node_id) |> update_peer_document(peer)
+        send( get_peer_pid(peer), {:send_delete_broadcast, delete_node_id})
+        loop(updated_peer)
+
+      {:send_delete_broadcast, delete_node_id} ->
+        perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_node_id})
+        loop(peer)
+
+      {:receive_delete_broadcast, delete_node_id} ->
+        get_peer_document(peer)
+        |> Tree.delete_local(delete_node_id)
+        |> update_peer_document(peer)
+        |> loop()
+      ###################################### Insert related messages
+      {:insert, [content, index]} ->
+        peer_id = get_peer_id(peer)
+        document = get_peer_document(peer)
+        current_counter = get_peer_counter(peer)
+        git_index_translated = Tree.translate_git_index_to_fugue_index(document, index, 0, 0)
+        insert_node = Tree.insert(document, peer_id, current_counter, git_index_translated, content)
+
+        send(get_peer_pid(peer), {:send_insert_broadcast, insert_node })
+
+        document
+        |> Tree.insert_local(insert_node)
+        |> update_peer_document(peer)
+        |> increment_peer_counter()
+        |> loop()
+
+      {:send_insert_broadcast, insert_node} ->
+        perform_broadcast_peer(
+          peer,
+          {:receive_insert_broadcast, insert_node}
+        )
+        loop(peer)
+      {:receive_insert_broadcast, insert_node} ->
+        get_peer_document(peer)
+        |> Tree.insert_local(insert_node)
+        |> update_peer_document(peer)
+        |> loop()
+
+      ###################################### Gathering info related messages
+
+      {:print_content, :document} ->
+        peer_pid = get_peer_pid(peer)
+        get_peer_document(peer)
+        |> Info.print_tree_content(peer_pid)
+        loop(peer)
+
+      {:save_content, :document} ->
+        peer_id = get_peer_id(peer)
+        document = get_peer_document(peer)
+        Info.save_tree_content(document, peer_id)
+        loop(peer)
+
+      {:request_live_view_document, live_view_pid} ->
+        # TODO: check this on the supervisor!! In this point the whole tree structure is
+        # send I do not know how the supervisor handle this!!
+        send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
+        loop(peer)
+
+      {:save_pid, info} ->
+        info
+        |> update_peer_pid(peer)
+        |> loop
+
+      {:print, _} ->
+        IO.inspect(peer)
+        loop(peer)
+
+      {:register_supervisor_pid} ->
+        supervisor_pid = :global.whereis_name(:supervisor)
+
+        set_peer_supervisor_pid(peer, supervisor_pid)
+        |> loop
+
+      {:supervisor_request_metadata} ->
+        peer_pid = get_peer_pid(peer)
+
+        updated_memory_metadata =
+          peer
+          |> get_metadata()
+          |> update_memory_info(peer_pid)
+
+        send(
+          get_peer_supervisor_pid(peer),
+          {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
+        )
+
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
+
+        # Here the metadata get 'restarted' to the default values, remember that
+        # the supervisor is the one that gather all the peers data. This reset is
+        # done to not count the same data twice.
+        update_metadata(Syncordian.Metadata.metadata(), peer)
+        |> loop()
+
+      {:save_individual_peer_metadata, current_commit} ->
+        peer_pid = get_peer_pid(peer)
+
+        peer
+        |> get_metadata()
+        |> update_memory_info(peer_pid)
+        |> save_metadata_one_peer(current_commit)
+
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
+        # Here the metadata get 'restarted' to the default values, remember that
+        # the supervisor is the one that gather all the peers data. This reset is
+        # done to not count the same data twice.
+        update_metadata(Syncordian.Metadata.metadata(), peer)
+        |> loop()
+      wrong_message ->
+        IO.puts("Peer Fugue receive a wrong message")
+        IO.inspect(wrong_message)
+        loop(peer)
+
+
+    end
+
   end
 
 

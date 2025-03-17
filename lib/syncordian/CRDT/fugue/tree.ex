@@ -16,7 +16,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
-  import Syncordian.Utilities, only: [debug_print: 2]
+  # import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Node
   alias Syncordian.Utilities
 
@@ -203,6 +203,10 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   Returns:
     The corresponding Fugue tree index, or -1 if no valid position is found.
   """
+  @spec translate_git_index_to_fugue_index([node_fugue()],
+                                           integer(),
+                                           integer(),
+                                           integer()) :: integer()
   def translate_git_index_to_fugue_index(list, target, tombstones, index) do
     Utilities.do_translate_index(list, target, tombstones, index, &Node.is_tombstone?/1)
   end

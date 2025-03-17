@@ -92,13 +92,13 @@ defmodule Syncordian.CRDT.Fugue.Test do
        A new tree is created via `Tree.new/0` and then initialized with six nodes using
        `bulk_insert/4`. This represents the initial state for replica "r0".
 
-    2. **Replica "r1" Insert Operations**:
+    2. **Replica replica_1_id Insert Operations**:
        - Insertion at position 0 with value `"if"`
        - Insertion at position 1 with value `"is"`
        - Insertion at position 2 with value `"md"`
        - Insertion at position 3 with value `"mr"`
        These operations update the tree using `create_and_update/5` and simulate sequential
-       messaging by replica "r1".
+       messaging by replica replica_1_id.
        Additionally, an out-of-order messaging case is simulated by inserting another pair of
        nodes (`"3 before 2"` and `"2 after 3"`) to test the system's ability to manage such
        discrepancies.
@@ -122,33 +122,35 @@ defmodule Syncordian.CRDT.Fugue.Test do
   @spec execute() :: any
   def execute() do
     # Replica 0 messages
+    replica_0_id = 0
 
     empty_tree = Tree.new()
 
-    new_tree = bulk_insert(empty_tree, "r0", 0, 6)
+    new_tree = bulk_insert(empty_tree, replica_0_id, 0, 6)
     # debug_print("new tree", Tree.traverse(new_tree))
 
     # Replica 1 messages
+    replica_1_id = 1
 
-    intermediate_first = create_and_update(new_tree, "r1", 0 , 0, "if")
+    intermediate_first = create_and_update(new_tree, replica_1_id, 0 , 0, "if")
     # debug_print("intermediate tree", Tree.traverse(intermediate_first))
 
-    intermediate_second = create_and_update(intermediate_first, "r1", 1 , 1, "is")
+    intermediate_second = create_and_update(intermediate_first, replica_1_id, 1 , 1, "is")
     # debug_print("intermediate tree", Tree.traverse(intermediate_second))
 
-    message_delay = create_and_update(intermediate_second, "r1", 2 , 2, "md")
+    message_delay = create_and_update(intermediate_second, replica_1_id, 2 , 2, "md")
     # debug_print("intermediate tree", Tree.traverse(message_delay))
 
-    message_reach = create_and_update(message_delay, "r1", 3 , 3, "mr")
+    message_reach = create_and_update(message_delay, replica_1_id, 3 , 3, "mr")
     debug_print("intermediate tree", Tree.traverse(message_reach))
 
     ######### This is the 'question' this message order might not be correct
 
-    error_message_delay = create_and_update(intermediate_second, "r1", 3 , 3, "3 before 2")
+    error_message_delay = create_and_update(intermediate_second, replica_1_id, 3 , 3, "3 before 2")
     # debug_print("intermediate tree", Tree.traverse(error_message_delay))
 
-    error_message_reach = create_and_update(error_message_delay, "r1", 2 , 2, "2 after 3")
-    debug_print("intermediate tree", Tree.traverse(message_reach))
+    error_message_reach = create_and_update(error_message_delay, replica_1_id, 2 , 2, "2 after 3")
+    debug_print("intermediate tree", Tree.traverse(error_message_reach))
 
     ######################### DELETE TEST ############################
 

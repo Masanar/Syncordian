@@ -59,6 +59,19 @@ defmodule Syncordian.CRDT.Fugue.Node do
     do: %__MODULE__{id: id, value: value, parent: parent, side: side}
 
   @doc """
+  Checks if the given node is a tombstone.
+
+  ## Parameters
+  - `node`: The node to check.
+
+  ## Returns
+  `true` if the node is a tombstone, `false` otherwise.
+  """
+  @spec is_tombstone?(node) :: boolean()
+  def is_tombstone?(%__MODULE__{value: @tombstone}), do: true
+  def is_tombstone?(%__MODULE__{value: _}), do: false
+
+  @doc """
   Checks if the given node is the root node.
 
   ## Parameters

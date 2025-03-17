@@ -18,6 +18,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   """
   import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Node
+  alias Syncordian.Utilities
 
   defstruct nodes: %{}
 
@@ -188,6 +189,24 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   def full_traverse(tree) do
     traverse(tree, Node.get_null_id(), true)
   end
+
+  @doc """
+  Translates a Git index into the corresponding Fugue tree index,
+  accounting for tombstone (i.e. logically deleted) nodes.
+
+  Parameters:
+    - full_traverse: A list of Fugue nodes representing the full traversal of the tree.
+    - target: The number of non-tombstone nodes to skip (the Git index position).
+    - tombstones: The count of tombstones encountered so far (used for adjustment).
+    - index: The current traversal index.
+
+  Returns:
+    The corresponding Fugue tree index, or -1 if no valid position is found.
+  """
+  def translate_git_index_to_fugue_index(list, target, tombstones, index) do
+    Utilities.do_translate_index(list, target, tombstones, index, &Node.is_tombstone?/1)
+  end
+
 
   ########################### CRDT Functions ##################################
 

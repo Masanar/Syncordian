@@ -69,6 +69,9 @@ defmodule Syncordian.Line_Object do
   def set_line_status(line, new_status) do
     line(line, status: new_status)
   end
+  
+  @spec is_tombstone?(line()) :: boolean()
+  def is_tombstone?(line), do: get_line_status(line) == :tombstone
 
   @doc """
     This function is a getter for the deleted field of a line record, this field is true

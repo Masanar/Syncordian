@@ -4,7 +4,6 @@ defmodule Syncordian.Utilities do
       do not fit on the main modules.
   """
   @debug true
-
   @spec debug_print(String.t(), any()) :: any
   def debug_print(message, content) do
     case @debug do
@@ -147,5 +146,45 @@ defmodule Syncordian.Utilities do
     [total_heap_size: s, message_queue_len: m] =
     Process.info(single_process_name, [:total_heap_size, :message_queue_len])
     [s, m]
+  end
+
+  @doc """
+  Recursive helper to translate a Git index into the corresponding document/tree index,
+  accounting for tombstones elements.
+
+  This function traverses a list of elements (e.g., document lines or tree nodes) and skips
+  elements based on the provided predicate `is_tombstone?`. The `target` represents the number
+  of non-tombstones elements to skip. As the function traverses the list, it decrements `target`
+  and increments the tombstone counter when a tombstone element is encountered. When `target` reaches
+  zero, if the current element is not a tombstone it returns the current index; otherwise, it continues
+  traversing. If the list is exhausted without finding a valid element, it returns -1.
+
+  Parameters:
+    - list: The list of elements to traverse.
+    - target: The number of non-tombstones elements to skip.
+    - tombstones: The count of tombstones elements encountered so far.
+    - index: The current traversal index.
+    - is_tombstone?: A function that accepts an element and returns `true` if it is considered tombstone.
+
+  Returns:
+    The computed index corresponding to the Git index or -1 if no valid position is found.
+  """
+  def do_translate_index([], 0, 0, index, _is_tombstone?), do: index - 1
+  def do_translate_index([], _target, _tombstones, _index, _is_tombstone?), do: -1
+
+  def do_translate_index([h | t], 0, 0, index, is_tombstone?) do
+    if is_tombstone?.(h) do
+      do_translate_index(t, 0, 0, index + 1, is_tombstone?)
+    else
+      index
+    end
+  end
+
+  def do_translate_index([h | t], target, tombstones, index, is_tombstone?) do
+    if is_tombstone?.(h) do
+      do_translate_index(t, target - 1, tombstones + 1, index + 1, is_tombstone?)
+    else
+      do_translate_index(t, target - 1, tombstones, index + 1, is_tombstone?)
+    end
   end
 end

@@ -218,9 +218,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   end
 
   ########################################################################################
-
+  # These peer are not going to be 'attack' by byzantine peers
   @spec loop(peer_fugue()) :: any
-
   def loop(peer) do
     :ok
   end

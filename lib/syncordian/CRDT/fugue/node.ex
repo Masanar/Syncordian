@@ -10,18 +10,18 @@ defmodule Syncordian.CRDT.Fugue.Node do
   - `side`: Indicates the side of the parent node (`:left`, `:right`, or `nil`).
 
   ## Types
-  - `node_ID`: A tuple `{String.t(), integer()}` representing a unique node identifier.
+  - `node_ID`: A tuple `{peer_id(), integer()}` representing a unique node identifier.
   - `tree_side`: Represents the side of the parent node (`:left`, `:right`, or `nil`).
   - `node_value`: The value of the node, which can be a string or `:tombstone`.
   - `t`: The struct representing a node.
   """
 
-  @null_id     {"root", 0}
+  @null_id     {-1, 0}
   @left_value  :left
   @right_value :right
   @tombstone   :tombstone
 
-  @type node_ID :: {String.t(), integer()}
+  @type node_ID :: {Syncordian.Basic_Types.peer_id(), integer()}
   @type tree_side :: :left | :right | nil
   @type node_value :: String.t() | :tombstone
 

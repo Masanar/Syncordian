@@ -148,7 +148,7 @@ defmodule Syncordian.CRDT.Fugue.Test do
     # debug_print("intermediate tree", Tree.traverse(error_message_delay))
 
     error_message_reach = create_and_update(error_message_delay, "r1", 2 , 2, "2 after 3")
-    # debug_print("intermediate tree", Tree.traverse(message_reach))
+    debug_print("intermediate tree", Tree.traverse(message_reach))
 
     ######################### DELETE TEST ############################
 

@@ -338,10 +338,10 @@ defmodule Syncordian.Peer do
           _ ->
             peer_id = get_peer_id(peer)
 
-            nicolas_index =
+            git_index_translated =
               translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-            if nicolas_index == -1 do
+            if git_index_translated == -1 do
               # Due byzantine peers or network issues the line was not inserted in the
               # document of the peer, need to requeue the local delete operation.
               # IO.puts("Line delete line was not found in the document with index: #{test_index}")
@@ -350,12 +350,12 @@ defmodule Syncordian.Peer do
             else
               peer =
                 document
-                |> update_document_line_status(nicolas_index, :tombstone)
-                |> update_document_line_peer_id(nicolas_index, peer_id)
+                |> update_document_line_status(git_index_translated, :tombstone)
+                |> update_document_line_peer_id(git_index_translated, peer_id)
                 |> update_peer_document(peer)
 
               line_deleted =
-                get_document_line_by_index(document, nicolas_index)
+                get_document_line_by_index(document, git_index_translated)
 
               line_deleted_id = line_deleted |> get_line_id
 
@@ -380,9 +380,9 @@ defmodule Syncordian.Peer do
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
-        nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+        git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-        if nicolas_index == -1 do
+        if git_index_translated == -1 do
           # Due byzantine peers or network issues the line was not inserted in the
           # document of the peer, need to requeue the local delete operation.
           # IO.puts(
@@ -395,7 +395,7 @@ defmodule Syncordian.Peer do
           [left_parent, right_parent] =
             get_parents_by_index(
               document,
-              nicolas_index
+              git_index_translated
             )
 
           new_line =

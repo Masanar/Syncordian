@@ -16,10 +16,10 @@ defmodule Syncordian.CRDT.Fugue.Node do
   - `t`: The struct representing a node.
   """
 
-  @null_id     {-1, 0}
-  @left_value  :left
+  @null_id {-1, 0}
+  @left_value :left
   @right_value :right
-  @tombstone   :tombstone
+  @tombstone :tombstone
 
   @type node_ID :: {Syncordian.Basic_Types.peer_id(), integer()}
   @type tree_side :: :left | :right | nil

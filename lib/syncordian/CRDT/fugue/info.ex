@@ -62,11 +62,13 @@ defmodule Syncordian.CRDT.Fugue.Info do
   def string_tree_content(tree, peer_id) do
     peer_id_string = Integer.to_string(peer_id)
     header = "-----------------Peer id: #{peer_id_string}-----------------\n"
+
     content =
       Tree.full_traverse(tree)
       |> Enum.reduce("", fn node, acc ->
         acc <> to_string(Node.get_value(node)) <> "\n"
       end)
+
     footer = "-----------------End of Peer id: #{peer_id_string}-----------------\n"
     header <> content <> footer
   end

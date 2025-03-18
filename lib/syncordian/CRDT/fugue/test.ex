@@ -2,6 +2,7 @@ defmodule Syncordian.CRDT.Fugue.Test do
   import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Tree
   alias Syncordian.CRDT.Fugue.Node
+
   @moduledoc """
   This module provides test utilities for the Fugue CRDT tree implementation.
 
@@ -36,7 +37,8 @@ defmodule Syncordian.CRDT.Fugue.Test do
   ## Returns
   A new tree with the node inserted.
   """
-  @spec create_and_update(Tree.t(), String.t(), integer(), integer(), Node.node_value()) :: Tree.t()
+  @spec create_and_update(Tree.t(), String.t(), integer(), integer(), Node.node_value()) ::
+          Tree.t()
   def create_and_update(tree, replica_id, counter, position, value) do
     new_node = Tree.insert(tree, replica_id, counter, position, value)
     Tree.insert_local(tree, new_node)
@@ -132,24 +134,24 @@ defmodule Syncordian.CRDT.Fugue.Test do
     # Replica 1 messages
     replica_1_id = 1
 
-    intermediate_first = create_and_update(new_tree, replica_1_id, 0 , 0, "if")
+    intermediate_first = create_and_update(new_tree, replica_1_id, 0, 0, "if")
     # debug_print("intermediate tree", Tree.traverse(intermediate_first))
 
-    intermediate_second = create_and_update(intermediate_first, replica_1_id, 1 , 1, "is")
+    intermediate_second = create_and_update(intermediate_first, replica_1_id, 1, 1, "is")
     # debug_print("intermediate tree", Tree.traverse(intermediate_second))
 
-    message_delay = create_and_update(intermediate_second, replica_1_id, 2 , 2, "md")
+    message_delay = create_and_update(intermediate_second, replica_1_id, 2, 2, "md")
     # debug_print("intermediate tree", Tree.traverse(message_delay))
 
-    message_reach = create_and_update(message_delay, replica_1_id, 3 , 3, "mr")
+    message_reach = create_and_update(message_delay, replica_1_id, 3, 3, "mr")
     debug_print("intermediate tree", Tree.traverse(message_reach))
 
     ######### This is the 'question' this message order might not be correct
 
-    error_message_delay = create_and_update(intermediate_second, replica_1_id, 3 , 3, "3 before 2")
+    error_message_delay = create_and_update(intermediate_second, replica_1_id, 3, 3, "3 before 2")
     # debug_print("intermediate tree", Tree.traverse(error_message_delay))
 
-    error_message_reach = create_and_update(error_message_delay, replica_1_id, 2 , 2, "2 after 3")
+    error_message_reach = create_and_update(error_message_delay, replica_1_id, 2, 2, "2 after 3")
     debug_print("intermediate tree", Tree.traverse(error_message_reach))
 
     ######################### DELETE TEST ############################
@@ -157,7 +159,5 @@ defmodule Syncordian.CRDT.Fugue.Test do
     last_tree = delete_and_update(message_reach, 3)
     last_last_tree = delete_and_update(last_tree, 0)
     debug_print("intermediate tree", Tree.full_traverse(last_last_tree))
-
   end
-
 end

@@ -149,7 +149,9 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
   def node_i_position_from_values(tree, position) do
     case traverse(tree) do
-      [] -> get_root(tree) || Node.root()
+      [] ->
+        get_root(tree) || Node.root()
+
       list ->
         cond do
           position == -1 -> get_root(tree)
@@ -170,7 +172,8 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   A new list with the node ID inserted at the correct position.
   """
   @spec insert_index_on_node_id_list(Node.node_ID(), node_id_list()) :: node_id_list()
-  def insert_index_on_node_id_list(node_ID, []) ,do: [node_ID]
+  def insert_index_on_node_id_list(node_ID, []), do: [node_ID]
+
   def insert_index_on_node_id_list(node_ID, node_id_list) do
     index = Enum.find_index(node_id_list, fn x -> Node.id_less_than(Node.get_id(x), node_ID) end)
     List.insert_at(node_id_list, index, node_ID)
@@ -203,14 +206,15 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   Returns:
     The corresponding Fugue tree index, or -1 if no valid position is found.
   """
-  @spec translate_git_index_to_fugue_index([node_fugue()],
-                                           integer(),
-                                           integer(),
-                                           integer()) :: integer()
+  @spec translate_git_index_to_fugue_index(
+          [node_fugue()],
+          integer(),
+          integer(),
+          integer()
+        ) :: integer()
   def translate_git_index_to_fugue_index(list, target, tombstones, index) do
     Utilities.do_translate_index(list, target, tombstones, index, &Node.is_tombstone?/1)
   end
-
 
   ########################### CRDT Functions ##################################
 
@@ -238,7 +242,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   @spec traverse(tree()) :: [node_fugue()]
   def traverse(tree), do: traverse(tree, Node.get_null_id())
 
-
   @doc """
   Traverses the tree starting from a specific node ID.
 
@@ -259,14 +262,17 @@ defmodule Syncordian.CRDT.Fugue.Tree do
     recursion = fn node_id_list ->
       Enum.reduce(node_id_list, [], traverse_acc_reduce)
     end
+
     root_node = Node.root()
+
     case get_full_node(tree, id) do
       # TODO: This patter should be mactched else the function will never halt!!!!
       # SUPER IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
-      {^root_node, [],[]} ->
+      {^root_node, [], []} ->
         if include_tombstones,
           do: [root_node],
           else: []
+
       {node, left, right} ->
         left_values = recursion.(left)
 
@@ -281,6 +287,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
         left_values ++ node_value ++ right_values
     end
   end
+
   @doc """
   Checks if a right child exists for a given node ID.
 
@@ -298,7 +305,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
         Node.get_parent(node) == id and Node.get_side(node) == Node.get_right_value()
     end)
   end
-
 
   @doc """
   Inserts a new node into the tree.

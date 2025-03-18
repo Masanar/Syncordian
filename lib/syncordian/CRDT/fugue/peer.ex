@@ -40,7 +40,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   Creates a new Fugue peer with a given peer ID.
   """
   @spec new(Syncordian.Basic_Types.peer_id()) :: peer_fugue()
-  def new(peer_id), do: %__MODULE__{ peer_id: peer_id, }
+  def new(peer_id), do: %__MODULE__{peer_id: peer_id}
 
   ############################# Peer Data Structure Interface ############################
 
@@ -184,13 +184,11 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   """
   @spec insert(pid, String.t(), integer, integer, integer, integer) :: any
   def insert(pid, content, _index_position, test_index, _global_position, _current_delete_ops),
-    do:
-      send( pid, {:insert, [content, test_index]})
+    do: send(pid, {:insert, [content, test_index]})
 
   # This is a private function used to save the pid of the peer in the record.
   @spec save_peer_pid(pid, integer) :: any
-  def save_peer_pid(pid, peer_id), do:
-    send(pid, {:save_pid, {pid, peer_id}})
+  def save_peer_pid(pid, peer_id), do: send(pid, {:save_pid, {pid, peer_id}})
 
   @doc """
     This function starts a peer with the given peer_id and registers it in the global
@@ -199,13 +197,12 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   """
   @spec start(Syncordian.Basic_Types.peer_id(), integer) :: pid
   def start(peer_id, _network_size) do
-    pid = spawn(__MODULE__, :loop, [new(peer_id )])
+    pid = spawn(__MODULE__, :loop, [new(peer_id)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, peer_id)
     Process.send_after(pid, {:register_supervisor_pid}, 50)
     pid
   end
-
 
   ########################################################################################
 
@@ -232,10 +229,13 @@ defmodule Syncordian.CRDT.Fugue.Peer do
       {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         full_document_traverse = Tree.full_traverse(document)
-        git_index_translated = Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
+
+        git_index_translated =
+          Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
+
         delete_node_id = Tree.delete(document, git_index_translated)
         updated_peer = Tree.delete_local(document, delete_node_id) |> update_peer_document(peer)
-        send( get_peer_pid(peer), {:send_delete_broadcast, delete_node_id})
+        send(get_peer_pid(peer), {:send_delete_broadcast, delete_node_id})
         loop(updated_peer)
 
       {:send_delete_broadcast, delete_node_id} ->
@@ -247,16 +247,21 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         |> Tree.delete_local(delete_node_id)
         |> update_peer_document(peer)
         |> loop()
+
       ###################################### Insert related messages
       {:insert, [content, index]} ->
         peer_id = get_peer_id(peer)
         document = get_peer_document(peer)
         current_counter = get_peer_counter(peer)
         full_document_traverse = Tree.full_traverse(document)
-        git_index_translated = Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
-        insert_node = Tree.insert(document, peer_id, current_counter, git_index_translated, content)
 
-        send(get_peer_pid(peer), {:send_insert_broadcast, insert_node })
+        git_index_translated =
+          Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
+
+        insert_node =
+          Tree.insert(document, peer_id, current_counter, git_index_translated, content)
+
+        send(get_peer_pid(peer), {:send_insert_broadcast, insert_node})
 
         document
         |> Tree.insert_local(insert_node)
@@ -269,7 +274,9 @@ defmodule Syncordian.CRDT.Fugue.Peer do
           peer,
           {:receive_insert_broadcast, insert_node}
         )
+
         loop(peer)
+
       {:receive_insert_broadcast, insert_node} ->
         get_peer_document(peer)
         |> Tree.insert_local(insert_node)
@@ -280,8 +287,10 @@ defmodule Syncordian.CRDT.Fugue.Peer do
 
       {:print_content, :document} ->
         peer_id = get_peer_id(peer)
+
         get_peer_document(peer)
         |> Info.print_tree_content(peer_id)
+
         loop(peer)
 
       {:save_content, :document} ->
@@ -348,15 +357,11 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         # done to not count the same data twice.
         update_metadata(Syncordian.Metadata.metadata(), peer)
         |> loop()
+
       wrong_message ->
         IO.puts("Peer Fugue receive a wrong message")
         IO.inspect(wrong_message)
         loop(peer)
-
-
     end
-
   end
-
-
 end

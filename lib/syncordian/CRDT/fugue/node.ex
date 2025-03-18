@@ -131,6 +131,11 @@ defmodule Syncordian.CRDT.Fugue.Node do
   @spec get_number_id(node_ID) :: integer()
   def get_number_id({_, id}), do: id
 
+  @spec get_node_peer_id(t) :: Syncordian.Basic_Types.peer_id()
+  def get_node_peer_id(%__MODULE__{id: {peer_id, _}}), do: peer_id
+
+  @spec get_node_index_id(t) :: integer()
+  def get_node_index_id(%__MODULE__{id: {_, id}}), do: id
   @doc """
   Retrieves the value of the given node.
 

@@ -67,7 +67,7 @@ defmodule Syncordian.CRDT.Fugue.Node do
   ## Returns
   `true` if the node is a tombstone, `false` otherwise.
   """
-  @spec is_tombstone?(node) :: boolean()
+  @spec is_tombstone?(t) :: boolean()
   def is_tombstone?(%__MODULE__{value: @tombstone}), do: true
   def is_tombstone?(%__MODULE__{value: _}), do: false
 

@@ -300,9 +300,19 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         loop(peer)
 
       {:request_live_view_document, live_view_pid} ->
-        # TODO: check this on the supervisor!! In this point the whole tree structure is
-        # send I do not know how the supervisor handle this!!
-        send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
+        list_document = get_peer_document(peer) |> Tree.full_traverse()
+        peer_id = get_peer_id(peer)
+
+        handler_function = fn
+          node ->
+            Syncordian.Utilities.create_map_live_view_node_document(
+              Syncordian.CRDT.Fugue.Node.get_value(node),
+              peer_id,
+              Syncordian.CRDT.Fugue.Node.get_id_str(node)
+            )
+        end
+
+        send(live_view_pid, {:receive_live_view_document, list_document, handler_function})
         loop(peer)
 
       {:save_pid, info} ->

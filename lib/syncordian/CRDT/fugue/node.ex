@@ -124,6 +124,10 @@ defmodule Syncordian.CRDT.Fugue.Node do
   def get_id(nil), do: @null_id
   def get_id(%__MODULE__{id: id}), do: id
 
+  @spec get_id_str(t) :: String.t()
+  def get_id_str(%__MODULE__{id: {peer_id, number}}),
+    do: "#Peer ID:#{peer_id}, Message Number#{number}"
+
   @spec get_number_id(node_ID) :: integer()
   def get_number_id({_, id}), do: id
 

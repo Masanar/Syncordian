@@ -22,21 +22,10 @@ defmodule SyncordianWeb.Node do
     {:noreply, assign(socket, peer_id: String.to_integer(node_id))}
   end
 
-  def handle_info({:receive_live_view_document, document}, socket) do
+  def handle_info({:receive_live_view_document, document, handler_function}, socket) do
     IO.puts("Received document")
 
-    lines =
-      Enum.map(document, fn line ->
-        %{
-          line_id: Syncordian.Line_Object.get_line_id(line),
-          content: Syncordian.Line_Object.get_content(line),
-          signature: Syncordian.Line_Object.get_signature(line),
-          peer_id: Syncordian.Line_Object.get_line_peer_id(line),
-          status: Syncordian.Line_Object.get_line_status(line),
-          insertion_attempts: Syncordian.Line_Object.get_line_insertion_attempts(line),
-          commit_at: Syncordian.Line_Object.get_commit_at(line)
-        }
-      end)
+    lines = Enum.map(document, fn line -> handler_function.(line) end)
 
     {:noreply, assign(socket, lines: lines)}
   end

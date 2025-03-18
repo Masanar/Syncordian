@@ -3,7 +3,19 @@ defmodule Syncordian.Utilities do
       This module provides utility functions used in the Syncordian implementation, that
       do not fit on the main modules.
   """
+  alias Syncordian.Basic_Types
   @debug true
+
+  @type live_view_node_document :: %{
+          content: String.t(),
+          peer_id: Basic_Types.peer_id(),
+          line_id: any(),
+          signature: String.t(),
+          status: Basic_Types.status(),
+          insertion_attempts: integer(),
+          commit_at: Basic_Types.commit_list()
+        }
+
   @spec debug_print(String.t(), any()) :: any
   def debug_print(message, content) do
     case @debug do
@@ -14,7 +26,9 @@ defmodule Syncordian.Utilities do
         IO.inspect(content)
         IO.puts("**********")
         IO.puts("")
-      false -> :ok
+
+      false ->
+        :ok
     end
   end
 
@@ -137,13 +151,15 @@ defmodule Syncordian.Utilities do
     |> Enum.map(fn x ->
       [total_heap_size: s, message_queue_len: m] =
         Process.info(x, [:total_heap_size, :message_queue_len])
+
       [s, m]
     end)
   end
 
   def process_memory_info(single_process_name) do
     [total_heap_size: s, message_queue_len: m] =
-    Process.info(single_process_name, [:total_heap_size, :message_queue_len])
+      Process.info(single_process_name, [:total_heap_size, :message_queue_len])
+
     [s, m]
   end
 
@@ -198,4 +214,32 @@ defmodule Syncordian.Utilities do
     end
   end
 
+  @spec create_map_live_view_node_document(
+          String.t(),
+          Basic_Types.peer_id(),
+          any(),
+          String.t(),
+          Basic_Types.status(),
+          integer(),
+          Basic_Types.commit_list()
+        ) :: live_view_node_document()
+  def create_map_live_view_node_document(
+        content,
+        peer_id,
+        line_id \\ "",
+        signature \\ "",
+        status \\ nil,
+        insertion_attempts \\ 142_857,
+        commit_at \\ []
+      ) do
+    %{
+      line_id: line_id,
+      content: content,
+      signature: signature,
+      peer_id: peer_id,
+      status: status,
+      insertion_attempts: insertion_attempts,
+      commit_at: commit_at
+    }
+  end
 end

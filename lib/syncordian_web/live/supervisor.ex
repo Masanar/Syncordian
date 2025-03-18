@@ -81,6 +81,7 @@ defmodule SyncordianWeb.Supervisor do
   def handle_event("select_crdt", %{"crdt_module" => value}, socket) do
     crdt_module = String.to_existing_atom(value)
     IO.puts("Selected CRDT module: #{crdt_module}")
+    IO.inspect(crdt_module)
     PhoenixLiveSession.put_session(socket, "crdt_module", crdt_module)
     {:noreply, socket}
   end

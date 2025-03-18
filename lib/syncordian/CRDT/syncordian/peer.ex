@@ -423,6 +423,7 @@ defmodule Syncordian.Peer do
 
           loop(peer)
         end
+
       # ✅
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         perform_broadcast_peer(
@@ -431,10 +432,12 @@ defmodule Syncordian.Peer do
         )
 
         loop(peer)
+
       # ✅
       {:send_delete_broadcast, delete_line_info} ->
         perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_line_info})
         loop(peer)
+
       # ✅
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
@@ -673,12 +676,14 @@ defmodule Syncordian.Peer do
             IO.puts("Something happen")
             loop(peer)
         end
+
       # ✅ Not needed in Fugue
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
         get_peer_document(peer)
         |> update_document_line_commit_at(inserted_line_id, received_peer_id)
         |> update_peer_document(peer)
         |> loop
+
       # ✅
       {:print_content, :document} ->
         print_document_content(get_peer_document(peer), peer(peer, :peer_id))
@@ -691,7 +696,24 @@ defmodule Syncordian.Peer do
 
       # ✅
       {:request_live_view_document, live_view_pid} ->
-        send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
+        handler_function = fn
+          line ->
+            Syncordian.Utilities.create_map_live_view_node_document(
+              Syncordian.Line_Object.get_content(line),
+              Syncordian.Line_Object.get_line_peer_id(line),
+              Syncordian.Line_Object.get_line_id(line),
+              Syncordian.Line_Object.get_signature(line),
+              Syncordian.Line_Object.get_line_status(line),
+              Syncordian.Line_Object.get_line_insertion_attempts(line),
+              Syncordian.Line_Object.get_commit_at(line)
+            )
+        end
+
+        send(
+          live_view_pid,
+          {:receive_live_view_document, get_peer_document(peer), handler_function}
+        )
+
         loop(peer)
 
       # ✅
@@ -743,7 +765,6 @@ defmodule Syncordian.Peer do
         # in :supervisor_request_metadata and :save_individual_peer_metadata
         update_metadata(Syncordian.Metadata.metadata(), peer)
         |> loop()
-
 
       test ->
         IO.puts("Wrong message")

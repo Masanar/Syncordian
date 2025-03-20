@@ -21,11 +21,11 @@ execution, demonstrating its usability in real world scenarios.
 The table below shows the results for the percentage of interleavings that occur while building the shared document for the Oh my zsh readme file. In the table we shows the average percentage of interleavings, together with the final document for each peer, and the number of interleavings in each file
 
 | Implementation    | Average % of interleaving lines | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| -------- | ------- |
+| -------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
 | Logoot  | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
 | Treedoc | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| Fugue | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| Syncordian | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
+| Fugue | 0% | [peer 1]() <br> 0 interleavings | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
+| Syncordian | 0% | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
 
 
 ## Prerequisites

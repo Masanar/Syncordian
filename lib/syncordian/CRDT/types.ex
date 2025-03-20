@@ -16,7 +16,7 @@ defmodule Syncordian.Basic_Types do
         - :conflict: The line was stash due to a clock inconsistency, and will be reinserted
             in the document when the stash is resolved.
   """
-  @type status :: :tombstone | :aura | :settled | :conflict
+  @type status :: :tombstone | :aura | :settled | :conflict | :nil
 
   @typedoc """
       Type that represents the content of a Syncordian document line
@@ -85,4 +85,6 @@ defmodule Syncordian.Basic_Types do
   #         }
 
   @type git_document_index :: integer()
+
+  @type crdt_id :: :syncordian | :fugue | :treedoc | :logoot | nil
 end

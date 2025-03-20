@@ -7,14 +7,16 @@
 </h2>
 
 <div class="container">
-  <div class="button-container">
-    <form phx-change="select_node">
-      <select class="button-89" name="node_id">
-        <%= for i <- 1..25 do %>
-          <option value={i} selected={@peer_id == i}><%= i %></option>
-        <% end %>
-      </select>
-    </form>
+  <div class="button-row">
+    <div class="button-left">
+      <form phx-change="select_node">
+        <select class="button-89" name="node_id">
+          <%= for i <- 1..25 do %>
+            <option value={i} selected={@peer_id == i}><%= i %></option>
+          <% end %>
+        </select>
+      </form>
+    </div>
     <div class="button-right">
       <button class="button-89" role="button" phx-click="refresh">Refresh document</button>
     </div>

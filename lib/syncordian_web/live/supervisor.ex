@@ -38,7 +38,8 @@ defmodule SyncordianWeb.Supervisor do
         socket
       else
         IO.puts("launching")
-        supervisor_pid = init(socket.assigns.byzantine_nodes)
+        crdt_module = socket.assigns.crdt_module
+        supervisor_pid = init(socket.assigns.byzantine_nodes, crdt_module)
         PhoenixLiveSession.put_session(socket, "launched", true)
         PhoenixLiveSession.put_session(socket, "supervisor_pid", supervisor_pid)
         PhoenixLiveSession.put_session(socket, "logs", [])
@@ -68,12 +69,20 @@ defmodule SyncordianWeb.Supervisor do
 
     if launched? do
       IO.puts("Printing metadata...")
-      IO.puts("Check /debub/metadata/ for the metadata files")
+      IO.puts("Check /debug/metadata/ for the metadata files")
       send(supervisor_pid, {:print_supervisor_metadata})
     else
       IO.puts("Supervisor not launched")
     end
 
+    {:noreply, socket}
+  end
+
+  def handle_event("select_crdt", %{"crdt_module" => value}, socket) do
+    crdt_module = String.to_existing_atom(value)
+    IO.puts("Selected CRDT module: #{crdt_module}")
+    IO.inspect(crdt_module)
+    PhoenixLiveSession.put_session(socket, "crdt_module", crdt_module)
     {:noreply, socket}
   end
 
@@ -165,5 +174,6 @@ defmodule SyncordianWeb.Supervisor do
     |> assign(:supervisor_pid, Map.get(session, "supervisor_pid", ""))
     |> assign(:disable_next_commit, Map.get(session, "disable_next_commit", false))
     |> assign(:byzantine_nodes, Map.get(session, "byzantine_nodes", 0))
+    |> assign(:crdt_module, Map.get(session, "crdt_module", :fugue))
   end
 end

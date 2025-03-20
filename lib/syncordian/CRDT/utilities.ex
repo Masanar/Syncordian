@@ -3,6 +3,34 @@ defmodule Syncordian.Utilities do
       This module provides utility functions used in the Syncordian implementation, that
       do not fit on the main modules.
   """
+  alias Syncordian.Basic_Types
+  @debug true
+
+  @type live_view_node_document :: %{
+          content: String.t(),
+          peer_id: Basic_Types.peer_id(),
+          line_id: any(),
+          signature: String.t(),
+          status: Basic_Types.status(),
+          insertion_attempts: integer(),
+          commit_at: Basic_Types.commit_list()
+        }
+
+  @spec debug_print(String.t(), any()) :: any
+  def debug_print(message, content) do
+    case @debug do
+      true ->
+        IO.puts("")
+        IO.puts("**********")
+        IO.puts("DEBUG----> #{message}")
+        IO.inspect(content)
+        IO.puts("**********")
+        IO.puts("")
+
+      false ->
+        :ok
+    end
+  end
 
   # Function to filter weather the peer is the current peer, the supervisor or the storage
   @spec should_filter_out?(any, pid) :: boolean
@@ -54,6 +82,7 @@ defmodule Syncordian.Utilities do
 
   def add_element_list_in_given_index(list, 0, new_element),
     do: [hd(list) | [new_element | tl(list)]]
+
   def add_element_list_in_given_index([head | tail], index, new_element) when index > 0 do
     [head | add_element_list_in_given_index(tail, index - 1, new_element)]
   end
@@ -87,22 +116,21 @@ defmodule Syncordian.Utilities do
     directory
     |> Path.expand()
     |> File.ls!()
-    # Exclude the .gitignore file
-    |> Enum.reject(&(&1 == ".gitignore"))
-    |> Enum.each(&delete_entry(Path.join(directory, &1)))
-  end
+    |> Enum.each(fn entry ->
+      path = Path.join(directory, entry)
 
-  defp delete_entry(path) do
-    case File.stat!(path) do
-      %File.Stat{type: :directory} ->
-        File.ls!(path)
-        |> Enum.each(&delete_entry(Path.join(path, &1)))
+      case File.stat!(path) do
+        %File.Stat{type: :directory} ->
+          # Recursively call delete_contents for subdirectories
+          delete_contents(path)
 
-        File.rmdir!(path)
-
-      _ ->
-        File.rm!(path)
-    end
+        %File.Stat{type: :regular} ->
+          # Delete the file if it is not a .txt file
+          unless String.ends_with?(entry, ".txt") do
+            File.rm!(path)
+          end
+      end
+    end)
   end
 
   @doc """
@@ -111,5 +139,107 @@ defmodule Syncordian.Utilities do
   def kill do
     :global.registered_names()
     |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
+  end
+
+  @doc """
+    Function to get the process memory information returns given a list of process names.
+    Returns a list of tuples with the total heap size and the message queue length.
+    Overloaded function to get the memory information of a single process.
+  """
+  def process_memory_info(process_info = [_head | _tail]) do
+    process_info
+    |> Enum.map(fn x ->
+      [total_heap_size: s, message_queue_len: m] =
+        Process.info(x, [:total_heap_size, :message_queue_len])
+
+      [s, m]
+    end)
+  end
+
+  def process_memory_info(single_process_name) do
+    [total_heap_size: s, message_queue_len: m] =
+      Process.info(single_process_name, [:total_heap_size, :message_queue_len])
+
+    [s, m]
+  end
+
+  @doc """
+  Recursive helper to translate a Git index into the corresponding document/tree index,
+  accounting for tombstones elements.
+
+  This function traverses a list of elements (e.g., document lines or tree nodes) and skips
+  elements based on the provided predicate `is_tombstone?`. The `target` represents the number
+  of non-tombstones elements to skip. As the function traverses the list, it decrements `target`
+  and increments the tombstone counter when a tombstone element is encountered. When `target` reaches
+  zero, if the current element is not a tombstone it returns the current index; otherwise, it continues
+  traversing. If the list is exhausted without finding a valid element, it returns -1.
+
+  Parameters:
+    - list: The list of elements to traverse.
+    - target: The number of non-tombstones elements to skip.
+    - tombstones: The count of tombstones elements encountered so far.
+    - index: The current traversal index.
+    - is_tombstone?: A function that accepts an element and returns `true` if it is considered tombstone.
+
+  Returns:
+    The computed index corresponding to the Git index or -1 if no valid position is found.
+  """
+  def do_translate_index([], 0, 0, index, _is_tombstone?), do: index - 1
+  def do_translate_index([], _target, _tombstones, _index, _is_tombstone?), do: -1
+
+  def do_translate_index([h | t], 0, 0, index, is_tombstone?) do
+    if is_tombstone?.(h) do
+      do_translate_index(t, 0, 0, index + 1, is_tombstone?)
+    else
+      index
+    end
+  end
+
+  def do_translate_index([h | t], target, tombstones, index, is_tombstone?) do
+    if is_tombstone?.(h) do
+      do_translate_index(t, target - 1, tombstones + 1, index + 1, is_tombstone?)
+    else
+      do_translate_index(t, target - 1, tombstones, index + 1, is_tombstone?)
+    end
+  end
+
+  @spec identify_peer_module(Syncordian.Basic_Types.crdt_id()) :: module
+  def identify_peer_module(crdt_id) do
+    case crdt_id do
+      :syncordian -> Syncordian.Peer
+      :fugue -> Syncordian.CRDT.Fugue.Peer
+      :treedoc -> Syncordian.CRDT.Treedoc.Peer
+      :logoot -> Syncordian.CRDT.Logoot.Peer
+      _ -> Syncordian.Peer
+    end
+  end
+
+  @spec create_map_live_view_node_document(
+          String.t(),
+          Basic_Types.peer_id(),
+          any(),
+          Basic_Types.status(),
+          String.t(),
+          integer(),
+          Basic_Types.commit_list()
+        ) :: live_view_node_document()
+  def create_map_live_view_node_document(
+        content,
+        peer_id,
+        line_id \\ "",
+        status \\ nil,
+        signature \\ "",
+        insertion_attempts \\ 142_857,
+        commit_at \\ []
+      ) do
+    %{
+      line_id: line_id,
+      content: content,
+      signature: signature,
+      peer_id: peer_id,
+      status: status,
+      insertion_attempts: insertion_attempts,
+      commit_at: commit_at
+    }
   end
 end

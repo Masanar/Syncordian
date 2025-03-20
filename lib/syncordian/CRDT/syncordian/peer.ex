@@ -236,7 +236,9 @@ defmodule Syncordian.Peer do
   ################################ Peer utility ################################
 
   # Function to perform the filtering and broadcast messages to all peers in the network
-  # except the current peer. or the supervisor.
+  # except the current peer. or the supervisor. This one is define here because here the
+  # delay makes sense to be define and then use the perform_broadcast function of the
+  # utilities module.
   @spec perform_broadcast_peer(peer(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
@@ -252,6 +254,7 @@ defmodule Syncordian.Peer do
     When the message is received by the sending peer it is handled by the loop function
     of the peer module.
   """
+  # TODO: This function is never use!
   @spec send_confirmation_line_insertion(
           receiving_peer_id :: Syncordian.Basic_Types.peer_id(),
           sending_peer_id :: Syncordian.Basic_Types.peer_id(),
@@ -321,6 +324,7 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
+      # ✅
       {:delete_line, [index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         document_len = get_document_length(document)
@@ -335,10 +339,10 @@ defmodule Syncordian.Peer do
           _ ->
             peer_id = get_peer_id(peer)
 
-            nicolas_index =
+            git_index_translated =
               translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-            if nicolas_index == -1 do
+            if git_index_translated == -1 do
               # Due byzantine peers or network issues the line was not inserted in the
               # document of the peer, need to requeue the local delete operation.
               # IO.puts("Line delete line was not found in the document with index: #{test_index}")
@@ -347,12 +351,12 @@ defmodule Syncordian.Peer do
             else
               peer =
                 document
-                |> update_document_line_status(nicolas_index, :tombstone)
-                |> update_document_line_peer_id(nicolas_index, peer_id)
+                |> update_document_line_status(git_index_translated, :tombstone)
+                |> update_document_line_peer_id(git_index_translated, peer_id)
                 |> update_peer_document(peer)
 
               line_deleted =
-                get_document_line_by_index(document, nicolas_index)
+                get_document_line_by_index(document, git_index_translated)
 
               line_deleted_id = line_deleted |> get_line_id
 
@@ -373,13 +377,14 @@ defmodule Syncordian.Peer do
         end
 
       # TODO: Delete the test_index, the global_position and current_delete_ops
+      # ✅
       {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
         document = get_peer_document(peer)
         peer_id = get_peer_id(peer)
 
-        nicolas_index = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+        git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-        if nicolas_index == -1 do
+        if git_index_translated == -1 do
           # Due byzantine peers or network issues the line was not inserted in the
           # document of the peer, need to requeue the local delete operation.
           # IO.puts(
@@ -392,7 +397,7 @@ defmodule Syncordian.Peer do
           [left_parent, right_parent] =
             get_parents_by_index(
               document,
-              nicolas_index
+              git_index_translated
             )
 
           new_line =
@@ -419,6 +424,7 @@ defmodule Syncordian.Peer do
           loop(peer)
         end
 
+      # ✅
       {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
         perform_broadcast_peer(
           peer,
@@ -427,10 +433,12 @@ defmodule Syncordian.Peer do
 
         loop(peer)
 
+      # ✅
       {:send_delete_broadcast, delete_line_info} ->
         perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_line_info})
         loop(peer)
 
+      # ✅
       {:receive_delete_broadcast,
        {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
         document = get_peer_document(peer)
@@ -527,6 +535,7 @@ defmodule Syncordian.Peer do
             |> loop
         end
 
+      # ✅
       {:receive_insert_broadcast, line, incoming_vc} ->
         incoming_peer_id = get_line_peer_id(line)
         local_vector_clock = get_peer_vector_clock(peer)
@@ -606,7 +615,7 @@ defmodule Syncordian.Peer do
                     |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
 
                   {false, false} ->
-                    new_line = tick_line_insertion_attempts(line)
+                    # new_line = tick_line_insertion_attempts(line)
 
                     # IO.puts(
                     #   "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
@@ -668,45 +677,92 @@ defmodule Syncordian.Peer do
             loop(peer)
         end
 
+      # ✅ Not needed in Fugue
       {:receive_confirmation_line_insertion, {inserted_line_id, received_peer_id}} ->
         get_peer_document(peer)
         |> update_document_line_commit_at(inserted_line_id, received_peer_id)
         |> update_peer_document(peer)
         |> loop
 
+      # ✅
       {:print_content, :document} ->
         print_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
+      # ✅
       {:save_content, :document} ->
         save_document_content(get_peer_document(peer), peer(peer, :peer_id))
         loop(peer)
 
+      # ✅
       {:request_live_view_document, live_view_pid} ->
-        send(live_view_pid, {:receive_live_view_document, get_peer_document(peer)})
+        handler_function = fn
+          line ->
+            Syncordian.Utilities.create_map_live_view_node_document(
+              Syncordian.Line_Object.get_content(line),
+              Syncordian.Line_Object.get_line_peer_id(line),
+              Syncordian.Line_Object.get_line_id(line),
+              Syncordian.Line_Object.get_line_status(line),
+              Syncordian.Line_Object.get_signature(line),
+              Syncordian.Line_Object.get_line_insertion_attempts(line),
+              Syncordian.Line_Object.get_commit_at(line)
+            )
+        end
+
+        send(
+          live_view_pid,
+          {:receive_live_view_document, get_peer_document(peer), handler_function}
+        )
+
         loop(peer)
 
+      # ✅
       {:save_pid, info} ->
         info
         |> update_peer_pid(peer)
         |> loop
 
+      # ✅
       {:print, _} ->
         IO.inspect(peer)
         loop(peer)
 
+      # ✅
       {:register_supervisor_pid} ->
         supervisor_pid = :global.whereis_name(:supervisor)
 
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
+      # ✅
       {:supervisor_request_metadata} ->
+        peer_pid = get_peer_pid(peer)
+
+        updated_memory_metadata =
+          peer
+          |> get_metadata()
+          |> update_memory_info(peer_pid)
+
         send(
           get_peer_supervisor_pid(peer),
-          {:receive_metadata_from_peer, get_metadata(peer), get_peer_id(peer)}
+          {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
 
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
+        update_metadata(Syncordian.Metadata.metadata(), peer)
+        |> loop()
+
+      {:save_individual_peer_metadata, current_commit} ->
+        peer_pid = get_peer_pid(peer)
+
+        peer
+        |> get_metadata()
+        |> update_memory_info(peer_pid)
+        |> save_metadata_one_peer(current_commit)
+
+        # TODO: Refactor this part to be a function, currentrly it is duplicated
+        # in :supervisor_request_metadata and :save_individual_peer_metadata
         update_metadata(Syncordian.Metadata.metadata(), peer)
         |> loop()
 

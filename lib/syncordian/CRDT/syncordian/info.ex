@@ -14,7 +14,7 @@ defmodule Syncordian.Info do
         ) ::
           :ok
   def save_document_content(document, peer_id) do
-    File.write!("debug/documents/document_peer_#{peer_id}", string_document_content(document))
+    File.write!("debug/documents/syncordian/document_peer_#{peer_id}", string_document_content(document))
   end
 
   @doc """

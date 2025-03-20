@@ -116,21 +116,21 @@ defmodule Syncordian.Utilities do
     directory
     |> Path.expand()
     |> File.ls!()
-    |> Enum.reject(&(&1 == ".gitignore"))
-    |> Enum.each(&delete_entry(Path.join(directory, &1)))
-  end
+    |> Enum.each(fn entry ->
+      path = Path.join(directory, entry)
 
-  defp delete_entry(path) do
-    case File.stat!(path) do
-      %File.Stat{type: :directory} ->
-        File.ls!(path)
-        |> Enum.each(&delete_entry(Path.join(path, &1)))
+      case File.stat!(path) do
+        %File.Stat{type: :directory} ->
+          # Recursively call delete_contents for subdirectories
+          delete_contents(path)
 
-        File.rmdir!(path)
-
-      _ ->
-        File.rm!(path)
-    end
+        %File.Stat{type: :regular} ->
+          # Delete the file if it is not a .txt file
+          unless String.ends_with?(entry, ".txt") do
+            File.rm!(path)
+          end
+      end
+    end)
   end
 
   @doc """
@@ -218,8 +218,8 @@ defmodule Syncordian.Utilities do
           String.t(),
           Basic_Types.peer_id(),
           any(),
-          String.t(),
           Basic_Types.status(),
+          String.t(),
           integer(),
           Basic_Types.commit_list()
         ) :: live_view_node_document()
@@ -227,8 +227,8 @@ defmodule Syncordian.Utilities do
         content,
         peer_id,
         line_id \\ "",
-        signature \\ "",
         status \\ nil,
+        signature \\ "",
         insertion_attempts \\ 142_857,
         commit_at \\ []
       ) do

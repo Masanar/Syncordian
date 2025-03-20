@@ -16,16 +16,17 @@ defmodule Syncordian.CRDT.Fugue.Node do
   - `t`: The struct representing a node.
   """
 
-  @null_id {-1, 0}
+  @null_id {-1, -1}
   @left_value :left
   @right_value :right
   @tombstone :tombstone
+  @null_id_parent {-1, -11}
 
   @type node_ID :: {Syncordian.Basic_Types.peer_id(), integer()}
   @type tree_side :: :left | :right | nil
   @type node_value :: String.t() | :tombstone
 
-  defstruct id: @null_id, value: @tombstone, parent: @null_id, side: nil
+  defstruct id: @null_id, value: @tombstone, parent: @null_id_parent, side: nil
 
   @type t :: %__MODULE__{
           id: node_ID,
@@ -33,6 +34,14 @@ defmodule Syncordian.CRDT.Fugue.Node do
           parent: node_ID,
           side: tree_side
         }
+
+  @spec node_to_string(t) :: String.t()
+  def node_to_string(%__MODULE__{id: {peer_id, number}, value: value, parent: {parent_id, index}, side: side}) do
+    "Node ID: #{peer_id} - #{number}
+    Value: #{value}
+    Parent: #{parent_id} - #{index}
+    Side: #{side}"
+  end
 
   @doc """
   Returns the root node of the tree.
@@ -70,6 +79,11 @@ defmodule Syncordian.CRDT.Fugue.Node do
   @spec is_tombstone?(t) :: boolean()
   def is_tombstone?(%__MODULE__{value: @tombstone}), do: true
   def is_tombstone?(%__MODULE__{value: _}), do: false
+
+  @spec is_tombstone_ignoring_root?(t) :: boolean()
+  def is_tombstone_ignoring_root?(%__MODULE__{value: @tombstone, id: @null_id}), do: false
+  def is_tombstone_ignoring_root?(%__MODULE__{value: @tombstone}), do: true
+  def is_tombstone_ignoring_root?(%__MODULE__{value: _}), do: false
 
   @doc """
   Checks if the given node is the root node.
@@ -126,16 +140,17 @@ defmodule Syncordian.CRDT.Fugue.Node do
 
   @spec get_id_str(t) :: String.t()
   def get_id_str(%__MODULE__{id: {peer_id, number}}),
-    do: "#Peer ID:#{peer_id}, Message Number#{number}"
+    do: "#Peer ID:#{peer_id}  Message Number: #{number}"
 
   @spec get_number_id(node_ID) :: integer()
   def get_number_id({_, id}), do: id
 
-  @spec get_node_peer_id(t) :: Syncordian.Basic_Types.peer_id()
-  def get_node_peer_id(%__MODULE__{id: {peer_id, _}}), do: peer_id
+  @spec get_peer_id(t) :: Syncordian.Basic_Types.peer_id()
+  def get_peer_id(%__MODULE__{id: {peer_id, _}}), do: peer_id
 
-  @spec get_node_index_id(t) :: integer()
-  def get_node_index_id(%__MODULE__{id: {_, id}}), do: id
+  @spec get_index_id(t) :: integer()
+  def get_index_id(%__MODULE__{id: {_, id}}), do: id
+
   @doc """
   Retrieves the value of the given node.
 
@@ -250,4 +265,10 @@ defmodule Syncordian.CRDT.Fugue.Node do
   """
   @spec id_less_than(node_ID, node_ID) :: boolean()
   def id_less_than({_, a}, {_, b}), do: a < b
+
+  @spec check_sender_counter_projection_distance(t, [integer()]) :: boolean()
+  def check_sender_counter_projection_distance(%__MODULE__{id: {peer_id, index}}, counter_list) do
+    last_inserted_counter_peer = Enum.at(counter_list, peer_id)
+    abs(last_inserted_counter_peer - index) < 1
+  end
 end

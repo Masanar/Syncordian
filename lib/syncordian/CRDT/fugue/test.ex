@@ -37,7 +37,7 @@ defmodule Syncordian.CRDT.Fugue.Test do
   ## Returns
   A new tree with the node inserted.
   """
-  @spec create_and_update(Tree.t(), String.t(), integer(), integer(), Node.node_value()) ::
+  @spec create_and_update(Tree.t(), integer(), integer(), integer(), Node.node_value()) ::
           Tree.t()
   def create_and_update(tree, replica_id, counter, position, value) do
     new_node = Tree.insert(tree, replica_id, counter, position, value)
@@ -121,7 +121,7 @@ defmodule Syncordian.CRDT.Fugue.Test do
   console using `debug_print/2`, allowing the developer to observe the intermediate states of
   the tree during the test execution.
   """
-  @spec execute() :: any
+  @spec execute() :: :ok
   def execute() do
     # Replica 0 messages
     replica_0_id = 0
@@ -159,5 +159,6 @@ defmodule Syncordian.CRDT.Fugue.Test do
     last_tree = delete_and_update(message_reach, 3)
     last_last_tree = delete_and_update(last_tree, 0)
     debug_print("intermediate tree", Tree.full_traverse(last_last_tree))
+    :ok
   end
 end

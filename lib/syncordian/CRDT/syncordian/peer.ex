@@ -702,8 +702,8 @@ defmodule Syncordian.Peer do
               Syncordian.Line_Object.get_content(line),
               Syncordian.Line_Object.get_line_peer_id(line),
               Syncordian.Line_Object.get_line_id(line),
-              Syncordian.Line_Object.get_signature(line),
               Syncordian.Line_Object.get_line_status(line),
+              Syncordian.Line_Object.get_signature(line),
               Syncordian.Line_Object.get_line_insertion_attempts(line),
               Syncordian.Line_Object.get_commit_at(line)
             )

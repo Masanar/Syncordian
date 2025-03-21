@@ -43,6 +43,15 @@ defmodule Syncordian.Peer do
   ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
 
+  def get_document_byte_size(peer) do
+    document = get_peer_document(peer)
+    document_str = "#{inspect(document)}"
+    document_str |> byte_size
+  end
+
+  @spec get_module_name() :: String.t()
+  def get_module_name(), do: "syncordian"
+
   @spec get_metadata(peer()) :: Syncordian.Metadata.metadata()
   defp get_metadata(peer), do: peer(peer, :metadata)
 
@@ -468,7 +477,7 @@ defmodule Syncordian.Peer do
 
           # send(peer_pid, {:delete_request_requeue})
           get_metadata(peer)
-          |> inc_delete_requeue_counter
+          |> inc_requeue_counter
           |> update_metadata(peer)
           |> loop
         end
@@ -737,32 +746,18 @@ defmodule Syncordian.Peer do
       # ✅
       {:supervisor_request_metadata} ->
         peer_pid = get_peer_pid(peer)
+        document_size = get_document_byte_size(peer)
 
         updated_memory_metadata =
           peer
           |> get_metadata()
-          |> update_memory_info(peer_pid)
+          |> update_memory_info(peer_pid, document_size)
 
         send(
           get_peer_supervisor_pid(peer),
           {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
-
-        # TODO: Refactor this part to be a function, currentrly it is duplicated
-        # in :supervisor_request_metadata and :save_individual_peer_metadata
-        update_metadata(Syncordian.Metadata.metadata(), peer)
-        |> loop()
-
-      {:save_individual_peer_metadata, current_commit} ->
-        peer_pid = get_peer_pid(peer)
-
-        peer
-        |> get_metadata()
-        |> update_memory_info(peer_pid)
-        |> save_metadata_one_peer(current_commit)
-
-        # TODO: Refactor this part to be a function, currentrly it is duplicated
-        # in :supervisor_request_metadata and :save_individual_peer_metadata
+        # TODO: Do no restart the metadata
         update_metadata(Syncordian.Metadata.metadata(), peer)
         |> loop()
 

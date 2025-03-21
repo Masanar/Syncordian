@@ -1,0 +1,2812 @@
+Node ID: -1 - -1
+    Value: tombstone
+    Parent: -1 - -11
+    Side: 
+Node ID: 25 - 58
+    Value: <p align="center"><img src="https://ohmyzsh.s3.amazonaws.com/omz-ansi-github.png" alt="Oh My Zsh"></p>
+    Parent: 17 - 338
+    Side: left
+Node ID: 17 - 338
+    Value: tombstone
+    Parent: 17 - 314
+    Side: left
+Node ID: 17 - 314
+    Value: tombstone
+    Parent: 17 - 0
+    Side: left
+Node ID: 17 - 0
+    Value: tombstone
+    Parent: -1 - -1
+    Side: right
+Node ID: 17 - 1
+    Value: tombstone
+    Parent: 17 - 0
+    Side: right
+Node ID: 17 - 2
+    Value: tombstone
+    Parent: 17 - 1
+    Side: right
+Node ID: 17 - 3
+    Value: 
+    Parent: 17 - 2
+    Side: right
+Node ID: 17 - 286
+    Value: tombstone
+    Parent: 17 - 218
+    Side: left
+Node ID: 17 - 288
+    Value: tombstone
+    Parent: 17 - 287
+    Side: left
+Node ID: 17 - 287
+    Value: tombstone
+    Parent: 17 - 286
+    Side: right
+Node ID: 17 - 218
+    Value: Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.
+    Parent: 25 - 7
+    Side: left
+Node ID: 25 - 7
+    Value: tombstone
+    Parent: 17 - 4
+    Side: left
+Node ID: 17 - 4
+    Value: tombstone
+    Parent: 17 - 3
+    Side: right
+Node ID: 17 - 5
+    Value: 
+    Parent: 17 - 4
+    Side: right
+Node ID: 25 - 19
+    Value: Sounds boring. Let's try again.
+    Parent: 25 - 8
+    Side: left
+Node ID: 25 - 8
+    Value: tombstone
+    Parent: 17 - 6
+    Side: left
+Node ID: 25 - 9
+    Value: 
+    Parent: 25 - 8
+    Side: right
+Node ID: 17 - 315
+    Value: **Oh My Zsh will not make you a 10x developer...but you may feel like one.**
+    Parent: 25 - 53
+    Side: left
+Node ID: 25 - 53
+    Value: tombstone
+    Parent: 25 - 20
+    Side: left
+Node ID: 25 - 20
+    Value: tombstone
+    Parent: 25 - 10
+    Side: left
+Node ID: 25 - 10
+    Value: tombstone
+    Parent: 25 - 9
+    Side: right
+Node ID: 25 - 11
+    Value: 
+    Parent: 25 - 10
+    Side: right
+Node ID: 25 - 12
+    Value: Once installed, your terminal shell will become the talk of the town _or your money back!_ With each keystroke in your command prompt, you'll take advantage of the hundreds of powerful plugins and beautiful themes. Strangers will come up to you in cafés and ask you, _"that is amazing! are you some sort of genius?"_
+    Parent: 25 - 11
+    Side: right
+Node ID: 25 - 13
+    Value: 
+    Parent: 25 - 12
+    Side: right
+Node ID: 25 - 29
+    Value: Finally, you'll begin to get the sort of attention that you have always felt you deserved. ...or maybe you'll use the time that you're saving to start flossing more often. 😬
+    Parent: 25 - 14
+    Side: left
+Node ID: 25 - 14
+    Value: tombstone
+    Parent: 25 - 13
+    Side: right
+Node ID: 17 - 6
+    Value: tombstone
+    Parent: 17 - 5
+    Side: right
+Node ID: 17 - 7
+    Value: 
+    Parent: 17 - 6
+    Side: right
+Node ID: 17 - 316
+    Value: To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and join us on [Discord](https://discord.gg/ohmyzsh).
+    Parent: 16 - 0
+    Side: left
+Node ID: 16 - 0
+    Value: tombstone
+    Parent: 25 - 54
+    Side: left
+Node ID: 25 - 54
+    Value: tombstone
+    Parent: 17 - 219
+    Side: left
+Node ID: 25 - 55
+    Value: 
+    Parent: 25 - 54
+    Side: right
+Node ID: 17 - 303
+    Value: [![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)
+    Parent: 17 - 302
+    Side: left
+Node ID: 17 - 390
+    Value: [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ohmyzsh?label=%40ohmyzsh&logo=x&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)
+    Parent: 25 - 60
+    Side: left
+Node ID: 17 - 391
+    Value: [![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?label=%40ohmyzsh&domain=https%3A%2F%2Fmstdn.social&logo=mastodon&style=flat)](https://mstdn.social/@ohmyzsh)
+    Parent: 17 - 390
+    Side: right
+Node ID: 25 - 60
+    Value: tombstone
+    Parent: 17 - 303
+    Side: right
+Node ID: 25 - 61
+    Value: tombstone
+    Parent: 25 - 60
+    Side: right
+Node ID: 17 - 302
+    Value: tombstone
+    Parent: 20 - 0
+    Side: left
+Node ID: 20 - 0
+    Value: tombstone
+    Parent: 25 - 56
+    Side: left
+Node ID: 25 - 56
+    Value: tombstone
+    Parent: 25 - 55
+    Side: right
+Node ID: 17 - 311
+    Value: [![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)
+    Parent: 25 - 57
+    Side: left
+Node ID: 17 - 339
+    Value: [![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)
+    Parent: 17 - 311
+    Side: right
+Node ID: 17 - 340
+    Value: tombstone
+    Parent: 17 - 339
+    Side: right
+Node ID: 25 - 57
+    Value: tombstone
+    Parent: 25 - 56
+    Side: right
+Node ID: 17 - 219
+    Value: tombstone
+    Parent: 17 - 8
+    Side: left
+Node ID: 17 - 8
+    Value: tombstone
+    Parent: 17 - 7
+    Side: right
+Node ID: 17 - 9
+    Value: 
+    Parent: 17 - 8
+    Side: right
+Node ID: 3 - 0
+    Value: <details>
+    Parent: 17 - 10
+    Side: left
+Node ID: 3 - 1
+    Value: <summary>Table of Contents</summary>
+    Parent: 3 - 0
+    Side: right
+Node ID: 3 - 2
+    Value: 
+    Parent: 3 - 1
+    Side: right
+Node ID: 3 - 3
+    Value: - [Getting Started](#getting-started)
+    Parent: 3 - 2
+    Side: right
+Node ID: 29 - 0
+    Value:   - [Operating System Compatibility](#operating-system-compatibility)
+    Parent: 3 - 4
+    Side: left
+Node ID: 3 - 4
+    Value:   - [Prerequisites](#prerequisites)
+    Parent: 3 - 3
+    Side: right
+Node ID: 3 - 5
+    Value:   - [Basic Installation](#basic-installation)
+    Parent: 3 - 4
+    Side: right
+Node ID: 29 - 1
+    Value:     - [Manual Inspection](#manual-inspection)
+    Parent: 3 - 6
+    Side: left
+Node ID: 3 - 6
+    Value: tombstone
+    Parent: 3 - 5
+    Side: right
+Node ID: 3 - 7
+    Value: - [Using Oh My Zsh](#using-oh-my-zsh)
+    Parent: 3 - 6
+    Side: right
+Node ID: 3 - 8
+    Value:   - [Plugins](#plugins)
+    Parent: 3 - 7
+    Side: right
+Node ID: 3 - 9
+    Value:     - [Enabling Plugins](#enabling-plugins)
+    Parent: 3 - 8
+    Side: right
+Node ID: 3 - 10
+    Value:     - [Using Plugins](#using-plugins)
+    Parent: 3 - 9
+    Side: right
+Node ID: 3 - 11
+    Value:   - [Themes](#themes)
+    Parent: 3 - 10
+    Side: right
+Node ID: 29 - 2
+    Value:     - [Selecting A Theme](#selecting-a-theme)
+    Parent: 3 - 12
+    Side: left
+Node ID: 3 - 12
+    Value: tombstone
+    Parent: 3 - 11
+    Side: right
+Node ID: 3 - 13
+    Value:   - [FAQ](#faq)
+    Parent: 3 - 12
+    Side: right
+Node ID: 3 - 14
+    Value: - [Advanced Topics](#advanced-topics)
+    Parent: 3 - 13
+    Side: right
+Node ID: 3 - 15
+    Value:   - [Advanced Installation](#advanced-installation)
+    Parent: 3 - 14
+    Side: right
+Node ID: 3 - 16
+    Value:     - [Custom Directory](#custom-directory)
+    Parent: 3 - 15
+    Side: right
+Node ID: 29 - 3
+    Value:     - [Unattended Install](#unattended-install)
+    Parent: 3 - 17
+    Side: left
+Node ID: 29 - 4
+    Value:     - [Installing From A Forked Repository](#installing-from-a-forked-repository)
+    Parent: 29 - 3
+    Side: right
+Node ID: 3 - 17
+    Value: tombstone
+    Parent: 3 - 16
+    Side: right
+Node ID: 3 - 18
+    Value: tombstone
+    Parent: 3 - 17
+    Side: right
+Node ID: 3 - 19
+    Value:     - [Manual Installation](#manual-installation)
+    Parent: 3 - 18
+    Side: right
+Node ID: 3 - 20
+    Value:   - [Installation Problems](#installation-problems)
+    Parent: 3 - 19
+    Side: right
+Node ID: 29 - 5
+    Value:   - [Custom Plugins And Themes](#custom-plugins-and-themes)
+    Parent: 3 - 21
+    Side: left
+Node ID: 29 - 6
+    Value:   - [Enable GNU ls In macOS And freeBSD Systems](#enable-gnu-ls-in-macos-and-freebsd-systems)
+    Parent: 29 - 5
+    Side: right
+Node ID: 29 - 7
+    Value:   - [Skip Aliases](#skip-aliases)
+    Parent: 29 - 6
+    Side: right
+Node ID: 3 - 21
+    Value: tombstone
+    Parent: 3 - 20
+    Side: right
+Node ID: 4 - 13
+    Value: tombstone
+    Parent: 4 - 0
+    Side: left
+Node ID: 4 - 0
+    Value: tombstone
+    Parent: 17 - 341
+    Side: left
+Node ID: 17 - 341
+    Value: tombstone
+    Parent: 3 - 22
+    Side: left
+Node ID: 3 - 22
+    Value: - [Getting Updates](#getting-updates)
+    Parent: 3 - 21
+    Side: right
+Node ID: 29 - 8
+    Value:   - [Updates Verbosity](#updates-verbosity)
+    Parent: 17 - 342
+    Side: left
+Node ID: 17 - 342
+    Value: tombstone
+    Parent: 3 - 23
+    Side: left
+Node ID: 3 - 23
+    Value:   - [Manual Updates](#manual-updates)
+    Parent: 3 - 22
+    Side: right
+Node ID: 3 - 24
+    Value: - [Uninstalling Oh My Zsh](#uninstalling-oh-my-zsh)
+    Parent: 3 - 23
+    Side: right
+Node ID: 29 - 9
+    Value: - [How Do I Contribute To Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)
+    Parent: 3 - 25
+    Side: left
+Node ID: 29 - 10
+    Value:   - [Do Not Send Us Themes](#do-not-send-us-themes)
+    Parent: 29 - 9
+    Side: right
+Node ID: 3 - 25
+    Value: tombstone
+    Parent: 3 - 24
+    Side: right
+Node ID: 3 - 26
+    Value: tombstone
+    Parent: 3 - 25
+    Side: right
+Node ID: 3 - 27
+    Value: - [Contributors](#contributors)
+    Parent: 3 - 26
+    Side: right
+Node ID: 3 - 28
+    Value: - [Follow Us](#follow-us)
+    Parent: 3 - 27
+    Side: right
+Node ID: 3 - 29
+    Value: - [Merchandise](#merchandise)
+    Parent: 3 - 28
+    Side: right
+Node ID: 3 - 30
+    Value: - [License](#license)
+    Parent: 3 - 29
+    Side: right
+Node ID: 3 - 31
+    Value: - [About Planet Argon](#about-planet-argon)
+    Parent: 3 - 30
+    Side: right
+Node ID: 3 - 32
+    Value: 
+    Parent: 3 - 31
+    Side: right
+Node ID: 3 - 33
+    Value: </details>
+    Parent: 3 - 32
+    Side: right
+Node ID: 3 - 34
+    Value: 
+    Parent: 3 - 33
+    Side: right
+Node ID: 17 - 10
+    Value: ## Getting Started
+    Parent: 17 - 9
+    Side: right
+Node ID: 17 - 11
+    Value: 
+    Parent: 17 - 10
+    Side: right
+Node ID: 25 - 62
+    Value: ### Operating System Compatibility
+    Parent: 17 - 12
+    Side: left
+Node ID: 25 - 63
+    Value: 
+    Parent: 25 - 62
+    Side: right
+Node ID: 29 - 11
+    Value: | O/S            | Status  |
+    Parent: 25 - 64
+    Side: left
+Node ID: 29 - 12
+    Value: | :------------- | :-----: |
+    Parent: 29 - 11
+    Side: right
+Node ID: 29 - 13
+    Value: | Android        |   ✅    |
+    Parent: 29 - 12
+    Side: right
+Node ID: 29 - 14
+    Value: | freeBSD        |   ✅    |
+    Parent: 29 - 13
+    Side: right
+Node ID: 29 - 15
+    Value: | LCARS          |   🛸    |
+    Parent: 29 - 14
+    Side: right
+Node ID: 29 - 16
+    Value: | Linux          |   ✅    |
+    Parent: 29 - 15
+    Side: right
+Node ID: 29 - 17
+    Value: | macOS          |   ✅    |
+    Parent: 29 - 16
+    Side: right
+Node ID: 29 - 18
+    Value: | OS/2 Warp      |   ❌    |
+    Parent: 29 - 17
+    Side: right
+Node ID: 29 - 19
+    Value: | Windows (WSL2) |   ✅    |
+    Parent: 29 - 18
+    Side: right
+Node ID: 25 - 64
+    Value: tombstone
+    Parent: 25 - 63
+    Side: right
+Node ID: 25 - 65
+    Value: tombstone
+    Parent: 25 - 64
+    Side: right
+Node ID: 25 - 66
+    Value: tombstone
+    Parent: 25 - 65
+    Side: right
+Node ID: 25 - 67
+    Value: tombstone
+    Parent: 25 - 66
+    Side: right
+Node ID: 25 - 68
+    Value: tombstone
+    Parent: 25 - 67
+    Side: right
+Node ID: 25 - 69
+    Value: tombstone
+    Parent: 25 - 68
+    Side: right
+Node ID: 25 - 70
+    Value: tombstone
+    Parent: 25 - 69
+    Side: right
+Node ID: 25 - 71
+    Value: tombstone
+    Parent: 25 - 70
+    Side: right
+Node ID: 25 - 72
+    Value: tombstone
+    Parent: 25 - 71
+    Side: right
+Node ID: 25 - 73
+    Value: 
+    Parent: 25 - 72
+    Side: right
+Node ID: 25 - 74
+    Value: 
+    Parent: 25 - 73
+    Side: right
+Node ID: 17 - 12
+    Value: ### Prerequisites
+    Parent: 17 - 11
+    Side: right
+Node ID: 17 - 13
+    Value: 
+    Parent: 17 - 12
+    Side: right
+Node ID: 17 - 317
+    Value: tombstone
+    Parent: 16 - 1
+    Side: left
+Node ID: 17 - 318
+    Value: - [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
+    Parent: 17 - 317
+    Side: right
+Node ID: 17 - 319
+    Value: - `curl` or `wget` should be installed
+    Parent: 17 - 318
+    Side: right
+Node ID: 17 - 320
+    Value: - `git` should be installed (recommended v2.4.11 or higher)
+    Parent: 17 - 319
+    Side: right
+Node ID: 16 - 1
+    Value: tombstone
+    Parent: 17 - 284
+    Side: left
+Node ID: 16 - 2
+    Value: tombstone
+    Parent: 16 - 1
+    Side: right
+Node ID: 17 - 284
+    Value: tombstone
+    Parent: 5 - 0
+    Side: left
+Node ID: 17 - 289
+    Value: tombstone
+    Parent: 17 - 285
+    Side: left
+Node ID: 17 - 285
+    Value: tombstone
+    Parent: 17 - 284
+    Side: right
+Node ID: 5 - 0
+    Value: tombstone
+    Parent: 17 - 14
+    Side: left
+Node ID: 17 - 14
+    Value: tombstone
+    Parent: 17 - 13
+    Side: right
+Node ID: 17 - 15
+    Value: tombstone
+    Parent: 17 - 14
+    Side: right
+Node ID: 17 - 217
+    Value: tombstone
+    Parent: 5 - 1
+    Side: left
+Node ID: 17 - 220
+    Value: tombstone
+    Parent: 17 - 217
+    Side: right
+Node ID: 5 - 1
+    Value: tombstone
+    Parent: 17 - 16
+    Side: left
+Node ID: 17 - 16
+    Value: tombstone
+    Parent: 17 - 15
+    Side: right
+Node ID: 17 - 17
+    Value: tombstone
+    Parent: 17 - 16
+    Side: right
+Node ID: 17 - 18
+    Value: tombstone
+    Parent: 17 - 17
+    Side: right
+Node ID: 16 - 3
+    Value: tombstone
+    Parent: 17 - 304
+    Side: left
+Node ID: 17 - 304
+    Value: tombstone
+    Parent: 17 - 19
+    Side: left
+Node ID: 17 - 19
+    Value: tombstone
+    Parent: 17 - 18
+    Side: right
+Node ID: 17 - 20
+    Value: 
+    Parent: 17 - 19
+    Side: right
+Node ID: 17 - 21
+    Value: ### Basic Installation
+    Parent: 17 - 20
+    Side: right
+Node ID: 17 - 22
+    Value: 
+    Parent: 17 - 21
+    Side: right
+Node ID: 17 - 321
+    Value: Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl`, `wget` or another similar tool.
+    Parent: 16 - 4
+    Side: left
+Node ID: 16 - 4
+    Value: tombstone
+    Parent: 17 - 23
+    Side: left
+Node ID: 17 - 23
+    Value: tombstone
+    Parent: 17 - 22
+    Side: right
+Node ID: 17 - 24
+    Value: 
+    Parent: 17 - 23
+    Side: right
+Node ID: 17 - 322
+    Value: | Method    | Command                                                                                           |
+    Parent: 17 - 25
+    Side: left
+Node ID: 3 - 35
+    Value: | :-------- | :------------------------------------------------------------------------------------------------ |
+    Parent: 17 - 337
+    Side: left
+Node ID: 17 - 337
+    Value: tombstone
+    Parent: 17 - 323
+    Side: left
+Node ID: 17 - 323
+    Value: tombstone
+    Parent: 17 - 322
+    Side: right
+Node ID: 17 - 324
+    Value: | **curl**  | `sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+    Parent: 17 - 323
+    Side: right
+Node ID: 17 - 325
+    Value: | **wget**  | `sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`   |
+    Parent: 17 - 324
+    Side: right
+Node ID: 17 - 326
+    Value: | **fetch** | `sh -c "$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"` |
+    Parent: 17 - 325
+    Side: right
+Node ID: 17 - 25
+    Value: tombstone
+    Parent: 17 - 24
+    Side: right
+Node ID: 17 - 26
+    Value: tombstone
+    Parent: 17 - 25
+    Side: right
+Node ID: 17 - 27
+    Value: tombstone
+    Parent: 17 - 26
+    Side: right
+Node ID: 17 - 290
+    Value: tombstone
+    Parent: 17 - 28
+    Side: left
+Node ID: 17 - 28
+    Value: tombstone
+    Parent: 17 - 27
+    Side: right
+Node ID: 17 - 29
+    Value: tombstone
+    Parent: 17 - 28
+    Side: right
+Node ID: 17 - 30
+    Value: tombstone
+    Parent: 17 - 29
+    Side: right
+Node ID: 17 - 31
+    Value: tombstone
+    Parent: 17 - 30
+    Side: right
+Node ID: 17 - 32
+    Value: tombstone
+    Parent: 17 - 31
+    Side: right
+Node ID: 17 - 33
+    Value: tombstone
+    Parent: 17 - 32
+    Side: right
+Node ID: 17 - 291
+    Value: tombstone
+    Parent: 17 - 223
+    Side: left
+Node ID: 17 - 223
+    Value: tombstone
+    Parent: 17 - 34
+    Side: left
+Node ID: 17 - 224
+    Value: tombstone
+    Parent: 17 - 223
+    Side: right
+Node ID: 17 - 225
+    Value: tombstone
+    Parent: 17 - 224
+    Side: right
+Node ID: 1 - 0
+    Value: tombstone
+    Parent: 17 - 226
+    Side: left
+Node ID: 1 - 1
+    Value: tombstone
+    Parent: 1 - 0
+    Side: right
+Node ID: 1 - 2
+    Value: tombstone
+    Parent: 1 - 1
+    Side: right
+Node ID: 1 - 3
+    Value: tombstone
+    Parent: 1 - 2
+    Side: right
+Node ID: 1 - 4
+    Value: tombstone
+    Parent: 1 - 3
+    Side: right
+Node ID: 1 - 5
+    Value: 
+    Parent: 1 - 4
+    Side: right
+Node ID: 22 - 7
+    Value: Alternatively, the installer is also mirrored outside GitHub. Using this URL instead may be required if you're in a country like India or China, that blocks `raw.githubusercontent.com`:
+    Parent: 22 - 0
+    Side: left
+Node ID: 22 - 8
+    Value: 
+    Parent: 22 - 7
+    Side: right
+Node ID: 22 - 9
+    Value: | Method    | Command                                                                                           |
+    Parent: 22 - 8
+    Side: right
+Node ID: 22 - 10
+    Value: | :-------- | :------------------------------------------------------------------------------------------------ |
+    Parent: 22 - 9
+    Side: right
+Node ID: 22 - 11
+    Value: | **curl**  | `sh -c "$(curl -fsSL https://install.ohmyz.sh/)"`                                                 |
+    Parent: 22 - 10
+    Side: right
+Node ID: 22 - 12
+    Value: | **wget**  | `sh -c "$(wget -O- https://install.ohmyz.sh/)"`                                                   |
+    Parent: 22 - 11
+    Side: right
+Node ID: 22 - 13
+    Value: | **fetch** | `sh -c "$(fetch -o - https://install.ohmyz.sh/)"`                                                 |
+    Parent: 22 - 12
+    Side: right
+Node ID: 22 - 14
+    Value: 
+    Parent: 22 - 13
+    Side: right
+Node ID: 22 - 0
+    Value: _Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._
+    Parent: 11 - 41
+    Side: left
+Node ID: 11 - 41
+    Value: tombstone
+    Parent: 1 - 5
+    Side: right
+Node ID: 11 - 42
+    Value: 
+    Parent: 11 - 41
+    Side: right
+Node ID: 29 - 20
+    Value: #### Manual Inspection
+    Parent: 11 - 42
+    Side: right
+Node ID: 17 - 226
+    Value: tombstone
+    Parent: 17 - 225
+    Side: right
+Node ID: 17 - 227
+    Value: 
+    Parent: 17 - 226
+    Side: right
+Node ID: 17 - 228
+    Value: It's a good idea to inspect the install script from projects you don't yet know. You can do
+    Parent: 17 - 227
+    Side: right
+Node ID: 17 - 229
+    Value: that by downloading the install script first, looking through it so everything looks normal,
+    Parent: 17 - 228
+    Side: right
+Node ID: 17 - 230
+    Value: then running it:
+    Parent: 17 - 229
+    Side: right
+Node ID: 17 - 231
+    Value: 
+    Parent: 17 - 230
+    Side: right
+Node ID: 11 - 0
+    Value: ```sh
+    Parent: 17 - 232
+    Side: left
+Node ID: 17 - 232
+    Value: tombstone
+    Parent: 17 - 231
+    Side: right
+Node ID: 17 - 327
+    Value: wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+    Parent: 17 - 292
+    Side: left
+Node ID: 17 - 292
+    Value: tombstone
+    Parent: 17 - 233
+    Side: left
+Node ID: 17 - 233
+    Value: tombstone
+    Parent: 17 - 232
+    Side: right
+Node ID: 17 - 234
+    Value: sh install.sh
+    Parent: 17 - 233
+    Side: right
+Node ID: 17 - 34
+    Value: tombstone
+    Parent: 17 - 33
+    Side: right
+Node ID: 17 - 35
+    Value: ```
+    Parent: 17 - 34
+    Side: right
+Node ID: 17 - 36
+    Value: 
+    Parent: 17 - 35
+    Side: right
+Node ID: 22 - 15
+    Value: If the above URL times out or otherwise fails, you may have to substitute the URL for `https://install.ohmyz.sh` to be able to get the script.
+    Parent: 17 - 37
+    Side: left
+Node ID: 22 - 16
+    Value: 
+    Parent: 22 - 15
+    Side: right
+Node ID: 17 - 37
+    Value: ## Using Oh My Zsh
+    Parent: 17 - 36
+    Side: right
+Node ID: 17 - 38
+    Value: 
+    Parent: 17 - 37
+    Side: right
+Node ID: 17 - 39
+    Value: ### Plugins
+    Parent: 17 - 38
+    Side: right
+Node ID: 17 - 40
+    Value: 
+    Parent: 17 - 39
+    Side: right
+Node ID: 16 - 5
+    Value: Oh My Zsh comes with a shitload of plugins for you to take advantage of. You can take a look in the [plugins](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins) directory and/or the [wiki](https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins) to see what's currently available.
+    Parent: 17 - 293
+    Side: left
+Node ID: 17 - 293
+    Value: tombstone
+    Parent: 10 - 0
+    Side: left
+Node ID: 10 - 0
+    Value: tombstone
+    Parent: 17 - 41
+    Side: left
+Node ID: 17 - 41
+    Value: tombstone
+    Parent: 17 - 40
+    Side: right
+Node ID: 17 - 42
+    Value: 
+    Parent: 17 - 41
+    Side: right
+Node ID: 17 - 43
+    Value: #### Enabling Plugins
+    Parent: 17 - 42
+    Side: right
+Node ID: 17 - 44
+    Value: 
+    Parent: 17 - 43
+    Side: right
+Node ID: 27 - 0
+    Value: Once you spot a plugin (or several) that you'd like to use with Oh My Zsh, you'll need to enable them in the `.zshrc` file. You'll find the zshrc file in your `$HOME` directory. Open it with your favorite text editor and you'll see a spot to list all the plugins you want to load.
+    Parent: 26 - 0
+    Side: left
+Node ID: 26 - 0
+    Value: tombstone
+    Parent: 17 - 45
+    Side: left
+Node ID: 17 - 45
+    Value: tombstone
+    Parent: 17 - 44
+    Side: right
+Node ID: 17 - 46
+    Value: 
+    Parent: 17 - 45
+    Side: right
+Node ID: 11 - 1
+    Value: ```sh
+    Parent: 25 - 30
+    Side: left
+Node ID: 25 - 30
+    Value: tombstone
+    Parent: 27 - 1
+    Side: left
+Node ID: 25 - 31
+    Value: vi ~/.zshrc
+    Parent: 25 - 30
+    Side: right
+Node ID: 25 - 32
+    Value: ```
+    Parent: 25 - 31
+    Side: right
+Node ID: 25 - 33
+    Value: 
+    Parent: 25 - 32
+    Side: right
+Node ID: 25 - 34
+    Value: For example, this might begin to look like this:
+    Parent: 25 - 33
+    Side: right
+Node ID: 27 - 1
+    Value: tombstone
+    Parent: 17 - 47
+    Side: left
+Node ID: 17 - 47
+    Value: tombstone
+    Parent: 17 - 46
+    Side: right
+Node ID: 17 - 48
+    Value: 
+    Parent: 17 - 47
+    Side: right
+Node ID: 11 - 2
+    Value: ```sh
+    Parent: 17 - 49
+    Side: left
+Node ID: 17 - 49
+    Value: tombstone
+    Parent: 17 - 48
+    Side: right
+Node ID: 25 - 35
+    Value: plugins=(
+    Parent: 17 - 50
+    Side: left
+Node ID: 25 - 36
+    Value:   git
+    Parent: 25 - 35
+    Side: right
+Node ID: 25 - 37
+    Value:   bundler
+    Parent: 25 - 36
+    Side: right
+Node ID: 25 - 38
+    Value:   dotenv
+    Parent: 25 - 37
+    Side: right
+Node ID: 14 - 0
+    Value:   macos
+    Parent: 25 - 39
+    Side: left
+Node ID: 25 - 39
+    Value: tombstone
+    Parent: 25 - 38
+    Side: right
+Node ID: 25 - 40
+    Value:   rake
+    Parent: 25 - 39
+    Side: right
+Node ID: 25 - 41
+    Value:   rbenv
+    Parent: 25 - 40
+    Side: right
+Node ID: 25 - 42
+    Value:   ruby
+    Parent: 25 - 41
+    Side: right
+Node ID: 25 - 43
+    Value: )
+    Parent: 25 - 42
+    Side: right
+Node ID: 17 - 50
+    Value: tombstone
+    Parent: 17 - 49
+    Side: right
+Node ID: 17 - 51
+    Value: ```
+    Parent: 17 - 50
+    Side: right
+Node ID: 17 - 52
+    Value: 
+    Parent: 17 - 51
+    Side: right
+Node ID: 16 - 6
+    Value: _Note that the plugins are separated by whitespace (spaces, tabs, new lines...). **Do not** use commas between them or it will break._
+    Parent: 17 - 235
+    Side: left
+Node ID: 17 - 235
+    Value: tombstone
+    Parent: 17 - 53
+    Side: left
+Node ID: 17 - 236
+    Value: 
+    Parent: 17 - 235
+    Side: right
+Node ID: 17 - 53
+    Value: #### Using Plugins
+    Parent: 17 - 52
+    Side: right
+Node ID: 17 - 54
+    Value: 
+    Parent: 17 - 53
+    Side: right
+Node ID: 22 - 1
+    Value: Each built-in plugin includes a **README**, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.
+    Parent: 3 - 36
+    Side: left
+Node ID: 3 - 36
+    Value: tombstone
+    Parent: 0 - 0
+    Side: left
+Node ID: 0 - 0
+    Value: tombstone
+    Parent: 16 - 7
+    Side: left
+Node ID: 16 - 7
+    Value: tombstone
+    Parent: 17 - 55
+    Side: left
+Node ID: 17 - 55
+    Value: tombstone
+    Parent: 17 - 54
+    Side: right
+Node ID: 17 - 56
+    Value: 
+    Parent: 17 - 55
+    Side: right
+Node ID: 17 - 57
+    Value: ### Themes
+    Parent: 17 - 56
+    Side: right
+Node ID: 17 - 58
+    Value: 
+    Parent: 17 - 57
+    Side: right
+Node ID: 16 - 8
+    Value: We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred and fifty themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki (We are working on updating this!). Check them out!
+    Parent: 17 - 294
+    Side: left
+Node ID: 17 - 294
+    Value: tombstone
+    Parent: 2 - 0
+    Side: left
+Node ID: 2 - 0
+    Value: tombstone
+    Parent: 17 - 59
+    Side: left
+Node ID: 17 - 59
+    Value: tombstone
+    Parent: 17 - 58
+    Side: right
+Node ID: 17 - 60
+    Value: 
+    Parent: 17 - 59
+    Side: right
+Node ID: 29 - 21
+    Value: #### Selecting A Theme
+    Parent: 17 - 61
+    Side: left
+Node ID: 17 - 61
+    Value: tombstone
+    Parent: 17 - 60
+    Side: right
+Node ID: 17 - 62
+    Value: 
+    Parent: 17 - 61
+    Side: right
+Node ID: 26 - 1
+    Value: _Robby's theme is the default one. It's not the fanciest one. It's not the simplest one. It's just the right one (for him)._
+    Parent: 17 - 63
+    Side: left
+Node ID: 17 - 63
+    Value: tombstone
+    Parent: 17 - 62
+    Side: right
+Node ID: 17 - 64
+    Value: 
+    Parent: 17 - 63
+    Side: right
+Node ID: 25 - 44
+    Value: Once you find a theme that you'd like to use, you will need to edit the `~/.zshrc` file. You'll see an environment variable (all caps) in there that looks like:
+    Parent: 17 - 65
+    Side: left
+Node ID: 17 - 65
+    Value: tombstone
+    Parent: 17 - 64
+    Side: right
+Node ID: 17 - 66
+    Value: 
+    Parent: 17 - 65
+    Side: right
+Node ID: 11 - 3
+    Value: ```sh
+    Parent: 17 - 67
+    Side: left
+Node ID: 17 - 67
+    Value: tombstone
+    Parent: 17 - 66
+    Side: right
+Node ID: 17 - 68
+    Value: ZSH_THEME="robbyrussell"
+    Parent: 17 - 67
+    Side: right
+Node ID: 17 - 69
+    Value: ```
+    Parent: 17 - 68
+    Side: right
+Node ID: 17 - 70
+    Value: 
+    Parent: 17 - 69
+    Side: right
+Node ID: 17 - 71
+    Value: To use a different theme, simply change the value to match the name of your desired theme. For example:
+    Parent: 17 - 70
+    Side: right
+Node ID: 17 - 72
+    Value: 
+    Parent: 17 - 71
+    Side: right
+Node ID: 11 - 4
+    Value: ```sh
+    Parent: 17 - 73
+    Side: left
+Node ID: 17 - 73
+    Value: tombstone
+    Parent: 17 - 72
+    Side: right
+Node ID: 17 - 214
+    Value: ZSH_THEME="agnoster" # (this is one of the fancy ones)
+    Parent: 28 - 0
+    Side: left
+Node ID: 17 - 295
+    Value: # see https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#agnoster
+    Parent: 17 - 215
+    Side: left
+Node ID: 17 - 215
+    Value: tombstone
+    Parent: 17 - 214
+    Side: right
+Node ID: 17 - 216
+    Value: tombstone
+    Parent: 17 - 215
+    Side: right
+Node ID: 28 - 0
+    Value: tombstone
+    Parent: 17 - 74
+    Side: left
+Node ID: 28 - 1
+    Value: tombstone
+    Parent: 28 - 0
+    Side: right
+Node ID: 28 - 2
+    Value: tombstone
+    Parent: 28 - 1
+    Side: right
+Node ID: 17 - 74
+    Value: tombstone
+    Parent: 17 - 73
+    Side: right
+Node ID: 17 - 75
+    Value: ```
+    Parent: 17 - 74
+    Side: right
+Node ID: 17 - 76
+    Value: 
+    Parent: 17 - 75
+    Side: right
+Node ID: 22 - 2
+    Value: _Note: many themes require installing a [Powerline Font](https://github.com/powerline/fonts) or a [Nerd Font](https://github.com/ryanoasis/nerd-fonts) in order to render properly. Without them, these themes will render [weird prompt symbols](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ#i-have-a-weird-character-in-my-prompt)_
+    Parent: 6 - 0
+    Side: left
+Node ID: 6 - 0
+    Value: tombstone
+    Parent: 26 - 2
+    Side: left
+Node ID: 6 - 1
+    Value: 
+    Parent: 6 - 0
+    Side: right
+Node ID: 26 - 2
+    Value: Open up a new terminal window and your prompt should look something like this:
+    Parent: 17 - 77
+    Side: left
+Node ID: 17 - 77
+    Value: tombstone
+    Parent: 17 - 76
+    Side: right
+Node ID: 17 - 78
+    Value: 
+    Parent: 17 - 77
+    Side: right
+Node ID: 17 - 79
+    Value: ![Agnoster theme](https://cloud.githubusercontent.com/assets/2618447/6316862/70f58fb6-ba03-11e4-82c9-c083bf9a6574.png)
+    Parent: 17 - 78
+    Side: right
+Node ID: 17 - 80
+    Value: 
+    Parent: 17 - 79
+    Side: right
+Node ID: 17 - 296
+    Value: In case you did not find a suitable theme for your needs, please have a look at the wiki for [more of them](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes).
+    Parent: 17 - 81
+    Side: left
+Node ID: 17 - 81
+    Value: tombstone
+    Parent: 17 - 80
+    Side: right
+Node ID: 17 - 82
+    Value: 
+    Parent: 17 - 81
+    Side: right
+Node ID: 17 - 83
+    Value: If you're feeling feisty, you can let the computer select one randomly for you each time you open a new terminal window.
+    Parent: 17 - 82
+    Side: right
+Node ID: 17 - 84
+    Value: 
+    Parent: 17 - 83
+    Side: right
+Node ID: 11 - 5
+    Value: ```sh
+    Parent: 17 - 85
+    Side: left
+Node ID: 17 - 85
+    Value: tombstone
+    Parent: 17 - 84
+    Side: right
+Node ID: 17 - 86
+    Value: tombstone
+    Parent: 17 - 85
+    Side: right
+Node ID: 17 - 87
+    Value: ZSH_THEME="random" # (...please let it be pie... please be some pie..)
+    Parent: 17 - 86
+    Side: right
+Node ID: 17 - 88
+    Value: ```
+    Parent: 17 - 87
+    Side: right
+Node ID: 17 - 89
+    Value: 
+    Parent: 17 - 88
+    Side: right
+Node ID: 25 - 21
+    Value: And if you want to pick random theme from a list of your favorite themes:
+    Parent: 17 - 90
+    Side: left
+Node ID: 25 - 22
+    Value: 
+    Parent: 25 - 21
+    Side: right
+Node ID: 11 - 6
+    Value: ```sh
+    Parent: 25 - 23
+    Side: left
+Node ID: 25 - 23
+    Value: tombstone
+    Parent: 25 - 22
+    Side: right
+Node ID: 21 - 0
+    Value: ZSH_THEME_RANDOM_CANDIDATES=(
+    Parent: 25 - 24
+    Side: left
+Node ID: 25 - 24
+    Value: tombstone
+    Parent: 25 - 23
+    Side: right
+Node ID: 25 - 25
+    Value:   "robbyrussell"
+    Parent: 25 - 24
+    Side: right
+Node ID: 25 - 26
+    Value:   "agnoster"
+    Parent: 25 - 25
+    Side: right
+Node ID: 25 - 27
+    Value: )
+    Parent: 25 - 26
+    Side: right
+Node ID: 25 - 28
+    Value: ```
+    Parent: 25 - 27
+    Side: right
+Node ID: 17 - 90
+    Value: 
+    Parent: 17 - 89
+    Side: right
+Node ID: 17 - 312
+    Value: If you only know which themes you don't like, you can add them similarly to an ignored list:
+    Parent: 17 - 305
+    Side: left
+Node ID: 17 - 305
+    Value: tombstone
+    Parent: 19 - 0
+    Side: left
+Node ID: 17 - 306
+    Value: 
+    Parent: 17 - 305
+    Side: right
+Node ID: 11 - 7
+    Value: ```sh
+    Parent: 17 - 307
+    Side: left
+Node ID: 17 - 307
+    Value: tombstone
+    Parent: 17 - 306
+    Side: right
+Node ID: 17 - 313
+    Value: ZSH_THEME_RANDOM_IGNORED=(pygmalion tjkirch_mod)
+    Parent: 17 - 308
+    Side: left
+Node ID: 17 - 308
+    Value: tombstone
+    Parent: 17 - 307
+    Side: right
+Node ID: 17 - 309
+    Value: ```
+    Parent: 17 - 308
+    Side: right
+Node ID: 17 - 310
+    Value: 
+    Parent: 17 - 309
+    Side: right
+Node ID: 19 - 0
+    Value: ### FAQ
+    Parent: 17 - 91
+    Side: left
+Node ID: 19 - 1
+    Value: 
+    Parent: 19 - 0
+    Side: right
+Node ID: 19 - 2
+    Value: If you have some more questions or issues, you might find a solution in our [FAQ](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ).
+    Parent: 19 - 1
+    Side: right
+Node ID: 19 - 3
+    Value: 
+    Parent: 19 - 2
+    Side: right
+Node ID: 17 - 91
+    Value: ## Advanced Topics
+    Parent: 17 - 90
+    Side: right
+Node ID: 17 - 92
+    Value: 
+    Parent: 17 - 91
+    Side: right
+Node ID: 17 - 93
+    Value: If you're the type that likes to get their hands dirty, these sections might resonate.
+    Parent: 17 - 92
+    Side: right
+Node ID: 17 - 94
+    Value: 
+    Parent: 17 - 93
+    Side: right
+Node ID: 17 - 95
+    Value: ### Advanced Installation
+    Parent: 17 - 94
+    Side: right
+Node ID: 17 - 96
+    Value: 
+    Parent: 17 - 95
+    Side: right
+Node ID: 17 - 237
+    Value: Some users may want to manually install Oh My Zsh, or change the default path or other settings that
+    Parent: 17 - 97
+    Side: left
+Node ID: 17 - 238
+    Value: the installer accepts (these settings are also documented at the top of the install script).
+    Parent: 17 - 237
+    Side: right
+Node ID: 17 - 97
+    Value: tombstone
+    Parent: 17 - 96
+    Side: right
+Node ID: 17 - 98
+    Value: 
+    Parent: 17 - 97
+    Side: right
+Node ID: 17 - 99
+    Value: #### Custom Directory
+    Parent: 17 - 98
+    Side: right
+Node ID: 17 - 100
+    Value: 
+    Parent: 17 - 99
+    Side: right
+Node ID: 16 - 9
+    Value: The default location is `~/.oh-my-zsh` (hidden in your home directory, you can access it with `cd ~/.oh-my-zsh`)
+    Parent: 17 - 101
+    Side: left
+Node ID: 17 - 101
+    Value: tombstone
+    Parent: 17 - 100
+    Side: right
+Node ID: 17 - 102
+    Value: 
+    Parent: 17 - 101
+    Side: right
+Node ID: 17 - 239
+    Value: If you'd like to change the install directory with the `ZSH` environment variable, either by running
+    Parent: 17 - 103
+    Side: left
+Node ID: 17 - 240
+    Value: `export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline
+    Parent: 17 - 239
+    Side: right
+Node ID: 17 - 241
+    Value: like this:
+    Parent: 17 - 240
+    Side: right
+Node ID: 17 - 242
+    Value: 
+    Parent: 17 - 241
+    Side: right
+Node ID: 11 - 8
+    Value: ```sh
+    Parent: 17 - 243
+    Side: left
+Node ID: 17 - 243
+    Value: tombstone
+    Parent: 17 - 242
+    Side: right
+Node ID: 17 - 244
+    Value: ZSH="$HOME/.dotfiles/oh-my-zsh" sh install.sh
+    Parent: 17 - 243
+    Side: right
+Node ID: 17 - 245
+    Value: ```
+    Parent: 17 - 244
+    Side: right
+Node ID: 17 - 246
+    Value: 
+    Parent: 17 - 245
+    Side: right
+Node ID: 29 - 22
+    Value: #### Unattended Install
+    Parent: 17 - 247
+    Side: left
+Node ID: 17 - 247
+    Value: tombstone
+    Parent: 17 - 246
+    Side: right
+Node ID: 17 - 248
+    Value: 
+    Parent: 17 - 247
+    Side: right
+Node ID: 22 - 3
+    Value: If you're running the Oh My Zsh install script as part of an automated install, you can pass the `--unattended`
+    Parent: 17 - 249
+    Side: left
+Node ID: 22 - 4
+    Value: flag to the `install.sh` script. This will have the effect of not trying to change
+    Parent: 22 - 3
+    Side: right
+Node ID: 22 - 5
+    Value: the default shell, and it also won't run `zsh` when the installation has finished.
+    Parent: 22 - 4
+    Side: right
+Node ID: 17 - 249
+    Value: tombstone
+    Parent: 17 - 248
+    Side: right
+Node ID: 17 - 250
+    Value: tombstone
+    Parent: 17 - 249
+    Side: right
+Node ID: 17 - 251
+    Value: tombstone
+    Parent: 17 - 250
+    Side: right
+Node ID: 17 - 103
+    Value: tombstone
+    Parent: 17 - 102
+    Side: right
+Node ID: 17 - 104
+    Value: 
+    Parent: 17 - 103
+    Side: right
+Node ID: 11 - 9
+    Value: ```sh
+    Parent: 17 - 105
+    Side: left
+Node ID: 17 - 105
+    Value: tombstone
+    Parent: 17 - 104
+    Side: right
+Node ID: 17 - 297
+    Value: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    Parent: 18 - 0
+    Side: left
+Node ID: 18 - 0
+    Value: tombstone
+    Parent: 17 - 252
+    Side: left
+Node ID: 17 - 252
+    Value: tombstone
+    Parent: 17 - 106
+    Side: left
+Node ID: 17 - 253
+    Value: tombstone
+    Parent: 17 - 252
+    Side: right
+Node ID: 17 - 254
+    Value: ```
+    Parent: 17 - 253
+    Side: right
+Node ID: 17 - 255
+    Value: 
+    Parent: 17 - 254
+    Side: right
+Node ID: 22 - 17
+    Value: If you're in China, India, or another country that blocks `raw.githubusercontent.com`, you may have to substitute the URL for `https://install.ohmyz.sh` for it to install.
+    Parent: 29 - 23
+    Side: left
+Node ID: 22 - 18
+    Value: 
+    Parent: 22 - 17
+    Side: right
+Node ID: 29 - 23
+    Value: #### Installing From A Forked Repository
+    Parent: 17 - 256
+    Side: left
+Node ID: 17 - 256
+    Value: tombstone
+    Parent: 17 - 255
+    Side: right
+Node ID: 17 - 257
+    Value: 
+    Parent: 17 - 256
+    Side: right
+Node ID: 17 - 258
+    Value: The install script also accepts these variables to allow installation of a different repository:
+    Parent: 17 - 257
+    Side: right
+Node ID: 17 - 259
+    Value: 
+    Parent: 17 - 258
+    Side: right
+Node ID: 17 - 298
+    Value: - `REPO` (default: `ohmyzsh/ohmyzsh`): this takes the form of `owner/repository`. If you set
+    Parent: 17 - 260
+    Side: left
+Node ID: 17 - 260
+    Value: tombstone
+    Parent: 17 - 259
+    Side: right
+Node ID: 17 - 261
+    Value:   this variable, the installer will look for a repository at `https://github.com/{owner}/{repository}`.
+    Parent: 17 - 260
+    Side: right
+Node ID: 17 - 262
+    Value: 
+    Parent: 17 - 261
+    Side: right
+Node ID: 17 - 263
+    Value: - `REMOTE` (default: `https://github.com/${REPO}.git`): this is the full URL of the git repository
+    Parent: 17 - 262
+    Side: right
+Node ID: 17 - 264
+    Value:   clone. You can use this setting if you want to install from a fork that is not on GitHub (GitLab,
+    Parent: 17 - 263
+    Side: right
+Node ID: 17 - 265
+    Value:   Bitbucket...) or if you want to clone with SSH instead of HTTPS (`git@github.com:user/project.git`).
+    Parent: 17 - 264
+    Side: right
+Node ID: 17 - 266
+    Value: 
+    Parent: 17 - 265
+    Side: right
+Node ID: 17 - 267
+    Value:   _NOTE: it's incompatible with setting the `REPO` variable. This setting will take precedence._
+    Parent: 17 - 266
+    Side: right
+Node ID: 17 - 268
+    Value: 
+    Parent: 17 - 267
+    Side: right
+Node ID: 17 - 269
+    Value: - `BRANCH` (default: `master`): you can use this setting if you want to change the default branch to be
+    Parent: 17 - 268
+    Side: right
+Node ID: 17 - 270
+    Value:   checked out when cloning the repository. This might be useful for testing a Pull Request, or if you
+    Parent: 17 - 269
+    Side: right
+Node ID: 17 - 271
+    Value:   want to use a branch other than `master`.
+    Parent: 17 - 270
+    Side: right
+Node ID: 17 - 272
+    Value: 
+    Parent: 17 - 271
+    Side: right
+Node ID: 17 - 273
+    Value: For example:
+    Parent: 17 - 272
+    Side: right
+Node ID: 17 - 274
+    Value: 
+    Parent: 17 - 273
+    Side: right
+Node ID: 11 - 10
+    Value: ```sh
+    Parent: 17 - 275
+    Side: left
+Node ID: 17 - 275
+    Value: tombstone
+    Parent: 17 - 274
+    Side: right
+Node ID: 17 - 276
+    Value: REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh
+    Parent: 17 - 275
+    Side: right
+Node ID: 17 - 106
+    Value: tombstone
+    Parent: 17 - 105
+    Side: right
+Node ID: 17 - 107
+    Value: ```
+    Parent: 17 - 106
+    Side: right
+Node ID: 17 - 108
+    Value: 
+    Parent: 17 - 107
+    Side: right
+Node ID: 17 - 109
+    Value: #### Manual Installation
+    Parent: 17 - 108
+    Side: right
+Node ID: 17 - 110
+    Value: 
+    Parent: 17 - 109
+    Side: right
+Node ID: 29 - 24
+    Value: ##### 1. Clone The Repository <!-- omit in toc -->
+    Parent: 3 - 37
+    Side: left
+Node ID: 3 - 37
+    Value: tombstone
+    Parent: 17 - 328
+    Side: left
+Node ID: 17 - 328
+    Value: tombstone
+    Parent: 17 - 111
+    Side: left
+Node ID: 17 - 111
+    Value: tombstone
+    Parent: 17 - 110
+    Side: right
+Node ID: 17 - 112
+    Value: 
+    Parent: 17 - 111
+    Side: right
+Node ID: 11 - 11
+    Value: ```sh
+    Parent: 17 - 113
+    Side: left
+Node ID: 17 - 113
+    Value: tombstone
+    Parent: 17 - 112
+    Side: right
+Node ID: 17 - 299
+    Value: git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+    Parent: 8 - 0
+    Side: left
+Node ID: 8 - 0
+    Value: tombstone
+    Parent: 17 - 114
+    Side: left
+Node ID: 17 - 114
+    Value: tombstone
+    Parent: 17 - 113
+    Side: right
+Node ID: 17 - 115
+    Value: ```
+    Parent: 17 - 114
+    Side: right
+Node ID: 17 - 116
+    Value: 
+    Parent: 17 - 115
+    Side: right
+Node ID: 29 - 25
+    Value: ##### 2. _Optionally_, Backup Your Existing `~/.zshrc` File <!-- omit in toc -->
+    Parent: 3 - 38
+    Side: left
+Node ID: 3 - 38
+    Value: tombstone
+    Parent: 17 - 329
+    Side: left
+Node ID: 17 - 329
+    Value: tombstone
+    Parent: 17 - 117
+    Side: left
+Node ID: 17 - 117
+    Value: tombstone
+    Parent: 17 - 116
+    Side: right
+Node ID: 17 - 118
+    Value: 
+    Parent: 17 - 117
+    Side: right
+Node ID: 11 - 12
+    Value: ```sh
+    Parent: 17 - 119
+    Side: left
+Node ID: 17 - 119
+    Value: tombstone
+    Parent: 17 - 118
+    Side: right
+Node ID: 17 - 120
+    Value: cp ~/.zshrc ~/.zshrc.orig
+    Parent: 17 - 119
+    Side: right
+Node ID: 17 - 121
+    Value: ```
+    Parent: 17 - 120
+    Side: right
+Node ID: 17 - 122
+    Value: 
+    Parent: 17 - 121
+    Side: right
+Node ID: 29 - 26
+    Value: ##### 3. Create A New Zsh Configuration File <!-- omit in toc -->
+    Parent: 3 - 39
+    Side: left
+Node ID: 3 - 39
+    Value: tombstone
+    Parent: 17 - 123
+    Side: left
+Node ID: 17 - 123
+    Value: tombstone
+    Parent: 17 - 122
+    Side: right
+Node ID: 17 - 124
+    Value: 
+    Parent: 17 - 123
+    Side: right
+Node ID: 26 - 3
+    Value: You can create a new zsh config file by copying the template that we have included for you.
+    Parent: 17 - 125
+    Side: left
+Node ID: 17 - 125
+    Value: tombstone
+    Parent: 17 - 124
+    Side: right
+Node ID: 17 - 126
+    Value: 
+    Parent: 17 - 125
+    Side: right
+Node ID: 11 - 13
+    Value: ```sh
+    Parent: 17 - 127
+    Side: left
+Node ID: 17 - 127
+    Value: tombstone
+    Parent: 17 - 126
+    Side: right
+Node ID: 17 - 128
+    Value: cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+    Parent: 17 - 127
+    Side: right
+Node ID: 17 - 129
+    Value: ```
+    Parent: 17 - 128
+    Side: right
+Node ID: 17 - 130
+    Value: 
+    Parent: 17 - 129
+    Side: right
+Node ID: 29 - 27
+    Value: ##### 4. Change Your Default Shell <!-- omit in toc -->
+    Parent: 3 - 40
+    Side: left
+Node ID: 3 - 40
+    Value: tombstone
+    Parent: 17 - 131
+    Side: left
+Node ID: 17 - 131
+    Value: tombstone
+    Parent: 17 - 130
+    Side: right
+Node ID: 17 - 132
+    Value: 
+    Parent: 17 - 131
+    Side: right
+Node ID: 11 - 14
+    Value: ```sh
+    Parent: 17 - 133
+    Side: left
+Node ID: 17 - 133
+    Value: tombstone
+    Parent: 17 - 132
+    Side: right
+Node ID: 17 - 277
+    Value: chsh -s $(which zsh)
+    Parent: 17 - 134
+    Side: left
+Node ID: 17 - 134
+    Value: tombstone
+    Parent: 17 - 133
+    Side: right
+Node ID: 17 - 135
+    Value: ```
+    Parent: 17 - 134
+    Side: right
+Node ID: 17 - 278
+    Value: 
+    Parent: 23 - 0
+    Side: left
+Node ID: 17 - 279
+    Value: You must log out from your user session and log back in to see this change.
+    Parent: 17 - 278
+    Side: right
+Node ID: 23 - 0
+    Value: tombstone
+    Parent: 17 - 136
+    Side: left
+Node ID: 17 - 136
+    Value: 
+    Parent: 17 - 135
+    Side: right
+Node ID: 29 - 28
+    Value: ##### 5. Initialize Your New Zsh Configuration <!-- omit in toc -->
+    Parent: 3 - 41
+    Side: left
+Node ID: 3 - 41
+    Value: tombstone
+    Parent: 17 - 137
+    Side: left
+Node ID: 17 - 137
+    Value: tombstone
+    Parent: 17 - 136
+    Side: right
+Node ID: 17 - 138
+    Value: 
+    Parent: 17 - 137
+    Side: right
+Node ID: 17 - 139
+    Value: Once you open up a new terminal window, it should load zsh with Oh My Zsh's configuration.
+    Parent: 17 - 138
+    Side: right
+Node ID: 17 - 140
+    Value: 
+    Parent: 17 - 139
+    Side: right
+Node ID: 17 - 141
+    Value: ### Installation Problems
+    Parent: 17 - 140
+    Side: right
+Node ID: 17 - 142
+    Value: 
+    Parent: 17 - 141
+    Side: right
+Node ID: 17 - 143
+    Value: If you have any hiccups installing, here are a few common fixes.
+    Parent: 17 - 142
+    Side: right
+Node ID: 17 - 144
+    Value: 
+    Parent: 17 - 143
+    Side: right
+Node ID: 3 - 42
+    Value: - You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after switching to `oh-my-zsh`.
+    Parent: 17 - 330
+    Side: left
+Node ID: 3 - 43
+    Value: - If you installed manually or changed the install location, check the `ZSH` environment variable in `~/.zshrc`.
+    Parent: 3 - 42
+    Side: right
+Node ID: 17 - 330
+    Value: tombstone
+    Parent: 17 - 280
+    Side: left
+Node ID: 17 - 280
+    Value: tombstone
+    Parent: 17 - 145
+    Side: left
+Node ID: 17 - 281
+    Value: tombstone
+    Parent: 17 - 280
+    Side: right
+Node ID: 17 - 331
+    Value: tombstone
+    Parent: 17 - 282
+    Side: left
+Node ID: 17 - 282
+    Value: tombstone
+    Parent: 17 - 281
+    Side: right
+Node ID: 17 - 283
+    Value: tombstone
+    Parent: 17 - 282
+    Side: right
+Node ID: 17 - 145
+    Value: tombstone
+    Parent: 17 - 144
+    Side: right
+Node ID: 17 - 146
+    Value: tombstone
+    Parent: 17 - 145
+    Side: right
+Node ID: 17 - 147
+    Value: 
+    Parent: 17 - 146
+    Side: right
+Node ID: 29 - 29
+    Value: ### Custom Plugins And Themes
+    Parent: 17 - 148
+    Side: left
+Node ID: 17 - 148
+    Value: tombstone
+    Parent: 17 - 147
+    Side: right
+Node ID: 17 - 149
+    Value: 
+    Parent: 17 - 148
+    Side: right
+Node ID: 17 - 150
+    Value: If you want to override any of the default behaviors, just add a new file (ending in `.zsh`) in the `custom/` directory.
+    Parent: 17 - 149
+    Side: right
+Node ID: 17 - 151
+    Value: 
+    Parent: 17 - 150
+    Side: right
+Node ID: 17 - 152
+    Value: If you have many functions that go well together, you can put them as a `XYZ.plugin.zsh` file in the `custom/plugins/` directory and then enable this plugin.
+    Parent: 17 - 151
+    Side: right
+Node ID: 17 - 153
+    Value: 
+    Parent: 17 - 152
+    Side: right
+Node ID: 17 - 154
+    Value: If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.
+    Parent: 17 - 153
+    Side: right
+Node ID: 17 - 155
+    Value: 
+    Parent: 17 - 154
+    Side: right
+Node ID: 29 - 30
+    Value: ### Enable GNU ls In macOS And freeBSD Systems
+    Parent: 4 - 14
+    Side: left
+Node ID: 4 - 14
+    Value: tombstone
+    Parent: 4 - 1
+    Side: left
+Node ID: 4 - 1
+    Value: tombstone
+    Parent: 17 - 343
+    Side: left
+Node ID: 4 - 2
+    Value: 
+    Parent: 4 - 1
+    Side: right
+Node ID: 4 - 15
+    Value: <a name="enable-gnu-ls"></a>
+    Parent: 4 - 3
+    Side: left
+Node ID: 4 - 3
+    Value: tombstone
+    Parent: 4 - 2
+    Side: right
+Node ID: 4 - 4
+    Value: 
+    Parent: 4 - 3
+    Side: right
+Node ID: 4 - 16
+    Value: The default behaviour in Oh My Zsh is to use BSD `ls` in macOS and freeBSD systems. If GNU `ls` is installed
+    Parent: 4 - 5
+    Side: left
+Node ID: 4 - 17
+    Value: (as `gls` command), you can choose to use it instead. To do it, you can use zstyle-based config before
+    Parent: 4 - 16
+    Side: right
+Node ID: 4 - 18
+    Value: sourcing `oh-my-zsh.sh`:
+    Parent: 4 - 17
+    Side: right
+Node ID: 4 - 5
+    Value: tombstone
+    Parent: 4 - 4
+    Side: right
+Node ID: 4 - 6
+    Value: tombstone
+    Parent: 4 - 5
+    Side: right
+Node ID: 4 - 7
+    Value: tombstone
+    Parent: 4 - 6
+    Side: right
+Node ID: 4 - 8
+    Value: 
+    Parent: 4 - 7
+    Side: right
+Node ID: 4 - 9
+    Value: ```zsh
+    Parent: 4 - 8
+    Side: right
+Node ID: 7 - 0
+    Value: zstyle ':omz:lib:theme-and-appearance' gnu-ls yes
+    Parent: 4 - 10
+    Side: left
+Node ID: 4 - 10
+    Value: tombstone
+    Parent: 4 - 9
+    Side: right
+Node ID: 4 - 11
+    Value: ```
+    Parent: 4 - 10
+    Side: right
+Node ID: 4 - 12
+    Value: 
+    Parent: 4 - 11
+    Side: right
+Node ID: 4 - 19
+    Value: _Note: this is not compatible with `DISABLE_LS_COLORS=true`_
+    Parent: 4 - 12
+    Side: right
+Node ID: 4 - 20
+    Value: 
+    Parent: 4 - 19
+    Side: right
+Node ID: 29 - 31
+    Value: ### Skip Aliases
+    Parent: 4 - 20
+    Side: right
+Node ID: 17 - 343
+    Value: tombstone
+    Parent: 12 - 0
+    Side: left
+Node ID: 12 - 0
+    Value: tombstone
+    Parent: 17 - 156
+    Side: left
+Node ID: 12 - 1
+    Value: 
+    Parent: 12 - 0
+    Side: right
+Node ID: 17 - 344
+    Value: <a name="remove-directories-aliases"></a>
+    Parent: 12 - 2
+    Side: left
+Node ID: 12 - 2
+    Value: tombstone
+    Parent: 12 - 1
+    Side: right
+Node ID: 12 - 3
+    Value: tombstone
+    Parent: 12 - 2
+    Side: right
+Node ID: 12 - 4
+    Value: tombstone
+    Parent: 12 - 3
+    Side: right
+Node ID: 12 - 5
+    Value: 
+    Parent: 12 - 4
+    Side: right
+Node ID: 17 - 345
+    Value: If you want to skip default Oh My Zsh aliases (those defined in `lib/*` files) or plugin aliases,
+    Parent: 12 - 6
+    Side: left
+Node ID: 17 - 346
+    Value: you can use the settings below in your `~/.zshrc` file, **before Oh My Zsh is loaded**. Note that
+    Parent: 17 - 345
+    Side: right
+Node ID: 17 - 347
+    Value: there are many different ways to skip aliases, depending on your needs.
+    Parent: 17 - 346
+    Side: right
+Node ID: 17 - 348
+    Value: 
+    Parent: 17 - 347
+    Side: right
+Node ID: 17 - 349
+    Value: ```sh
+    Parent: 17 - 348
+    Side: right
+Node ID: 17 - 350
+    Value: # Skip all aliases, in lib files and enabled plugins
+    Parent: 17 - 349
+    Side: right
+Node ID: 17 - 351
+    Value: zstyle ':omz:*' aliases no
+    Parent: 17 - 350
+    Side: right
+Node ID: 17 - 352
+    Value: 
+    Parent: 17 - 351
+    Side: right
+Node ID: 17 - 353
+    Value: # Skip all aliases in lib files
+    Parent: 17 - 352
+    Side: right
+Node ID: 17 - 354
+    Value: zstyle ':omz:lib:*' aliases no
+    Parent: 17 - 353
+    Side: right
+Node ID: 17 - 355
+    Value: # Skip only aliases defined in the directories.zsh lib file
+    Parent: 17 - 354
+    Side: right
+Node ID: 17 - 356
+    Value: zstyle ':omz:lib:directories' aliases no
+    Parent: 17 - 355
+    Side: right
+Node ID: 17 - 357
+    Value: 
+    Parent: 17 - 356
+    Side: right
+Node ID: 17 - 358
+    Value: # Skip all plugin aliases
+    Parent: 17 - 357
+    Side: right
+Node ID: 17 - 359
+    Value: zstyle ':omz:plugins:*' aliases no
+    Parent: 17 - 358
+    Side: right
+Node ID: 17 - 360
+    Value: # Skip only the aliases from the git plugin
+    Parent: 17 - 359
+    Side: right
+Node ID: 17 - 361
+    Value: zstyle ':omz:plugins:git' aliases no
+    Parent: 17 - 360
+    Side: right
+Node ID: 17 - 362
+    Value: ```
+    Parent: 17 - 361
+    Side: right
+Node ID: 17 - 363
+    Value: 
+    Parent: 17 - 362
+    Side: right
+Node ID: 17 - 364
+    Value: You can combine these in other ways taking into account that more specific scopes takes precedence:
+    Parent: 17 - 363
+    Side: right
+Node ID: 17 - 365
+    Value: 
+    Parent: 17 - 364
+    Side: right
+Node ID: 17 - 366
+    Value: ```sh
+    Parent: 17 - 365
+    Side: right
+Node ID: 17 - 367
+    Value: # Skip all plugin aliases, except for the git plugin
+    Parent: 17 - 366
+    Side: right
+Node ID: 17 - 368
+    Value: zstyle ':omz:plugins:*' aliases no
+    Parent: 17 - 367
+    Side: right
+Node ID: 17 - 369
+    Value: zstyle ':omz:plugins:git' aliases yes
+    Parent: 17 - 368
+    Side: right
+Node ID: 17 - 370
+    Value: ```
+    Parent: 17 - 369
+    Side: right
+Node ID: 17 - 371
+    Value: 
+    Parent: 17 - 370
+    Side: right
+Node ID: 17 - 372
+    Value: A previous version of this feature was using the setting below, which has been removed:
+    Parent: 17 - 371
+    Side: right
+Node ID: 17 - 373
+    Value: 
+    Parent: 17 - 372
+    Side: right
+Node ID: 17 - 374
+    Value: ```sh
+    Parent: 17 - 373
+    Side: right
+Node ID: 12 - 6
+    Value: tombstone
+    Parent: 12 - 5
+    Side: right
+Node ID: 12 - 7
+    Value: zstyle ':omz:directories' aliases no
+    Parent: 12 - 6
+    Side: right
+Node ID: 12 - 8
+    Value: ```
+    Parent: 12 - 7
+    Side: right
+Node ID: 12 - 9
+    Value: 
+    Parent: 12 - 8
+    Side: right
+Node ID: 17 - 375
+    Value: Instead, you can now use the following:
+    Parent: 12 - 9
+    Side: right
+Node ID: 17 - 376
+    Value: 
+    Parent: 17 - 375
+    Side: right
+Node ID: 17 - 377
+    Value: ```sh
+    Parent: 17 - 376
+    Side: right
+Node ID: 17 - 378
+    Value: zstyle ':omz:lib:directories' aliases no
+    Parent: 17 - 377
+    Side: right
+Node ID: 17 - 379
+    Value: ```
+    Parent: 17 - 378
+    Side: right
+Node ID: 17 - 380
+    Value: 
+    Parent: 17 - 379
+    Side: right
+Node ID: 17 - 381
+    Value: #### Notice <!-- omit in toc -->
+    Parent: 17 - 380
+    Side: right
+Node ID: 17 - 382
+    Value: 
+    Parent: 17 - 381
+    Side: right
+Node ID: 17 - 383
+    Value: > This feature is currently in a testing phase and it may be subject to change in the future.
+    Parent: 17 - 382
+    Side: right
+Node ID: 17 - 384
+    Value: > It is also not currently compatible with plugin managers such as zpm or zinit, which don't
+    Parent: 17 - 383
+    Side: right
+Node ID: 17 - 385
+    Value: > source the init script (`oh-my-zsh.sh`) where this feature is implemented in.
+    Parent: 17 - 384
+    Side: right
+Node ID: 17 - 386
+    Value: 
+    Parent: 17 - 385
+    Side: right
+Node ID: 17 - 387
+    Value: > It is also not currently aware of "aliases" that are defined as functions. Example of such
+    Parent: 17 - 386
+    Side: right
+Node ID: 17 - 388
+    Value: > are `gccd`, `ggf`, or `ggl` functions from the git plugin.
+    Parent: 17 - 387
+    Side: right
+Node ID: 17 - 389
+    Value: 
+    Parent: 17 - 388
+    Side: right
+Node ID: 17 - 156
+    Value: ## Getting Updates
+    Parent: 17 - 155
+    Side: right
+Node ID: 17 - 157
+    Value: 
+    Parent: 17 - 156
+    Side: right
+Node ID: 11 - 15
+    Value: By default, you will be prompted to check for updates every 2 weeks. You can choose other update modes by adding a line to your `~/.zshrc` file, **before Oh My Zsh is loaded**:
+    Parent: 17 - 158
+    Side: left
+Node ID: 17 - 158
+    Value: tombstone
+    Parent: 17 - 157
+    Side: right
+Node ID: 17 - 159
+    Value: 
+    Parent: 17 - 158
+    Side: right
+Node ID: 11 - 16
+    Value: 1. Automatic update without confirmation prompt:
+    Parent: 17 - 160
+    Side: left
+Node ID: 11 - 17
+    Value: 
+    Parent: 11 - 16
+    Side: right
+Node ID: 11 - 18
+    Value:    ```sh
+    Parent: 11 - 17
+    Side: right
+Node ID: 11 - 19
+    Value:    zstyle ':omz:update' mode auto
+    Parent: 11 - 18
+    Side: right
+Node ID: 11 - 20
+    Value:    ```
+    Parent: 11 - 19
+    Side: right
+Node ID: 11 - 21
+    Value: 
+    Parent: 11 - 20
+    Side: right
+Node ID: 11 - 22
+    Value: 2. Just offer a reminder every few days, if there are updates available:
+    Parent: 11 - 21
+    Side: right
+Node ID: 11 - 23
+    Value: 
+    Parent: 11 - 22
+    Side: right
+Node ID: 11 - 24
+    Value:    ```sh
+    Parent: 11 - 23
+    Side: right
+Node ID: 11 - 25
+    Value:    zstyle ':omz:update' mode reminder
+    Parent: 11 - 24
+    Side: right
+Node ID: 11 - 26
+    Value:    ```
+    Parent: 11 - 25
+    Side: right
+Node ID: 11 - 27
+    Value: 
+    Parent: 11 - 26
+    Side: right
+Node ID: 11 - 28
+    Value: 3. To disable automatic updates entirely:
+    Parent: 11 - 27
+    Side: right
+Node ID: 11 - 29
+    Value: 
+    Parent: 11 - 28
+    Side: right
+Node ID: 11 - 30
+    Value:    ```sh
+    Parent: 11 - 29
+    Side: right
+Node ID: 11 - 31
+    Value:    zstyle ':omz:update' mode disabled
+    Parent: 11 - 30
+    Side: right
+Node ID: 11 - 32
+    Value:    ```
+    Parent: 11 - 31
+    Side: right
+Node ID: 17 - 160
+    Value: tombstone
+    Parent: 17 - 159
+    Side: right
+Node ID: 17 - 161
+    Value: tombstone
+    Parent: 17 - 160
+    Side: right
+Node ID: 17 - 162
+    Value: tombstone
+    Parent: 17 - 161
+    Side: right
+Node ID: 17 - 163
+    Value: 
+    Parent: 17 - 162
+    Side: right
+Node ID: 11 - 33
+    Value: NOTE: you can control how often Oh My Zsh checks for updates with the following setting:
+    Parent: 17 - 164
+    Side: left
+Node ID: 17 - 164
+    Value: tombstone
+    Parent: 17 - 163
+    Side: right
+Node ID: 17 - 165
+    Value: 
+    Parent: 17 - 164
+    Side: right
+Node ID: 11 - 34
+    Value: ```sh
+    Parent: 17 - 166
+    Side: left
+Node ID: 11 - 35
+    Value: # This will check for updates every 7 days
+    Parent: 11 - 34
+    Side: right
+Node ID: 11 - 36
+    Value: zstyle ':omz:update' frequency 7
+    Parent: 11 - 35
+    Side: right
+Node ID: 11 - 37
+    Value: # This will check for updates every time you open the terminal (not recommended)
+    Parent: 11 - 36
+    Side: right
+Node ID: 11 - 38
+    Value: zstyle ':omz:update' frequency 0
+    Parent: 11 - 37
+    Side: right
+Node ID: 17 - 166
+    Value: tombstone
+    Parent: 17 - 165
+    Side: right
+Node ID: 17 - 167
+    Value: tombstone
+    Parent: 17 - 166
+    Side: right
+Node ID: 17 - 168
+    Value: ```
+    Parent: 17 - 167
+    Side: right
+Node ID: 17 - 169
+    Value: 
+    Parent: 17 - 168
+    Side: right
+Node ID: 29 - 32
+    Value: ### Updates Verbosity
+    Parent: 13 - 0
+    Side: left
+Node ID: 13 - 0
+    Value: tombstone
+    Parent: 17 - 170
+    Side: left
+Node ID: 13 - 1
+    Value: 
+    Parent: 13 - 0
+    Side: right
+Node ID: 13 - 2
+    Value: You can also limit the update verbosity with the following settings:
+    Parent: 13 - 1
+    Side: right
+Node ID: 13 - 3
+    Value: 
+    Parent: 13 - 2
+    Side: right
+Node ID: 13 - 4
+    Value: ```sh
+    Parent: 13 - 3
+    Side: right
+Node ID: 13 - 5
+    Value: zstyle ':omz:update' verbose default # default update prompt
+    Parent: 13 - 4
+    Side: right
+Node ID: 13 - 6
+    Value: 
+    Parent: 13 - 5
+    Side: right
+Node ID: 13 - 7
+    Value: zstyle ':omz:update' verbose minimal # only few lines
+    Parent: 13 - 6
+    Side: right
+Node ID: 13 - 8
+    Value: 
+    Parent: 13 - 7
+    Side: right
+Node ID: 13 - 9
+    Value: zstyle ':omz:update' verbose silent # only errors
+    Parent: 13 - 8
+    Side: right
+Node ID: 13 - 10
+    Value: ```
+    Parent: 13 - 9
+    Side: right
+Node ID: 13 - 11
+    Value: 
+    Parent: 13 - 10
+    Side: right
+Node ID: 17 - 170
+    Value: ### Manual Updates
+    Parent: 17 - 169
+    Side: right
+Node ID: 17 - 171
+    Value: 
+    Parent: 17 - 170
+    Side: right
+Node ID: 11 - 39
+    Value: If you'd like to update at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:
+    Parent: 17 - 172
+    Side: left
+Node ID: 17 - 172
+    Value: tombstone
+    Parent: 17 - 171
+    Side: right
+Node ID: 17 - 173
+    Value: 
+    Parent: 17 - 172
+    Side: right
+Node ID: 11 - 40
+    Value: ```sh
+    Parent: 17 - 174
+    Side: left
+Node ID: 17 - 174
+    Value: tombstone
+    Parent: 17 - 173
+    Side: right
+Node ID: 15 - 0
+    Value: omz update
+    Parent: 17 - 175
+    Side: left
+Node ID: 17 - 175
+    Value: tombstone
+    Parent: 17 - 174
+    Side: right
+Node ID: 17 - 176
+    Value: ```
+    Parent: 17 - 175
+    Side: right
+Node ID: 17 - 177
+    Value: 
+    Parent: 17 - 176
+    Side: right
+Node ID: 25 - 45
+    Value: Magic! 🎉
+    Parent: 17 - 178
+    Side: left
+Node ID: 17 - 178
+    Value: tombstone
+    Parent: 17 - 177
+    Side: right
+Node ID: 17 - 179
+    Value: 
+    Parent: 17 - 178
+    Side: right
+Node ID: 17 - 180
+    Value: ## Uninstalling Oh My Zsh
+    Parent: 17 - 179
+    Side: right
+Node ID: 17 - 181
+    Value: 
+    Parent: 17 - 180
+    Side: right
+Node ID: 17 - 182
+    Value: Oh My Zsh isn't for everyone. We'll miss you, but we want to make this an easy breakup.
+    Parent: 17 - 181
+    Side: right
+Node ID: 17 - 183
+    Value: 
+    Parent: 17 - 182
+    Side: right
+Node ID: 17 - 184
+    Value: If you want to uninstall `oh-my-zsh`, just run `uninstall_oh_my_zsh` from the command-line. It will remove itself and revert your previous `bash` or `zsh` configuration.
+    Parent: 17 - 183
+    Side: right
+Node ID: 17 - 185
+    Value: 
+    Parent: 17 - 184
+    Side: right
+Node ID: 29 - 33
+    Value: ## How Do I Contribute To Oh My Zsh?
+    Parent: 25 - 48
+    Side: left
+Node ID: 25 - 48
+    Value: tombstone
+    Parent: 17 - 186
+    Side: left
+Node ID: 25 - 49
+    Value: 
+    Parent: 25 - 48
+    Side: right
+Node ID: 25 - 50
+    Value: Before you participate in our delightful community, please read the [code of conduct](CODE_OF_CONDUCT.md).
+    Parent: 25 - 49
+    Side: right
+Node ID: 17 - 186
+    Value: tombstone
+    Parent: 17 - 185
+    Side: right
+Node ID: 17 - 187
+    Value: 
+    Parent: 17 - 186
+    Side: right
+Node ID: 17 - 221
+    Value: I'm far from being a [Zsh](https://www.zsh.org/) expert and suspect there are many ways to improve – if you have ideas on how to make the configuration easier to maintain (and faster), don't hesitate to fork and send pull requests!
+    Parent: 17 - 188
+    Side: left
+Node ID: 17 - 188
+    Value: tombstone
+    Parent: 17 - 187
+    Side: right
+Node ID: 17 - 189
+    Value: 
+    Parent: 17 - 188
+    Side: right
+Node ID: 22 - 6
+    Value: We also need people to test out pull requests. So take a look through [the open issues](https://github.com/ohmyzsh/ohmyzsh/issues) and help where you can.
+    Parent: 17 - 300
+    Side: left
+Node ID: 17 - 300
+    Value: tombstone
+    Parent: 17 - 190
+    Side: left
+Node ID: 17 - 190
+    Value: tombstone
+    Parent: 17 - 189
+    Side: right
+Node ID: 17 - 191
+    Value: 
+    Parent: 17 - 190
+    Side: right
+Node ID: 25 - 51
+    Value: See [Contributing](CONTRIBUTING.md) for more details.
+    Parent: 17 - 192
+    Side: left
+Node ID: 25 - 52
+    Value: 
+    Parent: 25 - 51
+    Side: right
+Node ID: 29 - 34
+    Value: ### Do Not Send Us Themes
+    Parent: 25 - 52
+    Side: right
+Node ID: 17 - 192
+    Value: tombstone
+    Parent: 17 - 191
+    Side: right
+Node ID: 17 - 193
+    Value: 
+    Parent: 17 - 192
+    Side: right
+Node ID: 17 - 301
+    Value: We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes) wiki page.
+    Parent: 17 - 194
+    Side: left
+Node ID: 17 - 194
+    Value: tombstone
+    Parent: 17 - 193
+    Side: right
+Node ID: 17 - 195
+    Value: 
+    Parent: 17 - 194
+    Side: right
+Node ID: 17 - 196
+    Value: ## Contributors
+    Parent: 17 - 195
+    Side: right
+Node ID: 17 - 197
+    Value: 
+    Parent: 17 - 196
+    Side: right
+Node ID: 17 - 198
+    Value: Oh My Zsh has a vibrant community of happy users and delightful contributors. Without all the time and help from our contributors, it wouldn't be so awesome.
+    Parent: 17 - 197
+    Side: right
+Node ID: 17 - 199
+    Value: 
+    Parent: 17 - 198
+    Side: right
+Node ID: 17 - 200
+    Value: Thank you so much!
+    Parent: 17 - 199
+    Side: right
+Node ID: 17 - 201
+    Value: 
+    Parent: 17 - 200
+    Side: right
+Node ID: 17 - 202
+    Value: ## Follow Us
+    Parent: 17 - 201
+    Side: right
+Node ID: 17 - 203
+    Value: 
+    Parent: 17 - 202
+    Side: right
+Node ID: 17 - 332
+    Value: We're on social media:
+    Parent: 26 - 4
+    Side: left
+Node ID: 26 - 4
+    Value: tombstone
+    Parent: 25 - 15
+    Side: left
+Node ID: 25 - 15
+    Value: tombstone
+    Parent: 17 - 204
+    Side: left
+Node ID: 25 - 16
+    Value: 
+    Parent: 25 - 15
+    Side: right
+Node ID: 17 - 333
+    Value: - [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.
+    Parent: 25 - 17
+    Side: left
+Node ID: 24 - 0
+    Value: - [Facebook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.
+    Parent: 17 - 334
+    Side: left
+Node ID: 17 - 334
+    Value: tombstone
+    Parent: 17 - 333
+    Side: right
+Node ID: 17 - 335
+    Value: - [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!
+    Parent: 17 - 334
+    Side: right
+Node ID: 17 - 336
+    Value: - [Discord](https://discord.gg/ohmyzsh) to chat with us!
+    Parent: 17 - 335
+    Side: right
+Node ID: 25 - 17
+    Value: tombstone
+    Parent: 25 - 16
+    Side: right
+Node ID: 16 - 10
+    Value: tombstone
+    Parent: 25 - 18
+    Side: left
+Node ID: 16 - 11
+    Value: tombstone
+    Parent: 16 - 10
+    Side: right
+Node ID: 16 - 12
+    Value: tombstone
+    Parent: 16 - 11
+    Side: right
+Node ID: 25 - 18
+    Value: tombstone
+    Parent: 25 - 17
+    Side: right
+Node ID: 17 - 204
+    Value: tombstone
+    Parent: 17 - 203
+    Side: right
+Node ID: 17 - 205
+    Value: 
+    Parent: 17 - 204
+    Side: right
+Node ID: 17 - 206
+    Value: ## Merchandise
+    Parent: 17 - 205
+    Side: right
+Node ID: 17 - 207
+    Value: 
+    Parent: 17 - 206
+    Side: right
+Node ID: 25 - 47
+    Value: We have [stickers, shirts, and coffee mugs available](https://shop.planetargon.com/collections/oh-my-zsh?utm_source=github) for you to show off your love of Oh My Zsh. Again, you will become the talk of the town!
+    Parent: 17 - 222
+    Side: left
+Node ID: 17 - 222
+    Value: tombstone
+    Parent: 9 - 0
+    Side: left
+Node ID: 9 - 0
+    Value: tombstone
+    Parent: 17 - 208
+    Side: left
+Node ID: 17 - 208
+    Value: tombstone
+    Parent: 17 - 207
+    Side: right
+Node ID: 17 - 209
+    Value: 
+    Parent: 17 - 208
+    Side: right
+Node ID: 17 - 210
+    Value: ## License
+    Parent: 17 - 209
+    Side: right
+Node ID: 17 - 211
+    Value: 
+    Parent: 17 - 210
+    Side: right
+Node ID: 17 - 213
+    Value: Oh My Zsh is released under the [MIT license](LICENSE.txt).
+    Parent: 17 - 212
+    Side: left
+Node ID: 25 - 0
+    Value: 
+    Parent: 17 - 213
+    Side: right
+Node ID: 25 - 1
+    Value: ## About Planet Argon
+    Parent: 25 - 0
+    Side: right
+Node ID: 25 - 2
+    Value: 
+    Parent: 25 - 1
+    Side: right
+Node ID: 9 - 1
+    Value: ![Planet Argon](https://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)
+    Parent: 25 - 3
+    Side: left
+Node ID: 25 - 3
+    Value: tombstone
+    Parent: 25 - 2
+    Side: right
+Node ID: 25 - 4
+    Value: 
+    Parent: 25 - 3
+    Side: right
+Node ID: 25 - 59
+    Value: Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](http://www.planetargon.com/services/ruby-on-rails-development?utm_source=github). Check out our [other open source projects](https://www.planetargon.com/open-source?utm_source=github).
+    Parent: 25 - 46
+    Side: left
+Node ID: 25 - 46
+    Value: tombstone
+    Parent: 25 - 6
+    Side: left
+Node ID: 25 - 6
+    Value: tombstone
+    Parent: 25 - 5
+    Side: left
+Node ID: 25 - 5
+    Value: tombstone
+    Parent: 25 - 4
+    Side: right
+Node ID: 17 - 212
+    Value: tombstone
+    Parent: 17 - 211
+    Side: right

@@ -5,7 +5,7 @@ defmodule Syncordian.Metadata do
   Record.defrecord(:metadata,
     delete_valid_counter: 0,
     delete_stash_counter: 0,
-    delete_requeue_counter: 0,
+    requeue_counter: 0,
     delete_requeue_limit: 0,
     insert_distance_greater_than_one: 0,
     insert_request_counter: 0,
@@ -23,7 +23,7 @@ defmodule Syncordian.Metadata do
           record(:metadata,
             delete_valid_counter: integer(),
             delete_stash_counter: integer(),
-            delete_requeue_counter: integer(),
+            requeue_counter: integer(),
             delete_requeue_limit: integer(),
             insert_distance_greater_than_one: integer(),
             insert_request_counter: integer(),
@@ -39,7 +39,7 @@ defmodule Syncordian.Metadata do
     metadata_map = %{
       "delete_valid_counter" => metadata(metadata, :delete_valid_counter),
       "delete_stash_counter" => metadata(metadata, :delete_stash_counter),
-      "delete_requeue_counter" => metadata(metadata, :delete_requeue_counter),
+      "requeue_counter" => metadata(metadata, :requeue_counter),
       "delete_requeue_limit" => metadata(metadata, :delete_requeue_limit),
       "insert_distance_greater_than_one" => metadata(metadata, :insert_distance_greater_than_one),
       "insert_request_counter" => metadata(metadata, :insert_request_counter),
@@ -60,14 +60,17 @@ defmodule Syncordian.Metadata do
   end
 
   # Saves metadata to a file with a path based on the given parameters.
-  defp save_metadata_to_file(metadata, current_commit, byzantine_nodes, path_prefix) do
+  defp save_metadata_to_file(metadata, current_commit, byzantine_nodes, path_prefix, name \\ "commit") do
     current_date_unix = System.os_time(:second) |> to_string()
 
     metadata_json =
       get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes)
 
     filename =
-      "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_commit_#{current_commit}_#{current_date_unix}.json"
+      if byzantine_nodes == 0,
+        do: "#{path_prefix}#{name}_#{current_commit}_#{current_date_unix}.json",
+        else:
+          "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}_#{current_date_unix}.json"
 
     File.write(filename, metadata_json)
   end
@@ -76,17 +79,28 @@ defmodule Syncordian.Metadata do
     Saves metadata for an individual peer. This function is used for keep track of just
     one peer's metadata.
   """
-  def save_metadata_one_peer(metadata, current_commit) do
-    save_metadata_to_file(metadata, current_commit, 0, "debug/metadata/individual_memory_peer/")
+  def save_metadata_one_peer(metadata, current_commit, module_name, name\\"commit") do
+    save_metadata_to_file(
+      metadata,
+      current_commit,
+      0,
+      "debug/metadata/individual_peer/#{module_name}/",
+      name
+    )
   end
 
   @doc """
     Saves metadata with specified number of byzantine nodes. This function is ment to
     be use by the supervisor for saving the agregated info of all the peers.
   """
-  @spec save_metadata(metadata(), integer(), integer()) :: :ok
-  def save_metadata(metadata, byzantine_nodes, current_commit) do
-    save_metadata_to_file(metadata, current_commit, byzantine_nodes, "debug/metadata/supervisor/")
+  @spec save_metadata(metadata(), integer(), integer(), String.t()) :: :ok
+  def save_metadata(metadata, byzantine_nodes, current_commit, module_name) do
+    save_metadata_to_file(
+      metadata,
+      current_commit,
+      byzantine_nodes,
+      "debug/metadata/supervisor/#{module_name}"
+    )
   end
 
   @spec merge_metadata(metadata(), metadata()) :: metadata()
@@ -98,9 +112,9 @@ defmodule Syncordian.Metadata do
       delete_stash_counter:
         metadata(metadata1, :delete_stash_counter) +
           metadata(metadata2, :delete_stash_counter),
-      delete_requeue_counter:
-        metadata(metadata1, :delete_requeue_counter) +
-          metadata(metadata2, :delete_requeue_counter),
+      requeue_counter:
+        metadata(metadata1, :requeue_counter) +
+          metadata(metadata2, :requeue_counter),
       delete_requeue_limit:
         metadata(metadata1, :delete_requeue_limit) +
           metadata(metadata2, :delete_requeue_limit),
@@ -135,10 +149,10 @@ defmodule Syncordian.Metadata do
     )
   end
 
-  @spec update_memory_info(metadata(), Syncordian.Basic_Types.peer_id()) :: metadata()
-  def update_memory_info(metadata, peer_pid) do
-    [heap_size, message_queue_len] = peer_pid |> process_memory_info()
-    metadata(metadata, heap_size: heap_size, message_queue_length: message_queue_len)
+  @spec update_memory_info(metadata(), Syncordian.Basic_Types.peer_id(), integer()) :: metadata()
+  def update_memory_info(metadata, peer_pid, bytes) do
+    [_heap_size, message_queue_len] = peer_pid |> process_memory_info()
+    metadata(metadata, heap_size: bytes, message_queue_length: message_queue_len)
   end
 
   @spec inc_byzantine_delete_counter(metadata()) :: metadata()
@@ -184,11 +198,11 @@ defmodule Syncordian.Metadata do
         delete_stash_counter: metadata(metadata, :delete_stash_counter) + 1
       )
 
-  @spec inc_delete_requeue_counter(metadata()) :: metadata()
-  def inc_delete_requeue_counter(metadata),
+  @spec inc_requeue_counter(metadata()) :: metadata()
+  def inc_requeue_counter(metadata),
     do:
       metadata(metadata,
-        delete_requeue_counter: metadata(metadata, :delete_requeue_counter) + 1
+        requeue_counter: metadata(metadata, :requeue_counter) + 1
       )
 
   @spec inc_insert_distance_greater_than_one(metadata()) :: metadata()

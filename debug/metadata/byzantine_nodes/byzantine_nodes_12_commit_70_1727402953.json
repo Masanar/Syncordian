@@ -3,7 +3,7 @@
   "byzantine_insert_counter": 735,
   "byzantine_nodes": 12,
   "current_commit": 70,
-  "delete_requeue_counter": 724170,
+  "requeue_counter": 724170,
   "delete_requeue_limit": 7170,
   "delete_stash_counter": 175,
   "delete_valid_counter": 6561,

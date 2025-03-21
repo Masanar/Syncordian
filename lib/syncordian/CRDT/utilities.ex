@@ -149,16 +149,16 @@ defmodule Syncordian.Utilities do
   def process_memory_info(process_info = [_head | _tail]) do
     process_info
     |> Enum.map(fn x ->
-      [total_heap_size: s, message_queue_len: m] =
-        Process.info(x, [:total_heap_size, :message_queue_len])
+      [memory: s, message_queue_len: m] =
+        Process.info(x, [:memory, :message_queue_len])
 
       [s, m]
     end)
   end
 
   def process_memory_info(single_process_name) do
-    [total_heap_size: s, message_queue_len: m] =
-      Process.info(single_process_name, [:total_heap_size, :message_queue_len])
+    [memory: s, message_queue_len: m] =
+      Process.info(single_process_name, [:memory, :message_queue_len])
 
     [s, m]
   end
@@ -242,4 +242,5 @@ defmodule Syncordian.Utilities do
       commit_at: commit_at
     }
   end
+
 end

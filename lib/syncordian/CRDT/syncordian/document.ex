@@ -520,8 +520,34 @@ defmodule Syncordian.Document do
     The corresponding Syncordian document index, or -1 if the traversal does not find a valid position.
     The -1 is because the last line is the supremum.
   """
-  def translate_git_index_to_syncordian_index(list, target, tombstones, index) do
-    do_translate_index(list, target, tombstones, index, &is_tombstone?/1)
+    # The -1 is because the last line is the supremum
+  def translate_git_index_to_syncordian_index([], 0, 0, index), do: index - 1
+
+  def translate_git_index_to_syncordian_index([], _, _, _), do: -1
+
+  def translate_git_index_to_syncordian_index([h | t], 0, 0, index) do
+    line_status = get_line_status(h)
+
+    case line_status do
+      :tombstone -> translate_git_index_to_syncordian_index(t, 0, 0, index + 1)
+      _ -> index
+    end
   end
+
+  def translate_git_index_to_syncordian_index([h | t], 0, tombstones, index),
+    do: translate_git_index_to_syncordian_index([h | t], tombstones, 0, index)
+
+  def translate_git_index_to_syncordian_index([h | t], target, tombstones, index) do
+    line_status = get_line_status(h)
+
+    case line_status do
+      :tombstone ->
+        translate_git_index_to_syncordian_index(t, target - 1, tombstones + 1, index + 1)
+
+      _ ->
+        translate_git_index_to_syncordian_index(t, target - 1, tombstones, index + 1)
+    end
+  end
+
 
 end

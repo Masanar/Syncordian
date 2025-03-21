@@ -1,0 +1,3514 @@
+Node ID: {17, 366}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 366}, value: "```sh", parent: {17, 365}, side: :right}
+Left: []
+Right: [{17, 367}]
+
+Node ID: {3, 21}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 21}, value: :tombstone, parent: {3, 20}, side: :right}
+Left: [{29, 5}]
+Right: [{3, 22}]
+
+Node ID: {17, 128}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 128}, value: "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc", parent: {17, 127}, side: :right}
+Left: []
+Right: [{17, 129}]
+
+Node ID: {17, 329}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 329}, value: :tombstone, parent: {17, 117}, side: :left}
+Left: [{3, 38}]
+Right: []
+
+Node ID: {11, 35}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 35}, value: "# This will check for updates every 7 days", parent: {11, 34}, side: :right}
+Left: []
+Right: [{11, 36}]
+
+Node ID: {3, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 9}, value: "    - [Enabling Plugins](#enabling-plugins)", parent: {3, 8}, side: :right}
+Left: []
+Right: [{3, 10}]
+
+Node ID: {17, 76}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 76}, value: "", parent: {17, 75}, side: :right}
+Left: []
+Right: [{17, 77}]
+
+Node ID: {17, 155}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 155}, value: "", parent: {17, 154}, side: :right}
+Left: []
+Right: [{17, 156}]
+
+Node ID: {17, 269}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 269}, value: "- `BRANCH` (default: `master`): you can use this setting if you want to change the default branch to be", parent: {17, 268}, side: :right}
+Left: []
+Right: [{17, 270}]
+
+Node ID: {3, 33}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 33}, value: "</details>", parent: {3, 32}, side: :right}
+Left: []
+Right: [{3, 34}]
+
+Node ID: {1, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 3}, value: :tombstone, parent: {1, 2}, side: :right}
+Left: []
+Right: [{1, 4}]
+
+Node ID: {17, 251}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 251}, value: :tombstone, parent: {17, 250}, side: :right}
+Left: []
+Right: []
+
+Node ID: {29, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 13}, value: "| Android        |   ✅    |", parent: {29, 12}, side: :right}
+Left: []
+Right: [{29, 14}]
+
+Node ID: {17, 45}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 45}, value: :tombstone, parent: {17, 44}, side: :right}
+Left: [{26, 0}]
+Right: [{17, 46}]
+
+Node ID: {11, 26}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 26}, value: "   ```", parent: {11, 25}, side: :right}
+Left: []
+Right: [{11, 27}]
+
+Node ID: {4, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 17}, value: "(as `gls` command), you can choose to use it instead. To do it, you can use zstyle-based config before", parent: {4, 16}, side: :right}
+Left: []
+Right: [{4, 18}]
+
+Node ID: {22, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 3}, value: "If you're running the Oh My Zsh install script as part of an automated install, you can pass the `--unattended`", parent: {17, 249}, side: :left}
+Left: []
+Right: [{22, 4}]
+
+Node ID: {11, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 11}, value: "```sh", parent: {17, 113}, side: :left}
+Left: []
+Right: []
+
+Node ID: {16, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 12}, value: :tombstone, parent: {16, 11}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 259}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 259}, value: "", parent: {17, 258}, side: :right}
+Left: []
+Right: [{17, 260}]
+
+Node ID: {16, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 9}, value: "The default location is `~/.oh-my-zsh` (hidden in your home directory, you can access it with `cd ~/.oh-my-zsh`)", parent: {17, 101}, side: :left}
+Left: []
+Right: []
+
+Node ID: {26, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {26, 1}, value: "_Robby's theme is the default one. It's not the fanciest one. It's not the simplest one. It's just the right one (for him)._", parent: {17, 63}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 381}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 381}, value: "#### Notice <!-- omit in toc -->", parent: {17, 380}, side: :right}
+Left: []
+Right: [{17, 382}]
+
+Node ID: {17, 105}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 105}, value: :tombstone, parent: {17, 104}, side: :right}
+Left: [{11, 9}]
+Right: [{17, 106}]
+
+Node ID: {29, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 20}, value: "#### Manual Inspection", parent: {11, 42}, side: :right}
+Left: []
+Right: []
+
+Node ID: {15, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {15, 0}, value: "omz update", parent: {17, 175}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 57}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 57}, value: "### Themes", parent: {17, 56}, side: :right}
+Left: []
+Right: [{17, 58}]
+
+Node ID: {17, 69}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 69}, value: "```", parent: {17, 68}, side: :right}
+Left: []
+Right: [{17, 70}]
+
+Node ID: {29, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 2}, value: "    - [Selecting A Theme](#selecting-a-theme)", parent: {3, 12}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 340}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 340}, value: :tombstone, parent: {17, 339}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 19}, value: :tombstone, parent: {17, 18}, side: :right}
+Left: [{17, 304}]
+Right: [{17, 20}]
+
+Node ID: {11, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 13}, value: "```sh", parent: {17, 127}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 24}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 24}, value: "- [Uninstalling Oh My Zsh](#uninstalling-oh-my-zsh)", parent: {3, 23}, side: :right}
+Left: []
+Right: [{3, 25}]
+
+Node ID: {3, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 8}, value: "  - [Plugins](#plugins)", parent: {3, 7}, side: :right}
+Left: []
+Right: [{3, 9}]
+
+Node ID: {17, 163}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 163}, value: "", parent: {17, 162}, side: :right}
+Left: []
+Right: [{17, 164}]
+
+Node ID: {17, 311}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 311}, value: "[![Discord server](https://img.shields.io/discord/642496866407284746)](https://discord.gg/ohmyzsh)", parent: {25, 57}, side: :left}
+Left: []
+Right: [{17, 339}]
+
+Node ID: {22, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 5}, value: "the default shell, and it also won't run `zsh` when the installation has finished.", parent: {22, 4}, side: :right}
+Left: []
+Right: []
+
+Node ID: {29, 24}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 24}, value: "##### 1. Clone The Repository <!-- omit in toc -->", parent: {3, 37}, side: :left}
+Left: []
+Right: []
+
+Node ID: {4, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 4}, value: "", parent: {4, 3}, side: :right}
+Left: []
+Right: [{4, 5}]
+
+Node ID: {22, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 16}, value: "", parent: {22, 15}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 361}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 361}, value: "zstyle ':omz:plugins:git' aliases no", parent: {17, 360}, side: :right}
+Left: []
+Right: [{17, 362}]
+
+Node ID: {17, 96}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 96}, value: "", parent: {17, 95}, side: :right}
+Left: []
+Right: [{17, 97}]
+
+Node ID: {17, 307}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 307}, value: :tombstone, parent: {17, 306}, side: :right}
+Left: [{11, 7}]
+Right: [{17, 308}]
+
+Node ID: {25, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 19}, value: "Sounds boring. Let's try again.", parent: {25, 8}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 275}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 275}, value: :tombstone, parent: {17, 274}, side: :right}
+Left: [{11, 10}]
+Right: [{17, 276}]
+
+Node ID: {17, 61}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 61}, value: :tombstone, parent: {17, 60}, side: :right}
+Left: [{29, 21}]
+Right: [{17, 62}]
+
+Node ID: {29, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 9}, value: "- [How Do I Contribute To Oh My Zsh?](#how-do-i-contribute-to-oh-my-zsh)", parent: {3, 25}, side: :left}
+Left: []
+Right: [{29, 10}]
+
+Node ID: {17, 112}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 112}, value: "", parent: {17, 111}, side: :right}
+Left: []
+Right: [{17, 113}]
+
+Node ID: {17, 47}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 47}, value: :tombstone, parent: {17, 46}, side: :right}
+Left: [{27, 1}]
+Right: [{17, 48}]
+
+Node ID: {17, 267}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 267}, value: "  _NOTE: it's incompatible with setting the `REPO` variable. This setting will take precedence._", parent: {17, 266}, side: :right}
+Left: []
+Right: [{17, 268}]
+
+Node ID: {29, 22}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 22}, value: "#### Unattended Install", parent: {17, 247}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 266}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 266}, value: "", parent: {17, 265}, side: :right}
+Left: []
+Right: [{17, 267}]
+
+Node ID: {13, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 11}, value: "", parent: {13, 10}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 148}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 148}, value: :tombstone, parent: {17, 147}, side: :right}
+Left: [{29, 29}]
+Right: [{17, 149}]
+
+Node ID: {17, 272}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 272}, value: "", parent: {17, 271}, side: :right}
+Left: []
+Right: [{17, 273}]
+
+Node ID: {17, 133}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 133}, value: :tombstone, parent: {17, 132}, side: :right}
+Left: [{11, 14}]
+Right: [{17, 134}]
+
+Node ID: {17, 382}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 382}, value: "", parent: {17, 381}, side: :right}
+Left: []
+Right: [{17, 383}]
+
+Node ID: {25, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 15}, value: :tombstone, parent: {17, 204}, side: :left}
+Left: [{26, 4}]
+Right: [{25, 16}]
+
+Node ID: {25, 37}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 37}, value: "  bundler", parent: {25, 36}, side: :right}
+Left: []
+Right: [{25, 38}]
+
+Node ID: {3, 42}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 42}, value: "- You _might_ need to modify your `PATH` in `~/.zshrc` if you're not able to find some commands after switching to `oh-my-zsh`.", parent: {17, 330}, side: :left}
+Left: []
+Right: [{3, 43}]
+
+Node ID: {17, 70}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 70}, value: "", parent: {17, 69}, side: :right}
+Left: []
+Right: [{17, 71}]
+
+Node ID: {25, 60}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 60}, value: :tombstone, parent: {17, 303}, side: :right}
+Left: [{17, 390}]
+Right: [{25, 61}]
+
+Node ID: {25, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 13}, value: "", parent: {25, 12}, side: :right}
+Left: []
+Right: [{25, 14}]
+
+Node ID: {17, 134}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 134}, value: :tombstone, parent: {17, 133}, side: :right}
+Left: [{17, 277}]
+Right: [{17, 135}]
+
+Node ID: {17, 209}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 209}, value: "", parent: {17, 208}, side: :right}
+Left: []
+Right: [{17, 210}]
+
+Node ID: {17, 80}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 80}, value: "", parent: {17, 79}, side: :right}
+Left: []
+Right: [{17, 81}]
+
+Node ID: {14, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {14, 0}, value: "  macos", parent: {25, 39}, side: :left}
+Left: []
+Right: []
+
+Node ID: {5, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {5, 1}, value: :tombstone, parent: {17, 16}, side: :left}
+Left: [{17, 217}]
+Right: []
+
+Node ID: {25, 66}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 66}, value: :tombstone, parent: {25, 65}, side: :right}
+Left: []
+Right: [{25, 67}]
+
+Node ID: {17, 189}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 189}, value: "", parent: {17, 188}, side: :right}
+Left: []
+Right: [{17, 190}]
+
+Node ID: {17, 145}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 145}, value: :tombstone, parent: {17, 144}, side: :right}
+Left: [{17, 280}]
+Right: [{17, 146}]
+
+Node ID: {16, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 3}, value: :tombstone, parent: {17, 304}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 327}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 327}, value: "wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh", parent: {17, 292}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 111}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 111}, value: :tombstone, parent: {17, 110}, side: :right}
+Left: [{17, 328}]
+Right: [{17, 112}]
+
+Node ID: {17, 208}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 208}, value: :tombstone, parent: {17, 207}, side: :right}
+Left: [{9, 0}]
+Right: [{17, 209}]
+
+Node ID: {17, 358}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 358}, value: "# Skip all plugin aliases", parent: {17, 357}, side: :right}
+Left: []
+Right: [{17, 359}]
+
+Node ID: {17, 214}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 214}, value: "ZSH_THEME=\"agnoster\" # (this is one of the fancy ones)", parent: {28, 0}, side: :left}
+Left: []
+Right: [{17, 215}]
+
+Node ID: {19, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {19, 3}, value: "", parent: {19, 2}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 235}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 235}, value: :tombstone, parent: {17, 53}, side: :left}
+Left: [{16, 6}]
+Right: [{17, 236}]
+
+Node ID: {17, 317}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 317}, value: :tombstone, parent: {16, 1}, side: :left}
+Left: []
+Right: [{17, 318}]
+
+Node ID: {13, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 3}, value: "", parent: {13, 2}, side: :right}
+Left: []
+Right: [{13, 4}]
+
+Node ID: {12, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 0}, value: :tombstone, parent: {17, 156}, side: :left}
+Left: [{17, 343}]
+Right: [{12, 1}]
+
+Node ID: {11, 32}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 32}, value: "   ```", parent: {11, 31}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 192}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 192}, value: :tombstone, parent: {17, 191}, side: :right}
+Left: [{25, 51}]
+Right: [{17, 193}]
+
+Node ID: {17, 146}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 146}, value: :tombstone, parent: {17, 145}, side: :right}
+Left: []
+Right: [{17, 147}]
+
+Node ID: {17, 380}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 380}, value: "", parent: {17, 379}, side: :right}
+Left: []
+Right: [{17, 381}]
+
+Node ID: {17, 33}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 33}, value: :tombstone, parent: {17, 32}, side: :right}
+Left: []
+Right: [{17, 34}]
+
+Node ID: {19, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {19, 2}, value: "If you have some more questions or issues, you might find a solution in our [FAQ](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ).", parent: {19, 1}, side: :right}
+Left: []
+Right: [{19, 3}]
+
+Node ID: {1, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 5}, value: "", parent: {1, 4}, side: :right}
+Left: []
+Right: [{11, 41}]
+
+Node ID: {17, 274}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 274}, value: "", parent: {17, 273}, side: :right}
+Left: []
+Right: [{17, 275}]
+
+Node ID: {17, 205}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 205}, value: "", parent: {17, 204}, side: :right}
+Left: []
+Right: [{17, 206}]
+
+Node ID: {12, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 9}, value: "", parent: {12, 8}, side: :right}
+Left: []
+Right: [{17, 375}]
+
+Node ID: {11, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 15}, value: "By default, you will be prompted to check for updates every 2 weeks. You can choose other update modes by adding a line to your `~/.zshrc` file, **before Oh My Zsh is loaded**:", parent: {17, 158}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 12}, value: "Once installed, your terminal shell will become the talk of the town _or your money back!_ With each keystroke in your command prompt, you'll take advantage of the hundreds of powerful plugins and beautiful themes. Strangers will come up to you in cafés and ask you, _\"that is amazing! are you some sort of genius?\"_", parent: {25, 11}, side: :right}
+Left: []
+Right: [{25, 13}]
+
+Node ID: {29, 29}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 29}, value: "### Custom Plugins And Themes", parent: {17, 148}, side: :left}
+Left: []
+Right: []
+
+Node ID: {16, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 0}, value: :tombstone, parent: {25, 54}, side: :left}
+Left: [{17, 316}]
+Right: []
+
+Node ID: {17, 25}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 25}, value: :tombstone, parent: {17, 24}, side: :right}
+Left: [{17, 322}]
+Right: [{17, 26}]
+
+Node ID: {17, 270}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 270}, value: "  checked out when cloning the repository. This might be useful for testing a Pull Request, or if you", parent: {17, 269}, side: :right}
+Left: []
+Right: [{17, 271}]
+
+Node ID: {25, 64}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 64}, value: :tombstone, parent: {25, 63}, side: :right}
+Left: [{29, 11}]
+Right: [{25, 65}]
+
+Node ID: {3, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 13}, value: "  - [FAQ](#faq)", parent: {3, 12}, side: :right}
+Left: []
+Right: [{3, 14}]
+
+Node ID: {17, 367}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 367}, value: "# Skip all plugin aliases, except for the git plugin", parent: {17, 366}, side: :right}
+Left: []
+Right: [{17, 368}]
+
+Node ID: {17, 334}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 334}, value: :tombstone, parent: {17, 333}, side: :right}
+Left: [{24, 0}]
+Right: [{17, 335}]
+
+Node ID: {13, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 0}, value: :tombstone, parent: {17, 170}, side: :left}
+Left: [{29, 32}]
+Right: [{13, 1}]
+
+Node ID: {1, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 0}, value: :tombstone, parent: {17, 226}, side: :left}
+Left: []
+Right: [{1, 1}]
+
+Node ID: {11, 25}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 25}, value: "   zstyle ':omz:update' mode reminder", parent: {11, 24}, side: :right}
+Left: []
+Right: [{11, 26}]
+
+Node ID: {3, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 5}, value: "  - [Basic Installation](#basic-installation)", parent: {3, 4}, side: :right}
+Left: []
+Right: [{3, 6}]
+
+Node ID: {17, 203}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 203}, value: "", parent: {17, 202}, side: :right}
+Left: []
+Right: [{17, 204}]
+
+Node ID: {12, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 6}, value: :tombstone, parent: {12, 5}, side: :right}
+Left: [{17, 345}]
+Right: [{12, 7}]
+
+Node ID: {17, 322}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 322}, value: "| Method    | Command                                                                                           |", parent: {17, 25}, side: :left}
+Left: []
+Right: [{17, 323}]
+
+Node ID: {17, 44}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 44}, value: "", parent: {17, 43}, side: :right}
+Left: []
+Right: [{17, 45}]
+
+Node ID: {17, 29}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 29}, value: :tombstone, parent: {17, 28}, side: :right}
+Left: []
+Right: [{17, 30}]
+
+Node ID: {11, 36}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 36}, value: "zstyle ':omz:update' frequency 7", parent: {11, 35}, side: :right}
+Left: []
+Right: [{11, 37}]
+
+Node ID: {29, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 4}, value: "    - [Installing From A Forked Repository](#installing-from-a-forked-repository)", parent: {29, 3}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 66}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 66}, value: "", parent: {17, 65}, side: :right}
+Left: []
+Right: [{17, 67}]
+
+Node ID: {16, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 11}, value: :tombstone, parent: {16, 10}, side: :right}
+Left: []
+Right: [{16, 12}]
+
+Node ID: {17, 49}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 49}, value: :tombstone, parent: {17, 48}, side: :right}
+Left: [{11, 2}]
+Right: [{17, 50}]
+
+Node ID: {17, 375}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 375}, value: "Instead, you can now use the following:", parent: {12, 9}, side: :right}
+Left: []
+Right: [{17, 376}]
+
+Node ID: {25, 46}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 46}, value: :tombstone, parent: {25, 6}, side: :left}
+Left: [{25, 59}]
+Right: []
+
+Node ID: {17, 68}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 68}, value: "ZSH_THEME=\"robbyrussell\"", parent: {17, 67}, side: :right}
+Left: []
+Right: [{17, 69}]
+
+Node ID: {11, 27}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 27}, value: "", parent: {11, 26}, side: :right}
+Left: []
+Right: [{11, 28}]
+
+Node ID: {29, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 12}, value: "| :------------- | :-----: |", parent: {29, 11}, side: :right}
+Left: []
+Right: [{29, 13}]
+
+Node ID: {17, 364}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 364}, value: "You can combine these in other ways taking into account that more specific scopes takes precedence:", parent: {17, 363}, side: :right}
+Left: []
+Right: [{17, 365}]
+
+Node ID: {22, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 6}, value: "We also need people to test out pull requests. So take a look through [the open issues](https://github.com/ohmyzsh/ohmyzsh/issues) and help where you can.", parent: {17, 300}, side: :left}
+Left: []
+Right: []
+
+Node ID: {19, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {19, 0}, value: "### FAQ", parent: {17, 91}, side: :left}
+Left: [{17, 305}]
+Right: [{19, 1}]
+
+Node ID: {17, 86}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 86}, value: :tombstone, parent: {17, 85}, side: :right}
+Left: []
+Right: [{17, 87}]
+
+Node ID: {17, 276}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 276}, value: "REPO=apjanke/oh-my-zsh BRANCH=edge sh install.sh", parent: {17, 275}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 82}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 82}, value: "", parent: {17, 81}, side: :right}
+Left: []
+Right: [{17, 83}]
+
+Node ID: {17, 60}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 60}, value: "", parent: {17, 59}, side: :right}
+Left: []
+Right: [{17, 61}]
+
+Node ID: {29, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 15}, value: "| LCARS          |   🛸    |", parent: {29, 14}, side: :right}
+Left: []
+Right: [{29, 16}]
+
+Node ID: {17, 28}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 28}, value: :tombstone, parent: {17, 27}, side: :right}
+Left: [{17, 290}]
+Right: [{17, 29}]
+
+Node ID: {29, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 17}, value: "| macOS          |   ✅    |", parent: {29, 16}, side: :right}
+Left: []
+Right: [{29, 18}]
+
+Node ID: {17, 187}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 187}, value: "", parent: {17, 186}, side: :right}
+Left: []
+Right: [{17, 188}]
+
+Node ID: {8, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {8, 0}, value: :tombstone, parent: {17, 114}, side: :left}
+Left: [{17, 299}]
+Right: []
+
+Node ID: {29, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 8}, value: "  - [Updates Verbosity](#updates-verbosity)", parent: {17, 342}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 77}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 77}, value: :tombstone, parent: {17, 76}, side: :right}
+Left: [{26, 2}]
+Right: [{17, 78}]
+
+Node ID: {17, 323}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 323}, value: :tombstone, parent: {17, 322}, side: :right}
+Left: [{17, 337}]
+Right: [{17, 324}]
+
+Node ID: {17, 230}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 230}, value: "then running it:", parent: {17, 229}, side: :right}
+Left: []
+Right: [{17, 231}]
+
+Node ID: {4, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 1}, value: :tombstone, parent: {17, 343}, side: :left}
+Left: [{4, 14}]
+Right: [{4, 2}]
+
+Node ID: {17, 336}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 336}, value: "- [Discord](https://discord.gg/ohmyzsh) to chat with us!", parent: {17, 335}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 103}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 103}, value: :tombstone, parent: {17, 102}, side: :right}
+Left: [{17, 239}]
+Right: [{17, 104}]
+
+Node ID: {17, 243}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 243}, value: :tombstone, parent: {17, 242}, side: :right}
+Left: [{11, 8}]
+Right: [{17, 244}]
+
+Node ID: {17, 389}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 389}, value: "", parent: {17, 388}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 341}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 341}, value: :tombstone, parent: {3, 22}, side: :left}
+Left: [{4, 0}]
+Right: []
+
+Node ID: {3, 27}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 27}, value: "- [Contributors](#contributors)", parent: {3, 26}, side: :right}
+Left: []
+Right: [{3, 28}]
+
+Node ID: {17, 81}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 81}, value: :tombstone, parent: {17, 80}, side: :right}
+Left: [{17, 296}]
+Right: [{17, 82}]
+
+Node ID: {17, 233}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 233}, value: :tombstone, parent: {17, 232}, side: :right}
+Left: [{17, 292}]
+Right: [{17, 234}]
+
+Node ID: {17, 273}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 273}, value: "For example:", parent: {17, 272}, side: :right}
+Left: []
+Right: [{17, 274}]
+
+Node ID: {17, 386}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 386}, value: "", parent: {17, 385}, side: :right}
+Left: []
+Right: [{17, 387}]
+
+Node ID: {17, 124}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 124}, value: "", parent: {17, 123}, side: :right}
+Left: []
+Right: [{17, 125}]
+
+Node ID: {17, 210}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 210}, value: "## License", parent: {17, 209}, side: :right}
+Left: []
+Right: [{17, 211}]
+
+Node ID: {22, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 0}, value: "_Note that any previous `.zshrc` will be renamed to `.zshrc.pre-oh-my-zsh`. After installation, you can move the configuration you want to preserve into the new `.zshrc`._", parent: {11, 41}, side: :left}
+Left: [{22, 7}]
+Right: []
+
+Node ID: {17, 194}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 194}, value: :tombstone, parent: {17, 193}, side: :right}
+Left: [{17, 301}]
+Right: [{17, 195}]
+
+Node ID: {17, 325}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 325}, value: "| **wget**  | `sh -c \"$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\"`   |", parent: {17, 324}, side: :right}
+Left: []
+Right: [{17, 326}]
+
+Node ID: {17, 184}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 184}, value: "If you want to uninstall `oh-my-zsh`, just run `uninstall_oh_my_zsh` from the command-line. It will remove itself and revert your previous `bash` or `zsh` configuration.", parent: {17, 183}, side: :right}
+Left: []
+Right: [{17, 185}]
+
+Node ID: {17, 362}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 362}, value: "```", parent: {17, 361}, side: :right}
+Left: []
+Right: [{17, 363}]
+
+Node ID: {17, 122}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 122}, value: "", parent: {17, 121}, side: :right}
+Left: []
+Right: [{17, 123}]
+
+Node ID: {17, 216}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 216}, value: :tombstone, parent: {17, 215}, side: :right}
+Left: []
+Right: []
+
+Node ID: {25, 47}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 47}, value: "We have [stickers, shirts, and coffee mugs available](https://shop.planetargon.com/collections/oh-my-zsh?utm_source=github) for you to show off your love of Oh My Zsh. Again, you will become the talk of the town!", parent: {17, 222}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 71}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 71}, value: "To use a different theme, simply change the value to match the name of your desired theme. For example:", parent: {17, 70}, side: :right}
+Left: []
+Right: [{17, 72}]
+
+Node ID: {17, 130}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 130}, value: "", parent: {17, 129}, side: :right}
+Left: []
+Right: [{17, 131}]
+
+Node ID: {16, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 7}, value: :tombstone, parent: {17, 55}, side: :left}
+Left: [{0, 0}]
+Right: []
+
+Node ID: {17, 152}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 152}, value: "If you have many functions that go well together, you can put them as a `XYZ.plugin.zsh` file in the `custom/plugins/` directory and then enable this plugin.", parent: {17, 151}, side: :right}
+Left: []
+Right: [{17, 153}]
+
+Node ID: {17, 131}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 131}, value: :tombstone, parent: {17, 130}, side: :right}
+Left: [{3, 40}]
+Right: [{17, 132}]
+
+Node ID: {25, 26}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 26}, value: "  \"agnoster\"", parent: {25, 25}, side: :right}
+Left: []
+Right: [{25, 27}]
+
+Node ID: {17, 106}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 106}, value: :tombstone, parent: {17, 105}, side: :right}
+Left: [{17, 252}]
+Right: [{17, 107}]
+
+Node ID: {25, 59}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 59}, value: "Oh My Zsh was started by the team at [Planet Argon](https://www.planetargon.com/?utm_source=github), a [Ruby on Rails development agency](http://www.planetargon.com/services/ruby-on-rails-development?utm_source=github). Check out our [other open source projects](https://www.planetargon.com/open-source?utm_source=github).", parent: {25, 46}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 161}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 161}, value: :tombstone, parent: {17, 160}, side: :right}
+Left: []
+Right: [{17, 162}]
+
+Node ID: {29, 21}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 21}, value: "#### Selecting A Theme", parent: {17, 61}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 18}, value: "   ```sh", parent: {11, 17}, side: :right}
+Left: []
+Right: [{11, 19}]
+
+Node ID: {17, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 20}, value: "", parent: {17, 19}, side: :right}
+Left: []
+Right: [{17, 21}]
+
+Node ID: {6, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {6, 0}, value: :tombstone, parent: {26, 2}, side: :left}
+Left: [{22, 2}]
+Right: [{6, 1}]
+
+Node ID: {3, 41}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 41}, value: :tombstone, parent: {17, 137}, side: :left}
+Left: [{29, 28}]
+Right: []
+
+Node ID: {11, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 4}, value: "```sh", parent: {17, 73}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 139}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 139}, value: "Once you open up a new terminal window, it should load zsh with Oh My Zsh's configuration.", parent: {17, 138}, side: :right}
+Left: []
+Right: [{17, 140}]
+
+Node ID: {17, 185}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 185}, value: "", parent: {17, 184}, side: :right}
+Left: []
+Right: [{17, 186}]
+
+Node ID: {17, 74}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 74}, value: :tombstone, parent: {17, 73}, side: :right}
+Left: [{28, 0}]
+Right: [{17, 75}]
+
+Node ID: {16, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 6}, value: "_Note that the plugins are separated by whitespace (spaces, tabs, new lines...). **Do not** use commas between them or it will break._", parent: {17, 235}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 286}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 286}, value: :tombstone, parent: {17, 218}, side: :left}
+Left: []
+Right: [{17, 287}]
+
+Node ID: {17, 75}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 75}, value: "```", parent: {17, 74}, side: :right}
+Left: []
+Right: [{17, 76}]
+
+Node ID: {17, 159}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 159}, value: "", parent: {17, 158}, side: :right}
+Left: []
+Right: [{17, 160}]
+
+Node ID: {13, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 4}, value: "```sh", parent: {13, 3}, side: :right}
+Left: []
+Right: [{13, 5}]
+
+Node ID: {25, 30}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 30}, value: :tombstone, parent: {27, 1}, side: :left}
+Left: [{11, 1}]
+Right: [{25, 31}]
+
+Node ID: {11, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 16}, value: "1. Automatic update without confirmation prompt:", parent: {17, 160}, side: :left}
+Left: []
+Right: [{11, 17}]
+
+Node ID: {3, 39}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 39}, value: :tombstone, parent: {17, 123}, side: :left}
+Left: [{29, 26}]
+Right: []
+
+Node ID: {3, 25}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 25}, value: :tombstone, parent: {3, 24}, side: :right}
+Left: [{29, 9}]
+Right: [{3, 26}]
+
+Node ID: {17, 54}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 54}, value: "", parent: {17, 53}, side: :right}
+Left: []
+Right: [{17, 55}]
+
+Node ID: {17, 172}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 172}, value: :tombstone, parent: {17, 171}, side: :right}
+Left: [{11, 39}]
+Right: [{17, 173}]
+
+Node ID: {11, 21}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 21}, value: "", parent: {11, 20}, side: :right}
+Left: []
+Right: [{11, 22}]
+
+Node ID: {11, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 6}, value: "```sh", parent: {25, 23}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 353}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 353}, value: "# Skip all aliases in lib files", parent: {17, 352}, side: :right}
+Left: []
+Right: [{17, 354}]
+
+Node ID: {17, 229}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 229}, value: "that by downloading the install script first, looking through it so everything looks normal,", parent: {17, 228}, side: :right}
+Left: []
+Right: [{17, 230}]
+
+Node ID: {17, 91}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 91}, value: "## Advanced Topics", parent: {17, 90}, side: :right}
+Left: [{19, 0}]
+Right: [{17, 92}]
+
+Node ID: {17, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 9}, value: "", parent: {17, 8}, side: :right}
+Left: []
+Right: [{17, 10}]
+
+Node ID: {9, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {9, 1}, value: "![Planet Argon](https://pa-github-assets.s3.amazonaws.com/PARGON_logo_digital_COL-small.jpg)", parent: {25, 3}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 312}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 312}, value: "If you only know which themes you don't like, you can add them similarly to an ignored list:", parent: {17, 305}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 45}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 45}, value: "Magic! 🎉", parent: {17, 178}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 36}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 36}, value: "", parent: {17, 35}, side: :right}
+Left: []
+Right: [{17, 37}]
+
+Node ID: {17, 102}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 102}, value: "", parent: {17, 101}, side: :right}
+Left: []
+Right: [{17, 103}]
+
+Node ID: {17, 294}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 294}, value: :tombstone, parent: {2, 0}, side: :left}
+Left: [{16, 8}]
+Right: []
+
+Node ID: {4, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 9}, value: "```zsh", parent: {4, 8}, side: :right}
+Left: []
+Right: [{4, 10}]
+
+Node ID: {17, 264}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 264}, value: "  clone. You can use this setting if you want to install from a fork that is not on GitHub (GitLab,", parent: {17, 263}, side: :right}
+Left: []
+Right: [{17, 265}]
+
+Node ID: {17, 48}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 48}, value: "", parent: {17, 47}, side: :right}
+Left: []
+Right: [{17, 49}]
+
+Node ID: {17, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 1}, value: :tombstone, parent: {17, 0}, side: :right}
+Left: []
+Right: [{17, 2}]
+
+Node ID: {17, 168}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 168}, value: "```", parent: {17, 167}, side: :right}
+Left: []
+Right: [{17, 169}]
+
+Node ID: {3, 29}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 29}, value: "- [Merchandise](#merchandise)", parent: {3, 28}, side: :right}
+Left: []
+Right: [{3, 30}]
+
+Node ID: {25, 25}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 25}, value: "  \"robbyrussell\"", parent: {25, 24}, side: :right}
+Left: []
+Right: [{25, 26}]
+
+Node ID: {17, 90}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 90}, value: "", parent: {17, 89}, side: :right}
+Left: [{25, 21}]
+Right: [{17, 91}]
+
+Node ID: {3, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 0}, value: "<details>", parent: {17, 10}, side: :left}
+Left: []
+Right: [{3, 1}]
+
+Node ID: {17, 344}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 344}, value: "<a name=\"remove-directories-aliases\"></a>", parent: {12, 2}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 9}, value: "", parent: {25, 8}, side: :right}
+Left: []
+Right: [{25, 10}]
+
+Node ID: {17, 335}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 335}, value: "- [Instagram](https://www.instagram.com/_ohmyzsh/) tag us in your post showing Oh My Zsh!", parent: {17, 334}, side: :right}
+Left: []
+Right: [{17, 336}]
+
+Node ID: {17, 303}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 303}, value: "[![CI](https://github.com/ohmyzsh/ohmyzsh/workflows/CI/badge.svg)](https://github.com/ohmyzsh/ohmyzsh/actions?query=workflow%3ACI)", parent: {17, 302}, side: :left}
+Left: []
+Right: [{25, 60}]
+
+Node ID: {3, 28}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 28}, value: "- [Follow Us](#follow-us)", parent: {3, 27}, side: :right}
+Left: []
+Right: [{3, 29}]
+
+Node ID: {17, 226}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 226}, value: :tombstone, parent: {17, 225}, side: :right}
+Left: [{1, 0}]
+Right: [{17, 227}]
+
+Node ID: {17, 247}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 247}, value: :tombstone, parent: {17, 246}, side: :right}
+Left: [{29, 22}]
+Right: [{17, 248}]
+
+Node ID: {17, 350}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 350}, value: "# Skip all aliases, in lib files and enabled plugins", parent: {17, 349}, side: :right}
+Left: []
+Right: [{17, 351}]
+
+Node ID: {13, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 5}, value: "zstyle ':omz:update' verbose default # default update prompt", parent: {13, 4}, side: :right}
+Left: []
+Right: [{13, 6}]
+
+Node ID: {13, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 7}, value: "zstyle ':omz:update' verbose minimal # only few lines", parent: {13, 6}, side: :right}
+Left: []
+Right: [{13, 8}]
+
+Node ID: {17, 217}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 217}, value: :tombstone, parent: {5, 1}, side: :left}
+Left: []
+Right: [{17, 220}]
+
+Node ID: {3, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 3}, value: "- [Getting Started](#getting-started)", parent: {3, 2}, side: :right}
+Left: []
+Right: [{3, 4}]
+
+Node ID: {11, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 20}, value: "   ```", parent: {11, 19}, side: :right}
+Left: []
+Right: [{11, 21}]
+
+Node ID: {11, 31}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 31}, value: "   zstyle ':omz:update' mode disabled", parent: {11, 30}, side: :right}
+Left: []
+Right: [{11, 32}]
+
+Node ID: {25, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 8}, value: :tombstone, parent: {17, 6}, side: :left}
+Left: [{25, 19}]
+Right: [{25, 9}]
+
+Node ID: {17, 254}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 254}, value: "```", parent: {17, 253}, side: :right}
+Left: []
+Right: [{17, 255}]
+
+Node ID: {17, 265}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 265}, value: "  Bitbucket...) or if you want to clone with SSH instead of HTTPS (`git@github.com:user/project.git`).", parent: {17, 264}, side: :right}
+Left: []
+Right: [{17, 266}]
+
+Node ID: {17, 95}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 95}, value: "### Advanced Installation", parent: {17, 94}, side: :right}
+Left: []
+Right: [{17, 96}]
+
+Node ID: {17, 98}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 98}, value: "", parent: {17, 97}, side: :right}
+Left: []
+Right: [{17, 99}]
+
+Node ID: {4, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 7}, value: :tombstone, parent: {4, 6}, side: :right}
+Left: []
+Right: [{4, 8}]
+
+Node ID: {17, 293}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 293}, value: :tombstone, parent: {10, 0}, side: :left}
+Left: [{16, 5}]
+Right: []
+
+Node ID: {17, 123}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 123}, value: :tombstone, parent: {17, 122}, side: :right}
+Left: [{3, 39}]
+Right: [{17, 124}]
+
+Node ID: {17, 157}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 157}, value: "", parent: {17, 156}, side: :right}
+Left: []
+Right: [{17, 158}]
+
+Node ID: {29, 30}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 30}, value: "### Enable GNU ls In macOS And freeBSD Systems", parent: {4, 14}, side: :left}
+Left: []
+Right: []
+
+Node ID: {22, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 14}, value: "", parent: {22, 13}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 78}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 78}, value: "", parent: {17, 77}, side: :right}
+Left: []
+Right: [{17, 79}]
+
+Node ID: {17, 252}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 252}, value: :tombstone, parent: {17, 106}, side: :left}
+Left: [{18, 0}]
+Right: [{17, 253}]
+
+Node ID: {17, 236}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 236}, value: "", parent: {17, 235}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 201}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 201}, value: "", parent: {17, 200}, side: :right}
+Left: []
+Right: [{17, 202}]
+
+Node ID: {17, 175}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 175}, value: :tombstone, parent: {17, 174}, side: :right}
+Left: [{15, 0}]
+Right: [{17, 176}]
+
+Node ID: {3, 22}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 22}, value: "- [Getting Updates](#getting-updates)", parent: {3, 21}, side: :right}
+Left: [{17, 341}]
+Right: [{3, 23}]
+
+Node ID: {17, 56}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 56}, value: "", parent: {17, 55}, side: :right}
+Left: []
+Right: [{17, 57}]
+
+Node ID: {3, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 10}, value: "    - [Using Plugins](#using-plugins)", parent: {3, 9}, side: :right}
+Left: []
+Right: [{3, 11}]
+
+Node ID: {17, 342}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 342}, value: :tombstone, parent: {3, 23}, side: :left}
+Left: [{29, 8}]
+Right: []
+
+Node ID: {25, 42}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 42}, value: "  ruby", parent: {25, 41}, side: :right}
+Left: []
+Right: [{25, 43}]
+
+Node ID: {17, 52}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 52}, value: "", parent: {17, 51}, side: :right}
+Left: []
+Right: [{17, 53}]
+
+Node ID: {17, 332}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 332}, value: "We're on social media:", parent: {26, 4}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 182}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 182}, value: "Oh My Zsh isn't for everyone. We'll miss you, but we want to make this an easy breakup.", parent: {17, 181}, side: :right}
+Left: []
+Right: [{17, 183}]
+
+Node ID: {11, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 0}, value: "```sh", parent: {17, 232}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 26}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 26}, value: :tombstone, parent: {3, 25}, side: :right}
+Left: []
+Right: [{3, 27}]
+
+Node ID: {11, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 17}, value: "", parent: {11, 16}, side: :right}
+Left: []
+Right: [{11, 18}]
+
+Node ID: {7, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {7, 0}, value: "zstyle ':omz:lib:theme-and-appearance' gnu-ls yes", parent: {4, 10}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 237}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 237}, value: "Some users may want to manually install Oh My Zsh, or change the default path or other settings that", parent: {17, 97}, side: :left}
+Left: []
+Right: [{17, 238}]
+
+Node ID: {3, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 19}, value: "    - [Manual Installation](#manual-installation)", parent: {3, 18}, side: :right}
+Left: []
+Right: [{3, 20}]
+
+Node ID: {17, 64}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 64}, value: "", parent: {17, 63}, side: :right}
+Left: []
+Right: [{17, 65}]
+
+Node ID: {4, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 16}, value: "The default behaviour in Oh My Zsh is to use BSD `ls` in macOS and freeBSD systems. If GNU `ls` is installed", parent: {4, 5}, side: :left}
+Left: []
+Right: [{4, 17}]
+
+Node ID: {25, 27}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 27}, value: ")", parent: {25, 26}, side: :right}
+Left: []
+Right: [{25, 28}]
+
+Node ID: {11, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 9}, value: "```sh", parent: {17, 105}, side: :left}
+Left: []
+Right: []
+
+Node ID: {22, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 7}, value: "Alternatively, the installer is also mirrored outside GitHub. Using this URL instead may be required if you're in a country like India or China, that blocks `raw.githubusercontent.com`:", parent: {22, 0}, side: :left}
+Left: []
+Right: [{22, 8}]
+
+Node ID: {17, 348}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 348}, value: "", parent: {17, 347}, side: :right}
+Left: []
+Right: [{17, 349}]
+
+Node ID: {3, 43}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 43}, value: "- If you installed manually or changed the install location, check the `ZSH` environment variable in `~/.zshrc`.", parent: {3, 42}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 253}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 253}, value: :tombstone, parent: {17, 252}, side: :right}
+Left: []
+Right: [{17, 254}]
+
+Node ID: {17, 190}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 190}, value: :tombstone, parent: {17, 189}, side: :right}
+Left: [{17, 300}]
+Right: [{17, 191}]
+
+Node ID: {17, 170}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 170}, value: "### Manual Updates", parent: {17, 169}, side: :right}
+Left: [{13, 0}]
+Right: [{17, 171}]
+
+Node ID: {17, 84}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 84}, value: "", parent: {17, 83}, side: :right}
+Left: []
+Right: [{17, 85}]
+
+Node ID: {17, 255}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 255}, value: "", parent: {17, 254}, side: :right}
+Left: []
+Right: [{17, 256}]
+
+Node ID: {-1, -1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {-1, -1}, value: :tombstone, parent: {-1, -11}, side: nil}
+Left: []
+Right: [{17, 0}]
+
+Node ID: {17, 320}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 320}, value: "- `git` should be installed (recommended v2.4.11 or higher)", parent: {17, 319}, side: :right}
+Left: []
+Right: []
+
+Node ID: {11, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 7}, value: "```sh", parent: {17, 307}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 40}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 40}, value: "```sh", parent: {17, 174}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 326}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 326}, value: "| **fetch** | `sh -c \"$(fetch -o - https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\"` |", parent: {17, 325}, side: :right}
+Left: []
+Right: []
+
+Node ID: {25, 24}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 24}, value: :tombstone, parent: {25, 23}, side: :right}
+Left: [{21, 0}]
+Right: [{25, 25}]
+
+Node ID: {17, 109}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 109}, value: "#### Manual Installation", parent: {17, 108}, side: :right}
+Left: []
+Right: [{17, 110}]
+
+Node ID: {17, 62}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 62}, value: "", parent: {17, 61}, side: :right}
+Left: []
+Right: [{17, 63}]
+
+Node ID: {17, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 13}, value: "", parent: {17, 12}, side: :right}
+Left: []
+Right: [{17, 14}]
+
+Node ID: {12, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 2}, value: :tombstone, parent: {12, 1}, side: :right}
+Left: [{17, 344}]
+Right: [{12, 3}]
+
+Node ID: {17, 41}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 41}, value: :tombstone, parent: {17, 40}, side: :right}
+Left: [{10, 0}]
+Right: [{17, 42}]
+
+Node ID: {25, 74}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 74}, value: "", parent: {25, 73}, side: :right}
+Left: []
+Right: []
+
+Node ID: {16, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 5}, value: "Oh My Zsh comes with a shitload of plugins for you to take advantage of. You can take a look in the [plugins](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins) directory and/or the [wiki](https://github.com/ohmyzsh/ohmyzsh/wiki/Plugins) to see what's currently available.", parent: {17, 293}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 119}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 119}, value: :tombstone, parent: {17, 118}, side: :right}
+Left: [{11, 12}]
+Right: [{17, 120}]
+
+Node ID: {20, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {20, 0}, value: :tombstone, parent: {25, 56}, side: :left}
+Left: [{17, 302}]
+Right: []
+
+Node ID: {17, 278}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 278}, value: "", parent: {23, 0}, side: :left}
+Left: []
+Right: [{17, 279}]
+
+Node ID: {17, 239}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 239}, value: "If you'd like to change the install directory with the `ZSH` environment variable, either by running", parent: {17, 103}, side: :left}
+Left: []
+Right: [{17, 240}]
+
+Node ID: {17, 160}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 160}, value: :tombstone, parent: {17, 159}, side: :right}
+Left: [{11, 16}]
+Right: [{17, 161}]
+
+Node ID: {26, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {26, 3}, value: "You can create a new zsh config file by copying the template that we have included for you.", parent: {17, 125}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 38}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 38}, value: :tombstone, parent: {17, 329}, side: :left}
+Left: [{29, 25}]
+Right: []
+
+Node ID: {17, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 8}, value: :tombstone, parent: {17, 7}, side: :right}
+Left: [{17, 219}]
+Right: [{17, 9}]
+
+Node ID: {25, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 7}, value: :tombstone, parent: {17, 4}, side: :left}
+Left: [{17, 218}]
+Right: []
+
+Node ID: {17, 285}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 285}, value: :tombstone, parent: {17, 284}, side: :right}
+Left: [{17, 289}]
+Right: []
+
+Node ID: {17, 121}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 121}, value: "```", parent: {17, 120}, side: :right}
+Left: []
+Right: [{17, 122}]
+
+Node ID: {25, 57}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 57}, value: :tombstone, parent: {25, 56}, side: :right}
+Left: [{17, 311}]
+Right: []
+
+Node ID: {17, 181}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 181}, value: "", parent: {17, 180}, side: :right}
+Left: []
+Right: [{17, 182}]
+
+Node ID: {29, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 7}, value: "  - [Skip Aliases](#skip-aliases)", parent: {29, 6}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 305}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 305}, value: :tombstone, parent: {19, 0}, side: :left}
+Left: [{17, 312}]
+Right: [{17, 306}]
+
+Node ID: {17, 298}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 298}, value: "- `REPO` (default: `ohmyzsh/ohmyzsh`): this takes the form of `owner/repository`. If you set", parent: {17, 260}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 4}, value: "  - [Prerequisites](#prerequisites)", parent: {3, 3}, side: :right}
+Left: [{29, 0}]
+Right: [{3, 5}]
+
+Node ID: {3, 31}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 31}, value: "- [About Planet Argon](#about-planet-argon)", parent: {3, 30}, side: :right}
+Left: []
+Right: [{3, 32}]
+
+Node ID: {17, 346}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 346}, value: "you can use the settings below in your `~/.zshrc` file, **before Oh My Zsh is loaded**. Note that", parent: {17, 345}, side: :right}
+Left: []
+Right: [{17, 347}]
+
+Node ID: {17, 179}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 179}, value: "", parent: {17, 178}, side: :right}
+Left: []
+Right: [{17, 180}]
+
+Node ID: {17, 195}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 195}, value: "", parent: {17, 194}, side: :right}
+Left: []
+Right: [{17, 196}]
+
+Node ID: {17, 343}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 343}, value: :tombstone, parent: {12, 0}, side: :left}
+Left: [{4, 1}]
+Right: []
+
+Node ID: {11, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 10}, value: "```sh", parent: {17, 275}, side: :left}
+Left: []
+Right: []
+
+Node ID: {12, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 5}, value: "", parent: {12, 4}, side: :right}
+Left: []
+Right: [{12, 6}]
+
+Node ID: {17, 92}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 92}, value: "", parent: {17, 91}, side: :right}
+Left: []
+Right: [{17, 93}]
+
+Node ID: {17, 354}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 354}, value: "zstyle ':omz:lib:*' aliases no", parent: {17, 353}, side: :right}
+Left: []
+Right: [{17, 355}]
+
+Node ID: {17, 101}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 101}, value: :tombstone, parent: {17, 100}, side: :right}
+Left: [{16, 9}]
+Right: [{17, 102}]
+
+Node ID: {17, 94}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 94}, value: "", parent: {17, 93}, side: :right}
+Left: []
+Right: [{17, 95}]
+
+Node ID: {17, 315}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 315}, value: "**Oh My Zsh will not make you a 10x developer...but you may feel like one.**", parent: {25, 53}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 26}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 26}, value: :tombstone, parent: {17, 25}, side: :right}
+Left: []
+Right: [{17, 27}]
+
+Node ID: {17, 331}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 331}, value: :tombstone, parent: {17, 282}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 261}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 261}, value: "  this variable, the installer will look for a repository at `https://github.com/{owner}/{repository}`.", parent: {17, 260}, side: :right}
+Left: []
+Right: [{17, 262}]
+
+Node ID: {25, 58}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 58}, value: "<p align=\"center\"><img src=\"https://ohmyzsh.s3.amazonaws.com/omz-ansi-github.png\" alt=\"Oh My Zsh\"></p>", parent: {17, 338}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 53}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 53}, value: "#### Using Plugins", parent: {17, 52}, side: :right}
+Left: [{17, 235}]
+Right: [{17, 54}]
+
+Node ID: {17, 188}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 188}, value: :tombstone, parent: {17, 187}, side: :right}
+Left: [{17, 221}]
+Right: [{17, 189}]
+
+Node ID: {17, 295}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 295}, value: "# see https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#agnoster", parent: {17, 215}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 370}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 370}, value: "```", parent: {17, 369}, side: :right}
+Left: []
+Right: [{17, 371}]
+
+Node ID: {29, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 16}, value: "| Linux          |   ✅    |", parent: {29, 15}, side: :right}
+Left: []
+Right: [{29, 17}]
+
+Node ID: {17, 21}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 21}, value: "### Basic Installation", parent: {17, 20}, side: :right}
+Left: []
+Right: [{17, 22}]
+
+Node ID: {11, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 1}, value: "```sh", parent: {25, 30}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 174}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 174}, value: :tombstone, parent: {17, 173}, side: :right}
+Left: [{11, 40}]
+Right: [{17, 175}]
+
+Node ID: {25, 23}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 23}, value: :tombstone, parent: {25, 22}, side: :right}
+Left: [{11, 6}]
+Right: [{25, 24}]
+
+Node ID: {17, 371}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 371}, value: "", parent: {17, 370}, side: :right}
+Left: []
+Right: [{17, 372}]
+
+Node ID: {11, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 12}, value: "```sh", parent: {17, 119}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 56}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 56}, value: :tombstone, parent: {25, 55}, side: :right}
+Left: [{20, 0}]
+Right: [{25, 57}]
+
+Node ID: {17, 280}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 280}, value: :tombstone, parent: {17, 145}, side: :left}
+Left: [{17, 330}]
+Right: [{17, 281}]
+
+Node ID: {29, 27}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 27}, value: "##### 4. Change Your Default Shell <!-- omit in toc -->", parent: {3, 40}, side: :left}
+Left: []
+Right: []
+
+Node ID: {13, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 9}, value: "zstyle ':omz:update' verbose silent # only errors", parent: {13, 8}, side: :right}
+Left: []
+Right: [{13, 10}]
+
+Node ID: {25, 35}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 35}, value: "plugins=(", parent: {17, 50}, side: :left}
+Left: []
+Right: [{25, 36}]
+
+Node ID: {17, 379}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 379}, value: "```", parent: {17, 378}, side: :right}
+Left: []
+Right: [{17, 380}]
+
+Node ID: {17, 360}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 360}, value: "# Skip only the aliases from the git plugin", parent: {17, 359}, side: :right}
+Left: []
+Right: [{17, 361}]
+
+Node ID: {17, 306}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 306}, value: "", parent: {17, 305}, side: :right}
+Left: []
+Right: [{17, 307}]
+
+Node ID: {17, 65}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 65}, value: :tombstone, parent: {17, 64}, side: :right}
+Left: [{25, 44}]
+Right: [{17, 66}]
+
+Node ID: {17, 178}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 178}, value: :tombstone, parent: {17, 177}, side: :right}
+Left: [{25, 45}]
+Right: [{17, 179}]
+
+Node ID: {22, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 18}, value: "", parent: {22, 17}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 79}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 79}, value: "![Agnoster theme](https://cloud.githubusercontent.com/assets/2618447/6316862/70f58fb6-ba03-11e4-82c9-c083bf9a6574.png)", parent: {17, 78}, side: :right}
+Left: []
+Right: [{17, 80}]
+
+Node ID: {3, 37}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 37}, value: :tombstone, parent: {17, 328}, side: :left}
+Left: [{29, 24}]
+Right: []
+
+Node ID: {25, 32}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 32}, value: "```", parent: {25, 31}, side: :right}
+Left: []
+Right: [{25, 33}]
+
+Node ID: {17, 300}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 300}, value: :tombstone, parent: {17, 190}, side: :left}
+Left: [{22, 6}]
+Right: []
+
+Node ID: {17, 50}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 50}, value: :tombstone, parent: {17, 49}, side: :right}
+Left: [{25, 35}]
+Right: [{17, 51}]
+
+Node ID: {27, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {27, 1}, value: :tombstone, parent: {17, 47}, side: :left}
+Left: [{25, 30}]
+Right: []
+
+Node ID: {17, 355}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 355}, value: "# Skip only aliases defined in the directories.zsh lib file", parent: {17, 354}, side: :right}
+Left: []
+Right: [{17, 356}]
+
+Node ID: {17, 51}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 51}, value: "```", parent: {17, 50}, side: :right}
+Left: []
+Right: [{17, 52}]
+
+Node ID: {17, 390}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 390}, value: "[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ohmyzsh?label=%40ohmyzsh&logo=x&style=flat)](https://twitter.com/intent/follow?screen_name=ohmyzsh)", parent: {25, 60}, side: :left}
+Left: []
+Right: [{17, 391}]
+
+Node ID: {17, 377}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 377}, value: "```sh", parent: {17, 376}, side: :right}
+Left: []
+Right: [{17, 378}]
+
+Node ID: {13, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 8}, value: "", parent: {13, 7}, side: :right}
+Left: []
+Right: [{13, 9}]
+
+Node ID: {11, 38}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 38}, value: "zstyle ':omz:update' frequency 0", parent: {11, 37}, side: :right}
+Left: []
+Right: []
+
+Node ID: {25, 62}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 62}, value: "### Operating System Compatibility", parent: {17, 12}, side: :left}
+Left: []
+Right: [{25, 63}]
+
+Node ID: {25, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 10}, value: :tombstone, parent: {25, 9}, side: :right}
+Left: [{25, 20}]
+Right: [{25, 11}]
+
+Node ID: {17, 73}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 73}, value: :tombstone, parent: {17, 72}, side: :right}
+Left: [{11, 4}]
+Right: [{17, 74}]
+
+Node ID: {4, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 2}, value: "", parent: {4, 1}, side: :right}
+Left: []
+Right: [{4, 3}]
+
+Node ID: {17, 196}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 196}, value: "## Contributors", parent: {17, 195}, side: :right}
+Left: []
+Right: [{17, 197}]
+
+Node ID: {25, 38}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 38}, value: "  dotenv", parent: {25, 37}, side: :right}
+Left: []
+Right: [{25, 39}]
+
+Node ID: {25, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 16}, value: "", parent: {25, 15}, side: :right}
+Left: []
+Right: [{25, 17}]
+
+Node ID: {21, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {21, 0}, value: "ZSH_THEME_RANDOM_CANDIDATES=(", parent: {25, 24}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 35}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 35}, value: "| :-------- | :------------------------------------------------------------------------------------------------ |", parent: {17, 337}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 29}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 29}, value: "", parent: {11, 28}, side: :right}
+Left: []
+Right: [{11, 30}]
+
+Node ID: {22, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 13}, value: "| **fetch** | `sh -c \"$(fetch -o - https://install.ohmyz.sh/)\"`                                                 |", parent: {22, 12}, side: :right}
+Left: []
+Right: [{22, 14}]
+
+Node ID: {17, 132}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 132}, value: "", parent: {17, 131}, side: :right}
+Left: []
+Right: [{17, 133}]
+
+Node ID: {17, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 6}, value: :tombstone, parent: {17, 5}, side: :right}
+Left: [{25, 8}]
+Right: [{17, 7}]
+
+Node ID: {25, 70}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 70}, value: :tombstone, parent: {25, 69}, side: :right}
+Left: []
+Right: [{25, 71}]
+
+Node ID: {4, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 14}, value: :tombstone, parent: {4, 1}, side: :left}
+Left: [{29, 30}]
+Right: []
+
+Node ID: {17, 100}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 100}, value: "", parent: {17, 99}, side: :right}
+Left: []
+Right: [{17, 101}]
+
+Node ID: {17, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 15}, value: :tombstone, parent: {17, 14}, side: :right}
+Left: []
+Right: [{17, 16}]
+
+Node ID: {17, 257}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 257}, value: "", parent: {17, 256}, side: :right}
+Left: []
+Right: [{17, 258}]
+
+Node ID: {17, 34}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 34}, value: :tombstone, parent: {17, 33}, side: :right}
+Left: [{17, 223}]
+Right: [{17, 35}]
+
+Node ID: {17, 356}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 356}, value: "zstyle ':omz:lib:directories' aliases no", parent: {17, 355}, side: :right}
+Left: []
+Right: [{17, 357}]
+
+Node ID: {25, 22}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 22}, value: "", parent: {25, 21}, side: :right}
+Left: []
+Right: [{25, 23}]
+
+Node ID: {25, 21}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 21}, value: "And if you want to pick random theme from a list of your favorite themes:", parent: {17, 90}, side: :left}
+Left: []
+Right: [{25, 22}]
+
+Node ID: {17, 339}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 339}, value: "[![Gitpod ready](https://img.shields.io/badge/Gitpod-ready-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ohmyzsh/ohmyzsh)", parent: {17, 311}, side: :right}
+Left: []
+Right: [{17, 340}]
+
+Node ID: {17, 352}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 352}, value: "", parent: {17, 351}, side: :right}
+Left: []
+Right: [{17, 353}]
+
+Node ID: {17, 384}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 384}, value: "> It is also not currently compatible with plugin managers such as zpm or zinit, which don't", parent: {17, 383}, side: :right}
+Left: []
+Right: [{17, 385}]
+
+Node ID: {17, 232}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 232}, value: :tombstone, parent: {17, 231}, side: :right}
+Left: [{11, 0}]
+Right: [{17, 233}]
+
+Node ID: {17, 391}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 391}, value: "[![Mastodon Follow](https://img.shields.io/mastodon/follow/111169632522566717?label=%40ohmyzsh&domain=https%3A%2F%2Fmstdn.social&logo=mastodon&style=flat)](https://mstdn.social/@ohmyzsh)", parent: {17, 390}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 141}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 141}, value: "### Installation Problems", parent: {17, 140}, side: :right}
+Left: []
+Right: [{17, 142}]
+
+Node ID: {25, 69}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 69}, value: :tombstone, parent: {25, 68}, side: :right}
+Left: []
+Right: [{25, 70}]
+
+Node ID: {17, 156}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 156}, value: "## Getting Updates", parent: {17, 155}, side: :right}
+Left: [{12, 0}]
+Right: [{17, 157}]
+
+Node ID: {17, 46}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 46}, value: "", parent: {17, 45}, side: :right}
+Left: []
+Right: [{17, 47}]
+
+Node ID: {17, 180}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 180}, value: "## Uninstalling Oh My Zsh", parent: {17, 179}, side: :right}
+Left: []
+Right: [{17, 181}]
+
+Node ID: {25, 52}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 52}, value: "", parent: {25, 51}, side: :right}
+Left: []
+Right: [{29, 34}]
+
+Node ID: {12, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 7}, value: "zstyle ':omz:directories' aliases no", parent: {12, 6}, side: :right}
+Left: []
+Right: [{12, 8}]
+
+Node ID: {29, 23}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 23}, value: "#### Installing From A Forked Repository", parent: {17, 256}, side: :left}
+Left: [{22, 17}]
+Right: []
+
+Node ID: {17, 135}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 135}, value: "```", parent: {17, 134}, side: :right}
+Left: []
+Right: [{17, 136}]
+
+Node ID: {17, 318}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 318}, value: "- [Zsh](https://www.zsh.org) should be installed (v4.3.9 or more recent is fine but we prefer 5.0.8 and newer). If not pre-installed (run `zsh --version` to confirm), check the following wiki instructions here: [Installing ZSH](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)", parent: {17, 317}, side: :right}
+Left: []
+Right: [{17, 319}]
+
+Node ID: {3, 36}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 36}, value: :tombstone, parent: {0, 0}, side: :left}
+Left: [{22, 1}]
+Right: []
+
+Node ID: {17, 167}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 167}, value: :tombstone, parent: {17, 166}, side: :right}
+Left: []
+Right: [{17, 168}]
+
+Node ID: {17, 99}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 99}, value: "#### Custom Directory", parent: {17, 98}, side: :right}
+Left: []
+Right: [{17, 100}]
+
+Node ID: {25, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 2}, value: "", parent: {25, 1}, side: :right}
+Left: []
+Right: [{25, 3}]
+
+Node ID: {11, 33}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 33}, value: "NOTE: you can control how often Oh My Zsh checks for updates with the following setting:", parent: {17, 164}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 14}, value: "```sh", parent: {17, 133}, side: :left}
+Left: []
+Right: []
+
+Node ID: {29, 33}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 33}, value: "## How Do I Contribute To Oh My Zsh?", parent: {25, 48}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 162}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 162}, value: :tombstone, parent: {17, 161}, side: :right}
+Left: []
+Right: [{17, 163}]
+
+Node ID: {29, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 0}, value: "  - [Operating System Compatibility](#operating-system-compatibility)", parent: {3, 4}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 113}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 113}, value: :tombstone, parent: {17, 112}, side: :right}
+Left: [{11, 11}]
+Right: [{17, 114}]
+
+Node ID: {17, 378}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 378}, value: "zstyle ':omz:lib:directories' aliases no", parent: {17, 377}, side: :right}
+Left: []
+Right: [{17, 379}]
+
+Node ID: {17, 150}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 150}, value: "If you want to override any of the default behaviors, just add a new file (ending in `.zsh`) in the `custom/` directory.", parent: {17, 149}, side: :right}
+Left: []
+Right: [{17, 151}]
+
+Node ID: {22, 9}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 9}, value: "| Method    | Command                                                                                           |", parent: {22, 8}, side: :right}
+Left: []
+Right: [{22, 10}]
+
+Node ID: {17, 200}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 200}, value: "Thank you so much!", parent: {17, 199}, side: :right}
+Left: []
+Right: [{17, 201}]
+
+Node ID: {17, 204}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 204}, value: :tombstone, parent: {17, 203}, side: :right}
+Left: [{25, 15}]
+Right: [{17, 205}]
+
+Node ID: {25, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 18}, value: :tombstone, parent: {25, 17}, side: :right}
+Left: [{16, 10}]
+Right: []
+
+Node ID: {1, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 4}, value: :tombstone, parent: {1, 3}, side: :right}
+Left: []
+Right: [{1, 5}]
+
+Node ID: {17, 27}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 27}, value: :tombstone, parent: {17, 26}, side: :right}
+Left: []
+Right: [{17, 28}]
+
+Node ID: {25, 34}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 34}, value: "For example, this might begin to look like this:", parent: {25, 33}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 176}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 176}, value: "```", parent: {17, 175}, side: :right}
+Left: []
+Right: [{17, 177}]
+
+Node ID: {18, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {18, 0}, value: :tombstone, parent: {17, 252}, side: :left}
+Left: [{17, 297}]
+Right: []
+
+Node ID: {22, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 10}, value: "| :-------- | :------------------------------------------------------------------------------------------------ |", parent: {22, 9}, side: :right}
+Left: []
+Right: [{22, 11}]
+
+Node ID: {17, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 2}, value: :tombstone, parent: {17, 1}, side: :right}
+Left: []
+Right: [{17, 3}]
+
+Node ID: {22, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 15}, value: "If the above URL times out or otherwise fails, you may have to substitute the URL for `https://install.ohmyz.sh` to be able to get the script.", parent: {17, 37}, side: :left}
+Left: []
+Right: [{22, 16}]
+
+Node ID: {17, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 12}, value: "### Prerequisites", parent: {17, 11}, side: :right}
+Left: [{25, 62}]
+Right: [{17, 13}]
+
+Node ID: {17, 383}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 383}, value: "> This feature is currently in a testing phase and it may be subject to change in the future.", parent: {17, 382}, side: :right}
+Left: []
+Right: [{17, 384}]
+
+Node ID: {25, 71}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 71}, value: :tombstone, parent: {25, 70}, side: :right}
+Left: []
+Right: [{25, 72}]
+
+Node ID: {17, 225}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 225}, value: :tombstone, parent: {17, 224}, side: :right}
+Left: []
+Right: [{17, 226}]
+
+Node ID: {17, 299}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 299}, value: "git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh", parent: {8, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 20}, value: :tombstone, parent: {25, 10}, side: :left}
+Left: [{25, 53}]
+Right: []
+
+Node ID: {17, 40}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 40}, value: "", parent: {17, 39}, side: :right}
+Left: []
+Right: [{17, 41}]
+
+Node ID: {17, 385}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 385}, value: "> source the init script (`oh-my-zsh.sh`) where this feature is implemented in.", parent: {17, 384}, side: :right}
+Left: []
+Right: [{17, 386}]
+
+Node ID: {17, 31}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 31}, value: :tombstone, parent: {17, 30}, side: :right}
+Left: []
+Right: [{17, 32}]
+
+Node ID: {25, 48}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 48}, value: :tombstone, parent: {17, 186}, side: :left}
+Left: [{29, 33}]
+Right: [{25, 49}]
+
+Node ID: {25, 31}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 31}, value: "vi ~/.zshrc", parent: {25, 30}, side: :right}
+Left: []
+Right: [{25, 32}]
+
+Node ID: {17, 142}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 142}, value: "", parent: {17, 141}, side: :right}
+Left: []
+Right: [{17, 143}]
+
+Node ID: {29, 31}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 31}, value: "### Skip Aliases", parent: {4, 20}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 63}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 63}, value: :tombstone, parent: {17, 62}, side: :right}
+Left: [{26, 1}]
+Right: [{17, 64}]
+
+Node ID: {23, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {23, 0}, value: :tombstone, parent: {17, 136}, side: :left}
+Left: [{17, 278}]
+Right: []
+
+Node ID: {17, 244}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 244}, value: "ZSH=\"$HOME/.dotfiles/oh-my-zsh\" sh install.sh", parent: {17, 243}, side: :right}
+Left: []
+Right: [{17, 245}]
+
+Node ID: {25, 40}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 40}, value: "  rake", parent: {25, 39}, side: :right}
+Left: []
+Right: [{25, 41}]
+
+Node ID: {17, 369}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 369}, value: "zstyle ':omz:plugins:git' aliases yes", parent: {17, 368}, side: :right}
+Left: []
+Right: [{17, 370}]
+
+Node ID: {17, 374}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 374}, value: "```sh", parent: {17, 373}, side: :right}
+Left: []
+Right: []
+
+Node ID: {3, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 20}, value: "  - [Installation Problems](#installation-problems)", parent: {3, 19}, side: :right}
+Left: []
+Right: [{3, 21}]
+
+Node ID: {17, 212}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 212}, value: :tombstone, parent: {17, 211}, side: :right}
+Left: [{17, 213}]
+Right: []
+
+Node ID: {17, 154}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 154}, value: "If you would like to override the functionality of a plugin distributed with Oh My Zsh, create a plugin of the same name in the `custom/plugins/` directory and it will be loaded instead of the one in `plugins/`.", parent: {17, 153}, side: :right}
+Left: []
+Right: [{17, 155}]
+
+Node ID: {11, 41}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 41}, value: :tombstone, parent: {1, 5}, side: :right}
+Left: [{22, 0}]
+Right: [{11, 42}]
+
+Node ID: {12, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 4}, value: :tombstone, parent: {12, 3}, side: :right}
+Left: []
+Right: [{12, 5}]
+
+Node ID: {17, 218}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 218}, value: "Oh My Zsh is an open source, community-driven framework for managing your [zsh](https://www.zsh.org/) configuration.", parent: {25, 7}, side: :left}
+Left: [{17, 286}]
+Right: []
+
+Node ID: {17, 258}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 258}, value: "The install script also accepts these variables to allow installation of a different repository:", parent: {17, 257}, side: :right}
+Left: []
+Right: [{17, 259}]
+
+Node ID: {0, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {0, 0}, value: :tombstone, parent: {16, 7}, side: :left}
+Left: [{3, 36}]
+Right: []
+
+Node ID: {17, 359}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 359}, value: "zstyle ':omz:plugins:*' aliases no", parent: {17, 358}, side: :right}
+Left: []
+Right: [{17, 360}]
+
+Node ID: {17, 302}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 302}, value: :tombstone, parent: {20, 0}, side: :left}
+Left: [{17, 303}]
+Right: []
+
+Node ID: {29, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 1}, value: "    - [Manual Inspection](#manual-inspection)", parent: {3, 6}, side: :left}
+Left: []
+Right: []
+
+Node ID: {4, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 10}, value: :tombstone, parent: {4, 9}, side: :right}
+Left: [{7, 0}]
+Right: [{4, 11}]
+
+Node ID: {4, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 11}, value: "```", parent: {4, 10}, side: :right}
+Left: []
+Right: [{4, 12}]
+
+Node ID: {3, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 11}, value: "  - [Themes](#themes)", parent: {3, 10}, side: :right}
+Left: []
+Right: [{3, 12}]
+
+Node ID: {17, 297}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 297}, value: "sh -c \"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended", parent: {18, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 310}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 310}, value: "", parent: {17, 309}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 220}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 220}, value: :tombstone, parent: {17, 217}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 324}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 324}, value: "| **curl**  | `sh -c \"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\"` |", parent: {17, 323}, side: :right}
+Left: []
+Right: [{17, 325}]
+
+Node ID: {9, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {9, 0}, value: :tombstone, parent: {17, 208}, side: :left}
+Left: [{17, 222}]
+Right: []
+
+Node ID: {17, 207}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 207}, value: "", parent: {17, 206}, side: :right}
+Left: []
+Right: [{17, 208}]
+
+Node ID: {17, 149}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 149}, value: "", parent: {17, 148}, side: :right}
+Left: []
+Right: [{17, 150}]
+
+Node ID: {17, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 14}, value: :tombstone, parent: {17, 13}, side: :right}
+Left: [{5, 0}]
+Right: [{17, 15}]
+
+Node ID: {25, 39}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 39}, value: :tombstone, parent: {25, 38}, side: :right}
+Left: [{14, 0}]
+Right: [{25, 40}]
+
+Node ID: {25, 36}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 36}, value: "  git", parent: {25, 35}, side: :right}
+Left: []
+Right: [{25, 37}]
+
+Node ID: {29, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 5}, value: "  - [Custom Plugins And Themes](#custom-plugins-and-themes)", parent: {3, 21}, side: :left}
+Left: []
+Right: [{29, 6}]
+
+Node ID: {17, 365}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 365}, value: "", parent: {17, 364}, side: :right}
+Left: []
+Right: [{17, 366}]
+
+Node ID: {17, 263}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 263}, value: "- `REMOTE` (default: `https://github.com/${REPO}.git`): this is the full URL of the git repository", parent: {17, 262}, side: :right}
+Left: []
+Right: [{17, 264}]
+
+Node ID: {17, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 10}, value: "## Getting Started", parent: {17, 9}, side: :right}
+Left: [{3, 0}]
+Right: [{17, 11}]
+
+Node ID: {17, 240}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 240}, value: "`export ZSH=/your/path` before installing, or by setting it before the end of the install pipeline", parent: {17, 239}, side: :right}
+Left: []
+Right: [{17, 241}]
+
+Node ID: {17, 177}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 177}, value: "", parent: {17, 176}, side: :right}
+Left: []
+Right: [{17, 178}]
+
+Node ID: {17, 224}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 224}, value: :tombstone, parent: {17, 223}, side: :right}
+Left: []
+Right: [{17, 225}]
+
+Node ID: {29, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 19}, value: "| Windows (WSL2) |   ✅    |", parent: {29, 18}, side: :right}
+Left: []
+Right: []
+
+Node ID: {25, 65}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 65}, value: :tombstone, parent: {25, 64}, side: :right}
+Left: []
+Right: [{25, 66}]
+
+Node ID: {17, 32}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 32}, value: :tombstone, parent: {17, 31}, side: :right}
+Left: []
+Right: [{17, 33}]
+
+Node ID: {17, 228}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 228}, value: "It's a good idea to inspect the install script from projects you don't yet know. You can do", parent: {17, 227}, side: :right}
+Left: []
+Right: [{17, 229}]
+
+Node ID: {22, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 2}, value: "_Note: many themes require installing a [Powerline Font](https://github.com/powerline/fonts) or a [Nerd Font](https://github.com/ryanoasis/nerd-fonts) in order to render properly. Without them, these themes will render [weird prompt symbols](https://github.com/ohmyzsh/ohmyzsh/wiki/FAQ#i-have-a-weird-character-in-my-prompt)_", parent: {6, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 5}, value: "", parent: {17, 4}, side: :right}
+Left: []
+Right: [{17, 6}]
+
+Node ID: {17, 291}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 291}, value: :tombstone, parent: {17, 223}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 173}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 173}, value: "", parent: {17, 172}, side: :right}
+Left: []
+Right: [{17, 174}]
+
+Node ID: {17, 158}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 158}, value: :tombstone, parent: {17, 157}, side: :right}
+Left: [{11, 15}]
+Right: [{17, 159}]
+
+Node ID: {29, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 6}, value: "  - [Enable GNU ls In macOS And freeBSD Systems](#enable-gnu-ls-in-macos-and-freebsd-systems)", parent: {29, 5}, side: :right}
+Left: []
+Right: [{29, 7}]
+
+Node ID: {17, 347}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 347}, value: "there are many different ways to skip aliases, depending on your needs.", parent: {17, 346}, side: :right}
+Left: []
+Right: [{17, 348}]
+
+Node ID: {17, 333}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 333}, value: "- [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter. You should follow it.", parent: {25, 17}, side: :left}
+Left: []
+Right: [{17, 334}]
+
+Node ID: {4, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 6}, value: :tombstone, parent: {4, 5}, side: :right}
+Left: []
+Right: [{4, 7}]
+
+Node ID: {17, 238}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 238}, value: "the installer accepts (these settings are also documented at the top of the install script).", parent: {17, 237}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 349}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 349}, value: "```sh", parent: {17, 348}, side: :right}
+Left: []
+Right: [{17, 350}]
+
+Node ID: {17, 282}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 282}, value: :tombstone, parent: {17, 281}, side: :right}
+Left: [{17, 331}]
+Right: [{17, 283}]
+
+Node ID: {17, 321}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 321}, value: "Oh My Zsh is installed by running one of the following commands in your terminal. You can install this via the command-line with either `curl`, `wget` or another similar tool.", parent: {16, 4}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 89}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 89}, value: "", parent: {17, 88}, side: :right}
+Left: []
+Right: [{17, 90}]
+
+Node ID: {22, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 11}, value: "| **curl**  | `sh -c \"$(curl -fsSL https://install.ohmyz.sh/)\"`                                                 |", parent: {22, 10}, side: :right}
+Left: []
+Right: [{22, 12}]
+
+Node ID: {11, 28}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 28}, value: "3. To disable automatic updates entirely:", parent: {11, 27}, side: :right}
+Left: []
+Right: [{11, 29}]
+
+Node ID: {25, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 6}, value: :tombstone, parent: {25, 5}, side: :left}
+Left: [{25, 46}]
+Right: []
+
+Node ID: {17, 37}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 37}, value: "## Using Oh My Zsh", parent: {17, 36}, side: :right}
+Left: [{22, 15}]
+Right: [{17, 38}]
+
+Node ID: {27, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {27, 0}, value: "Once you spot a plugin (or several) that you'd like to use with Oh My Zsh, you'll need to enable them in the `.zshrc` file. You'll find the zshrc file in your `$HOME` directory. Open it with your favorite text editor and you'll see a spot to list all the plugins you want to load.", parent: {26, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 24}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 24}, value: "   ```sh", parent: {11, 23}, side: :right}
+Left: []
+Right: [{11, 25}]
+
+Node ID: {11, 23}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 23}, value: "", parent: {11, 22}, side: :right}
+Left: []
+Right: [{11, 24}]
+
+Node ID: {17, 72}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 72}, value: "", parent: {17, 71}, side: :right}
+Left: []
+Right: [{17, 73}]
+
+Node ID: {17, 223}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 223}, value: :tombstone, parent: {17, 34}, side: :left}
+Left: [{17, 291}]
+Right: [{17, 224}]
+
+Node ID: {17, 183}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 183}, value: "", parent: {17, 182}, side: :right}
+Left: []
+Right: [{17, 184}]
+
+Node ID: {17, 249}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 249}, value: :tombstone, parent: {17, 248}, side: :right}
+Left: [{22, 3}]
+Right: [{17, 250}]
+
+Node ID: {17, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 17}, value: :tombstone, parent: {17, 16}, side: :right}
+Left: []
+Right: [{17, 18}]
+
+Node ID: {17, 202}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 202}, value: "## Follow Us", parent: {17, 201}, side: :right}
+Left: []
+Right: [{17, 203}]
+
+Node ID: {17, 197}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 197}, value: "", parent: {17, 196}, side: :right}
+Left: []
+Right: [{17, 198}]
+
+Node ID: {2, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {2, 0}, value: :tombstone, parent: {17, 59}, side: :left}
+Left: [{17, 294}]
+Right: []
+
+Node ID: {3, 23}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 23}, value: "  - [Manual Updates](#manual-updates)", parent: {3, 22}, side: :right}
+Left: [{17, 342}]
+Right: [{3, 24}]
+
+Node ID: {17, 351}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 351}, value: "zstyle ':omz:*' aliases no", parent: {17, 350}, side: :right}
+Left: []
+Right: [{17, 352}]
+
+Node ID: {25, 44}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 44}, value: "Once you find a theme that you'd like to use, you will need to edit the `~/.zshrc` file. You'll see an environment variable (all caps) in there that looks like:", parent: {17, 65}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 55}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 55}, value: :tombstone, parent: {17, 54}, side: :right}
+Left: [{16, 7}]
+Right: [{17, 56}]
+
+Node ID: {17, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 3}, value: "", parent: {17, 2}, side: :right}
+Left: []
+Right: [{17, 4}]
+
+Node ID: {25, 67}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 67}, value: :tombstone, parent: {25, 66}, side: :right}
+Left: []
+Right: [{25, 68}]
+
+Node ID: {6, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {6, 1}, value: "", parent: {6, 0}, side: :right}
+Left: []
+Right: []
+
+Node ID: {29, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 11}, value: "| O/S            | Status  |", parent: {25, 64}, side: :left}
+Left: []
+Right: [{29, 12}]
+
+Node ID: {17, 166}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 166}, value: :tombstone, parent: {17, 165}, side: :right}
+Left: [{11, 34}]
+Right: [{17, 167}]
+
+Node ID: {16, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 4}, value: :tombstone, parent: {17, 23}, side: :left}
+Left: [{17, 321}]
+Right: []
+
+Node ID: {25, 33}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 33}, value: "", parent: {25, 32}, side: :right}
+Left: []
+Right: [{25, 34}]
+
+Node ID: {3, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 1}, value: "<summary>Table of Contents</summary>", parent: {3, 0}, side: :right}
+Left: []
+Right: [{3, 2}]
+
+Node ID: {25, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 1}, value: "## About Planet Argon", parent: {25, 0}, side: :right}
+Left: []
+Right: [{25, 2}]
+
+Node ID: {4, 13}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 13}, value: :tombstone, parent: {4, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 222}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 222}, value: :tombstone, parent: {9, 0}, side: :left}
+Left: [{25, 47}]
+Right: []
+
+Node ID: {11, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 5}, value: "```sh", parent: {17, 85}, side: :left}
+Left: []
+Right: []
+
+Node ID: {4, 20}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 20}, value: "", parent: {4, 19}, side: :right}
+Left: []
+Right: [{29, 31}]
+
+Node ID: {22, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 12}, value: "| **wget**  | `sh -c \"$(wget -O- https://install.ohmyz.sh/)\"`                                                   |", parent: {22, 11}, side: :right}
+Left: []
+Right: [{22, 13}]
+
+Node ID: {17, 58}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 58}, value: "", parent: {17, 57}, side: :right}
+Left: []
+Right: [{17, 59}]
+
+Node ID: {17, 198}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 198}, value: "Oh My Zsh has a vibrant community of happy users and delightful contributors. Without all the time and help from our contributors, it wouldn't be so awesome.", parent: {17, 197}, side: :right}
+Left: []
+Right: [{17, 199}]
+
+Node ID: {17, 104}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 104}, value: "", parent: {17, 103}, side: :right}
+Left: []
+Right: [{17, 105}]
+
+Node ID: {17, 283}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 283}, value: :tombstone, parent: {17, 282}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 147}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 147}, value: "", parent: {17, 146}, side: :right}
+Left: []
+Right: [{17, 148}]
+
+Node ID: {17, 284}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 284}, value: :tombstone, parent: {5, 0}, side: :left}
+Left: [{16, 1}]
+Right: [{17, 285}]
+
+Node ID: {17, 296}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 296}, value: "In case you did not find a suitable theme for your needs, please have a look at the wiki for [more of them](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes).", parent: {17, 81}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 127}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 127}, value: :tombstone, parent: {17, 126}, side: :right}
+Left: [{11, 13}]
+Right: [{17, 128}]
+
+Node ID: {11, 30}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 30}, value: "   ```sh", parent: {11, 29}, side: :right}
+Left: []
+Right: [{11, 31}]
+
+Node ID: {17, 42}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 42}, value: "", parent: {17, 41}, side: :right}
+Left: []
+Right: [{17, 43}]
+
+Node ID: {17, 248}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 248}, value: "", parent: {17, 247}, side: :right}
+Left: []
+Right: [{17, 249}]
+
+Node ID: {17, 38}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 38}, value: "", parent: {17, 37}, side: :right}
+Left: []
+Right: [{17, 39}]
+
+Node ID: {17, 281}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 281}, value: :tombstone, parent: {17, 280}, side: :right}
+Left: []
+Right: [{17, 282}]
+
+Node ID: {17, 118}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 118}, value: "", parent: {17, 117}, side: :right}
+Left: []
+Right: [{17, 119}]
+
+Node ID: {17, 313}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 313}, value: "ZSH_THEME_RANDOM_IGNORED=(pygmalion tjkirch_mod)", parent: {17, 308}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 34}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 34}, value: "```sh", parent: {17, 166}, side: :left}
+Left: []
+Right: [{11, 35}]
+
+Node ID: {17, 165}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 165}, value: "", parent: {17, 164}, side: :right}
+Left: []
+Right: [{17, 166}]
+
+Node ID: {17, 126}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 126}, value: "", parent: {17, 125}, side: :right}
+Left: []
+Right: [{17, 127}]
+
+Node ID: {17, 387}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 387}, value: "> It is also not currently aware of \"aliases\" that are defined as functions. Example of such", parent: {17, 386}, side: :right}
+Left: []
+Right: [{17, 388}]
+
+Node ID: {17, 277}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 277}, value: "chsh -s $(which zsh)", parent: {17, 134}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 2}, value: "", parent: {3, 1}, side: :right}
+Left: []
+Right: [{3, 3}]
+
+Node ID: {3, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 14}, value: "- [Advanced Topics](#advanced-topics)", parent: {3, 13}, side: :right}
+Left: []
+Right: [{3, 15}]
+
+Node ID: {17, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 4}, value: :tombstone, parent: {17, 3}, side: :right}
+Left: [{25, 7}]
+Right: [{17, 5}]
+
+Node ID: {17, 213}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 213}, value: "Oh My Zsh is released under the [MIT license](LICENSE.txt).", parent: {17, 212}, side: :left}
+Left: []
+Right: [{25, 0}]
+
+Node ID: {13, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 1}, value: "", parent: {13, 0}, side: :right}
+Left: []
+Right: [{13, 2}]
+
+Node ID: {17, 83}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 83}, value: "If you're feeling feisty, you can let the computer select one randomly for you each time you open a new terminal window.", parent: {17, 82}, side: :right}
+Left: []
+Right: [{17, 84}]
+
+Node ID: {4, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 0}, value: :tombstone, parent: {17, 341}, side: :left}
+Left: [{4, 13}]
+Right: []
+
+Node ID: {25, 28}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 28}, value: "```", parent: {25, 27}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 110}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 110}, value: "", parent: {17, 109}, side: :right}
+Left: []
+Right: [{17, 111}]
+
+Node ID: {24, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {24, 0}, value: "- [Facebook](https://www.facebook.com/Oh-My-Zsh-296616263819290/) poke us.", parent: {17, 334}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 3}, value: :tombstone, parent: {25, 2}, side: :right}
+Left: [{9, 1}]
+Right: [{25, 4}]
+
+Node ID: {28, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {28, 0}, value: :tombstone, parent: {17, 74}, side: :left}
+Left: [{17, 214}]
+Right: [{28, 1}]
+
+Node ID: {22, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 17}, value: "If you're in China, India, or another country that blocks `raw.githubusercontent.com`, you may have to substitute the URL for `https://install.ohmyz.sh` for it to install.", parent: {29, 23}, side: :left}
+Left: []
+Right: [{22, 18}]
+
+Node ID: {17, 35}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 35}, value: "```", parent: {17, 34}, side: :right}
+Left: []
+Right: [{17, 36}]
+
+Node ID: {17, 271}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 271}, value: "  want to use a branch other than `master`.", parent: {17, 270}, side: :right}
+Left: []
+Right: [{17, 272}]
+
+Node ID: {25, 63}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 63}, value: "", parent: {25, 62}, side: :right}
+Left: []
+Right: [{25, 64}]
+
+Node ID: {11, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 3}, value: "```sh", parent: {17, 67}, side: :left}
+Left: []
+Right: []
+
+Node ID: {26, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {26, 0}, value: :tombstone, parent: {17, 45}, side: :left}
+Left: [{27, 0}]
+Right: []
+
+Node ID: {25, 50}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 50}, value: "Before you participate in our delightful community, please read the [code of conduct](CODE_OF_CONDUCT.md).", parent: {25, 49}, side: :right}
+Left: []
+Right: []
+
+Node ID: {22, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 8}, value: "", parent: {22, 7}, side: :right}
+Left: []
+Right: [{22, 9}]
+
+Node ID: {17, 328}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 328}, value: :tombstone, parent: {17, 111}, side: :left}
+Left: [{3, 37}]
+Right: []
+
+Node ID: {5, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {5, 0}, value: :tombstone, parent: {17, 14}, side: :left}
+Left: [{17, 284}]
+Right: []
+
+Node ID: {17, 288}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 288}, value: :tombstone, parent: {17, 287}, side: :left}
+Left: []
+Right: []
+
+Node ID: {13, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 10}, value: "```", parent: {13, 9}, side: :right}
+Left: []
+Right: [{13, 11}]
+
+Node ID: {17, 97}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 97}, value: :tombstone, parent: {17, 96}, side: :right}
+Left: [{17, 237}]
+Right: [{17, 98}]
+
+Node ID: {17, 108}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 108}, value: "", parent: {17, 107}, side: :right}
+Left: []
+Right: [{17, 109}]
+
+Node ID: {13, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 2}, value: "You can also limit the update verbosity with the following settings:", parent: {13, 1}, side: :right}
+Left: []
+Right: [{13, 3}]
+
+Node ID: {16, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 2}, value: :tombstone, parent: {16, 1}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 88}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 88}, value: "```", parent: {17, 87}, side: :right}
+Left: []
+Right: [{17, 89}]
+
+Node ID: {3, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 7}, value: "- [Using Oh My Zsh](#using-oh-my-zsh)", parent: {3, 6}, side: :right}
+Left: []
+Right: [{3, 8}]
+
+Node ID: {29, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 3}, value: "    - [Unattended Install](#unattended-install)", parent: {3, 17}, side: :left}
+Left: []
+Right: [{29, 4}]
+
+Node ID: {17, 23}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 23}, value: :tombstone, parent: {17, 22}, side: :right}
+Left: [{16, 4}]
+Right: [{17, 24}]
+
+Node ID: {29, 32}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 32}, value: "### Updates Verbosity", parent: {13, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 140}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 140}, value: "", parent: {17, 139}, side: :right}
+Left: []
+Right: [{17, 141}]
+
+Node ID: {28, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {28, 2}, value: :tombstone, parent: {28, 1}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 268}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 268}, value: "", parent: {17, 267}, side: :right}
+Left: []
+Right: [{17, 269}]
+
+Node ID: {25, 61}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 61}, value: :tombstone, parent: {25, 60}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 85}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 85}, value: :tombstone, parent: {17, 84}, side: :right}
+Left: [{11, 5}]
+Right: [{17, 86}]
+
+Node ID: {4, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 3}, value: :tombstone, parent: {4, 2}, side: :right}
+Left: [{4, 15}]
+Right: [{4, 4}]
+
+Node ID: {17, 215}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 215}, value: :tombstone, parent: {17, 214}, side: :right}
+Left: [{17, 295}]
+Right: [{17, 216}]
+
+Node ID: {17, 363}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 363}, value: "", parent: {17, 362}, side: :right}
+Left: []
+Right: [{17, 364}]
+
+Node ID: {11, 22}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 22}, value: "2. Just offer a reminder every few days, if there are updates available:", parent: {11, 21}, side: :right}
+Left: []
+Right: [{11, 23}]
+
+Node ID: {22, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 4}, value: "flag to the `install.sh` script. This will have the effect of not trying to change", parent: {22, 3}, side: :right}
+Left: []
+Right: [{22, 5}]
+
+Node ID: {17, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 18}, value: :tombstone, parent: {17, 17}, side: :right}
+Left: []
+Right: [{17, 19}]
+
+Node ID: {25, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 4}, value: "", parent: {25, 3}, side: :right}
+Left: []
+Right: [{25, 5}]
+
+Node ID: {11, 42}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 42}, value: "", parent: {11, 41}, side: :right}
+Left: []
+Right: [{29, 20}]
+
+Node ID: {17, 206}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 206}, value: "## Merchandise", parent: {17, 205}, side: :right}
+Left: []
+Right: [{17, 207}]
+
+Node ID: {25, 73}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 73}, value: "", parent: {25, 72}, side: :right}
+Left: []
+Right: [{25, 74}]
+
+Node ID: {17, 372}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 372}, value: "A previous version of this feature was using the setting below, which has been removed:", parent: {17, 371}, side: :right}
+Left: []
+Right: [{17, 373}]
+
+Node ID: {1, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 1}, value: :tombstone, parent: {1, 0}, side: :right}
+Left: []
+Right: [{1, 2}]
+
+Node ID: {17, 43}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 43}, value: "#### Enabling Plugins", parent: {17, 42}, side: :right}
+Left: []
+Right: [{17, 44}]
+
+Node ID: {17, 337}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 337}, value: :tombstone, parent: {17, 323}, side: :left}
+Left: [{3, 35}]
+Right: []
+
+Node ID: {17, 59}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 59}, value: :tombstone, parent: {17, 58}, side: :right}
+Left: [{2, 0}]
+Right: [{17, 60}]
+
+Node ID: {25, 51}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 51}, value: "See [Contributing](CONTRIBUTING.md) for more details.", parent: {17, 192}, side: :left}
+Left: []
+Right: [{25, 52}]
+
+Node ID: {17, 24}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 24}, value: "", parent: {17, 23}, side: :right}
+Left: []
+Right: [{17, 25}]
+
+Node ID: {25, 54}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 54}, value: :tombstone, parent: {17, 219}, side: :left}
+Left: [{16, 0}]
+Right: [{25, 55}]
+
+Node ID: {17, 245}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 245}, value: "```", parent: {17, 244}, side: :right}
+Left: []
+Right: [{17, 246}]
+
+Node ID: {17, 186}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 186}, value: :tombstone, parent: {17, 185}, side: :right}
+Left: [{25, 48}]
+Right: [{17, 187}]
+
+Node ID: {17, 116}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 116}, value: "", parent: {17, 115}, side: :right}
+Left: []
+Right: [{17, 117}]
+
+Node ID: {25, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 14}, value: :tombstone, parent: {25, 13}, side: :right}
+Left: [{25, 29}]
+Right: []
+
+Node ID: {25, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 11}, value: "", parent: {25, 10}, side: :right}
+Left: []
+Right: [{25, 12}]
+
+Node ID: {17, 338}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 338}, value: :tombstone, parent: {17, 314}, side: :left}
+Left: [{25, 58}]
+Right: []
+
+Node ID: {17, 368}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 368}, value: "zstyle ':omz:plugins:*' aliases no", parent: {17, 367}, side: :right}
+Left: []
+Right: [{17, 369}]
+
+Node ID: {25, 68}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 68}, value: :tombstone, parent: {25, 67}, side: :right}
+Left: []
+Right: [{25, 69}]
+
+Node ID: {22, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {22, 1}, value: "Each built-in plugin includes a **README**, documenting it. This README should show the aliases (if the plugin adds any) and extra goodies that are included in that particular plugin.", parent: {3, 36}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 114}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 114}, value: :tombstone, parent: {17, 113}, side: :right}
+Left: [{8, 0}]
+Right: [{17, 115}]
+
+Node ID: {3, 32}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 32}, value: "", parent: {3, 31}, side: :right}
+Left: []
+Right: [{3, 33}]
+
+Node ID: {17, 262}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 262}, value: "", parent: {17, 261}, side: :right}
+Left: []
+Right: [{17, 263}]
+
+Node ID: {29, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 18}, value: "| OS/2 Warp      |   ❌    |", parent: {29, 17}, side: :right}
+Left: []
+Right: [{29, 19}]
+
+Node ID: {17, 246}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 246}, value: "", parent: {17, 245}, side: :right}
+Left: []
+Right: [{17, 247}]
+
+Node ID: {4, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 12}, value: "", parent: {4, 11}, side: :right}
+Left: []
+Right: [{4, 19}]
+
+Node ID: {17, 144}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 144}, value: "", parent: {17, 143}, side: :right}
+Left: []
+Right: [{17, 145}]
+
+Node ID: {16, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 8}, value: "We'll admit it. Early in the Oh My Zsh world, we may have gotten a bit too theme happy. We have over one hundred and fifty themes now bundled. Most of them have [screenshots](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes) on the wiki (We are working on updating this!). Check them out!", parent: {17, 294}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 2}, value: "```sh", parent: {17, 49}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 16}, value: :tombstone, parent: {17, 15}, side: :right}
+Left: [{5, 1}]
+Right: [{17, 17}]
+
+Node ID: {17, 115}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 115}, value: "```", parent: {17, 114}, side: :right}
+Left: []
+Right: [{17, 116}]
+
+Node ID: {17, 151}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 151}, value: "", parent: {17, 150}, side: :right}
+Left: []
+Right: [{17, 152}]
+
+Node ID: {17, 227}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 227}, value: "", parent: {17, 226}, side: :right}
+Left: []
+Right: [{17, 228}]
+
+Node ID: {17, 234}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 234}, value: "sh install.sh", parent: {17, 233}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 319}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 319}, value: "- `curl` or `wget` should be installed", parent: {17, 318}, side: :right}
+Left: []
+Right: [{17, 320}]
+
+Node ID: {19, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {19, 1}, value: "", parent: {19, 0}, side: :right}
+Left: []
+Right: [{19, 2}]
+
+Node ID: {17, 241}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 241}, value: "like this:", parent: {17, 240}, side: :right}
+Left: []
+Right: [{17, 242}]
+
+Node ID: {4, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 8}, value: "", parent: {4, 7}, side: :right}
+Left: []
+Right: [{4, 9}]
+
+Node ID: {17, 231}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 231}, value: "", parent: {17, 230}, side: :right}
+Left: []
+Right: [{17, 232}]
+
+Node ID: {17, 357}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 357}, value: "", parent: {17, 356}, side: :right}
+Left: []
+Right: [{17, 358}]
+
+Node ID: {25, 53}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 53}, value: :tombstone, parent: {25, 20}, side: :left}
+Left: [{17, 315}]
+Right: []
+
+Node ID: {28, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {28, 1}, value: :tombstone, parent: {28, 0}, side: :right}
+Left: []
+Right: [{28, 2}]
+
+Node ID: {3, 12}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 12}, value: :tombstone, parent: {3, 11}, side: :right}
+Left: [{29, 2}]
+Right: [{3, 13}]
+
+Node ID: {3, 40}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 40}, value: :tombstone, parent: {17, 131}, side: :left}
+Left: [{29, 27}]
+Right: []
+
+Node ID: {12, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 1}, value: "", parent: {12, 0}, side: :right}
+Left: []
+Right: [{12, 2}]
+
+Node ID: {3, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 17}, value: :tombstone, parent: {3, 16}, side: :right}
+Left: [{29, 3}]
+Right: [{3, 18}]
+
+Node ID: {25, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 5}, value: :tombstone, parent: {25, 4}, side: :right}
+Left: [{25, 6}]
+Right: []
+
+Node ID: {17, 125}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 125}, value: :tombstone, parent: {17, 124}, side: :right}
+Left: [{26, 3}]
+Right: [{17, 126}]
+
+Node ID: {17, 242}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 242}, value: "", parent: {17, 241}, side: :right}
+Left: []
+Right: [{17, 243}]
+
+Node ID: {26, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {26, 2}, value: "Open up a new terminal window and your prompt should look something like this:", parent: {17, 77}, side: :left}
+Left: [{6, 0}]
+Right: []
+
+Node ID: {17, 107}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 107}, value: "```", parent: {17, 106}, side: :right}
+Left: []
+Right: [{17, 108}]
+
+Node ID: {17, 67}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 67}, value: :tombstone, parent: {17, 66}, side: :right}
+Left: [{11, 3}]
+Right: [{17, 68}]
+
+Node ID: {17, 171}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 171}, value: "", parent: {17, 170}, side: :right}
+Left: []
+Right: [{17, 172}]
+
+Node ID: {3, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 6}, value: :tombstone, parent: {3, 5}, side: :right}
+Left: [{29, 1}]
+Right: [{3, 7}]
+
+Node ID: {10, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {10, 0}, value: :tombstone, parent: {17, 41}, side: :left}
+Left: [{17, 293}]
+Right: []
+
+Node ID: {17, 211}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 211}, value: "", parent: {17, 210}, side: :right}
+Left: []
+Right: [{17, 212}]
+
+Node ID: {17, 289}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 289}, value: :tombstone, parent: {17, 285}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 41}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 41}, value: "  rbenv", parent: {25, 40}, side: :right}
+Left: []
+Right: [{25, 42}]
+
+Node ID: {17, 316}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 316}, value: "To learn more, visit [ohmyz.sh](https://ohmyz.sh), follow [@ohmyzsh](https://twitter.com/ohmyzsh) on Twitter, and join us on [Discord](https://discord.gg/ohmyzsh).", parent: {16, 0}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 169}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 169}, value: "", parent: {17, 168}, side: :right}
+Left: []
+Right: [{17, 170}]
+
+Node ID: {17, 120}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 120}, value: "cp ~/.zshrc ~/.zshrc.orig", parent: {17, 119}, side: :right}
+Left: []
+Right: [{17, 121}]
+
+Node ID: {17, 292}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 292}, value: :tombstone, parent: {17, 233}, side: :left}
+Left: [{17, 327}]
+Right: []
+
+Node ID: {16, 1}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 1}, value: :tombstone, parent: {17, 284}, side: :left}
+Left: [{17, 317}]
+Right: [{16, 2}]
+
+Node ID: {17, 388}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 388}, value: "> are `gccd`, `ggf`, or `ggl` functions from the git plugin.", parent: {17, 387}, side: :right}
+Left: []
+Right: [{17, 389}]
+
+Node ID: {17, 250}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 250}, value: :tombstone, parent: {17, 249}, side: :right}
+Left: []
+Right: [{17, 251}]
+
+Node ID: {3, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 18}, value: :tombstone, parent: {3, 17}, side: :right}
+Left: []
+Right: [{3, 19}]
+
+Node ID: {29, 34}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 34}, value: "### Do Not Send Us Themes", parent: {25, 52}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 304}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 304}, value: :tombstone, parent: {17, 19}, side: :left}
+Left: [{16, 3}]
+Right: []
+
+Node ID: {12, 3}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 3}, value: :tombstone, parent: {12, 2}, side: :right}
+Left: []
+Right: [{12, 4}]
+
+Node ID: {17, 376}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 376}, value: "", parent: {17, 375}, side: :right}
+Left: []
+Right: [{17, 377}]
+
+Node ID: {17, 219}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 219}, value: :tombstone, parent: {17, 8}, side: :left}
+Left: [{25, 54}]
+Right: []
+
+Node ID: {17, 345}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 345}, value: "If you want to skip default Oh My Zsh aliases (those defined in `lib/*` files) or plugin aliases,", parent: {12, 6}, side: :left}
+Left: []
+Right: [{17, 346}]
+
+Node ID: {17, 309}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 309}, value: "```", parent: {17, 308}, side: :right}
+Left: []
+Right: [{17, 310}]
+
+Node ID: {17, 117}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 117}, value: :tombstone, parent: {17, 116}, side: :right}
+Left: [{17, 329}]
+Right: [{17, 118}]
+
+Node ID: {4, 18}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 18}, value: "sourcing `oh-my-zsh.sh`:", parent: {4, 17}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 290}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 290}, value: :tombstone, parent: {17, 28}, side: :left}
+Left: []
+Right: []
+
+Node ID: {4, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 15}, value: "<a name=\"enable-gnu-ls\"></a>", parent: {4, 3}, side: :left}
+Left: []
+Right: []
+
+Node ID: {3, 34}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 34}, value: "", parent: {3, 33}, side: :right}
+Left: []
+Right: []
+
+Node ID: {25, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 0}, value: "", parent: {17, 213}, side: :right}
+Left: []
+Right: [{25, 1}]
+
+Node ID: {17, 330}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 330}, value: :tombstone, parent: {17, 280}, side: :left}
+Left: [{3, 42}]
+Right: []
+
+Node ID: {29, 14}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 14}, value: "| freeBSD        |   ✅    |", parent: {29, 13}, side: :right}
+Left: []
+Right: [{29, 15}]
+
+Node ID: {17, 301}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 301}, value: "We have (more than) enough themes for the time being. Please add your theme to the [external themes](https://github.com/ohmyzsh/ohmyzsh/wiki/External-themes) wiki page.", parent: {17, 194}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 17}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 17}, value: :tombstone, parent: {25, 16}, side: :right}
+Left: [{17, 333}]
+Right: [{25, 18}]
+
+Node ID: {25, 55}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 55}, value: "", parent: {25, 54}, side: :right}
+Left: []
+Right: [{25, 56}]
+
+Node ID: {26, 4}
+Node: %Syncordian.CRDT.Fugue.Node{id: {26, 4}, value: :tombstone, parent: {25, 15}, side: :left}
+Left: [{17, 332}]
+Right: []
+
+Node ID: {25, 43}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 43}, value: ")", parent: {25, 42}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 199}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 199}, value: "", parent: {17, 198}, side: :right}
+Left: []
+Right: [{17, 200}]
+
+Node ID: {3, 30}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 30}, value: "- [License](#license)", parent: {3, 29}, side: :right}
+Left: []
+Right: [{3, 31}]
+
+Node ID: {17, 287}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 287}, value: :tombstone, parent: {17, 286}, side: :right}
+Left: [{17, 288}]
+Right: []
+
+Node ID: {1, 2}
+Node: %Syncordian.CRDT.Fugue.Node{id: {1, 2}, value: :tombstone, parent: {1, 1}, side: :right}
+Left: []
+Right: [{1, 3}]
+
+Node ID: {17, 191}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 191}, value: "", parent: {17, 190}, side: :right}
+Left: []
+Right: [{17, 192}]
+
+Node ID: {25, 29}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 29}, value: "Finally, you'll begin to get the sort of attention that you have always felt you deserved. ...or maybe you'll use the time that you're saving to start flossing more often. 😬", parent: {25, 14}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 279}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 279}, value: "You must log out from your user session and log back in to see this change.", parent: {17, 278}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 314}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 314}, value: :tombstone, parent: {17, 0}, side: :left}
+Left: [{17, 338}]
+Right: []
+
+Node ID: {17, 260}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 260}, value: :tombstone, parent: {17, 259}, side: :right}
+Left: [{17, 298}]
+Right: [{17, 261}]
+
+Node ID: {17, 136}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 136}, value: "", parent: {17, 135}, side: :right}
+Left: [{23, 0}]
+Right: [{17, 137}]
+
+Node ID: {17, 256}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 256}, value: :tombstone, parent: {17, 255}, side: :right}
+Left: [{29, 23}]
+Right: [{17, 257}]
+
+Node ID: {3, 16}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 16}, value: "    - [Custom Directory](#custom-directory)", parent: {3, 15}, side: :right}
+Left: []
+Right: [{3, 17}]
+
+Node ID: {12, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {12, 8}, value: "```", parent: {12, 7}, side: :right}
+Left: []
+Right: [{12, 9}]
+
+Node ID: {17, 129}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 129}, value: "```", parent: {17, 128}, side: :right}
+Left: []
+Right: [{17, 130}]
+
+Node ID: {4, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 19}, value: "_Note: this is not compatible with `DISABLE_LS_COLORS=true`_", parent: {4, 12}, side: :right}
+Left: []
+Right: [{4, 20}]
+
+Node ID: {13, 6}
+Node: %Syncordian.CRDT.Fugue.Node{id: {13, 6}, value: "", parent: {13, 5}, side: :right}
+Left: []
+Right: [{13, 7}]
+
+Node ID: {17, 221}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 221}, value: "I'm far from being a [Zsh](https://www.zsh.org/) expert and suspect there are many ways to improve – if you have ideas on how to make the configuration easier to maintain (and faster), don't hesitate to fork and send pull requests!", parent: {17, 188}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 93}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 93}, value: "If you're the type that likes to get their hands dirty, these sections might resonate.", parent: {17, 92}, side: :right}
+Left: []
+Right: [{17, 94}]
+
+Node ID: {3, 15}
+Node: %Syncordian.CRDT.Fugue.Node{id: {3, 15}, value: "  - [Advanced Installation](#advanced-installation)", parent: {3, 14}, side: :right}
+Left: []
+Right: [{3, 16}]
+
+Node ID: {29, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 10}, value: "  - [Do Not Send Us Themes](#do-not-send-us-themes)", parent: {29, 9}, side: :right}
+Left: []
+Right: []
+
+Node ID: {17, 0}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 0}, value: :tombstone, parent: {-1, -1}, side: :right}
+Left: [{17, 314}]
+Right: [{17, 1}]
+
+Node ID: {17, 22}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 22}, value: "", parent: {17, 21}, side: :right}
+Left: []
+Right: [{17, 23}]
+
+Node ID: {25, 49}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 49}, value: "", parent: {25, 48}, side: :right}
+Left: []
+Right: [{25, 50}]
+
+Node ID: {11, 37}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 37}, value: "# This will check for updates every time you open the terminal (not recommended)", parent: {11, 36}, side: :right}
+Left: []
+Right: [{11, 38}]
+
+Node ID: {17, 308}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 308}, value: :tombstone, parent: {17, 307}, side: :right}
+Left: [{17, 313}]
+Right: [{17, 309}]
+
+Node ID: {17, 39}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 39}, value: "### Plugins", parent: {17, 38}, side: :right}
+Left: []
+Right: [{17, 40}]
+
+Node ID: {17, 153}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 153}, value: "", parent: {17, 152}, side: :right}
+Left: []
+Right: [{17, 154}]
+
+Node ID: {29, 28}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 28}, value: "##### 5. Initialize Your New Zsh Configuration <!-- omit in toc -->", parent: {3, 41}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 30}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 30}, value: :tombstone, parent: {17, 29}, side: :right}
+Left: []
+Right: [{17, 31}]
+
+Node ID: {17, 164}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 164}, value: :tombstone, parent: {17, 163}, side: :right}
+Left: [{11, 33}]
+Right: [{17, 165}]
+
+Node ID: {17, 7}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 7}, value: "", parent: {17, 6}, side: :right}
+Left: []
+Right: [{17, 8}]
+
+Node ID: {17, 11}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 11}, value: "", parent: {17, 10}, side: :right}
+Left: []
+Right: [{17, 12}]
+
+Node ID: {11, 19}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 19}, value: "   zstyle ':omz:update' mode auto", parent: {11, 18}, side: :right}
+Left: []
+Right: [{11, 20}]
+
+Node ID: {17, 87}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 87}, value: "ZSH_THEME=\"random\" # (...please let it be pie... please be some pie..)", parent: {17, 86}, side: :right}
+Left: []
+Right: [{17, 88}]
+
+Node ID: {11, 8}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 8}, value: "```sh", parent: {17, 243}, side: :left}
+Left: []
+Right: []
+
+Node ID: {25, 72}
+Node: %Syncordian.CRDT.Fugue.Node{id: {25, 72}, value: :tombstone, parent: {25, 71}, side: :right}
+Left: []
+Right: [{25, 73}]
+
+Node ID: {16, 10}
+Node: %Syncordian.CRDT.Fugue.Node{id: {16, 10}, value: :tombstone, parent: {25, 18}, side: :left}
+Left: []
+Right: [{16, 11}]
+
+Node ID: {17, 143}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 143}, value: "If you have any hiccups installing, here are a few common fixes.", parent: {17, 142}, side: :right}
+Left: []
+Right: [{17, 144}]
+
+Node ID: {17, 373}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 373}, value: "", parent: {17, 372}, side: :right}
+Left: []
+Right: [{17, 374}]
+
+Node ID: {17, 193}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 193}, value: "", parent: {17, 192}, side: :right}
+Left: []
+Right: [{17, 194}]
+
+Node ID: {17, 137}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 137}, value: :tombstone, parent: {17, 136}, side: :right}
+Left: [{3, 41}]
+Right: [{17, 138}]
+
+Node ID: {29, 26}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 26}, value: "##### 3. Create A New Zsh Configuration File <!-- omit in toc -->", parent: {3, 39}, side: :left}
+Left: []
+Right: []
+
+Node ID: {29, 25}
+Node: %Syncordian.CRDT.Fugue.Node{id: {29, 25}, value: "##### 2. _Optionally_, Backup Your Existing `~/.zshrc` File <!-- omit in toc -->", parent: {3, 38}, side: :left}
+Left: []
+Right: []
+
+Node ID: {11, 39}
+Node: %Syncordian.CRDT.Fugue.Node{id: {11, 39}, value: "If you'd like to update at any point in time (maybe someone just released a new plugin and you don't want to wait a week?) you just need to run:", parent: {17, 172}, side: :left}
+Left: []
+Right: []
+
+Node ID: {17, 138}
+Node: %Syncordian.CRDT.Fugue.Node{id: {17, 138}, value: "", parent: {17, 137}, side: :right}
+Left: []
+Right: [{17, 139}]
+
+Node ID: {4, 5}
+Node: %Syncordian.CRDT.Fugue.Node{id: {4, 5}, value: :tombstone, parent: {4, 4}, side: :right}
+Left: [{4, 16}]
+Right: [{4, 6}]

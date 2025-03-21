@@ -5,7 +5,7 @@ defmodule Syncordian.MixProject do
     [
       app: :syncordian,
       version: "0.1.0",
-      elixir: "~> 1.18.3",
+      elixir: "~> 1.17.0",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),

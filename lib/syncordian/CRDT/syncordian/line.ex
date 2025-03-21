@@ -69,7 +69,7 @@ defmodule Syncordian.Line_Object do
   def set_line_status(line, new_status) do
     line(line, status: new_status)
   end
-  
+
   @spec is_tombstone?(line()) :: boolean()
   def is_tombstone?(line), do: get_line_status(line) == :tombstone
 
@@ -173,6 +173,8 @@ defmodule Syncordian.Line_Object do
         ) ::
           Syncordian.Line_Object.line()
   def update_line_commit_at(line, received_peer_id) do
+    # TODO: if all the peers have committed the line, then the line should be marked as
+    # settled
     commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
     line(line, commit_at: commit_at)
   end

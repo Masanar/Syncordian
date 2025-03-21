@@ -13,9 +13,9 @@ defmodule Syncordian.ByzantinePeer do
 
   @type byzantine_peer ::
           record(:byzantine_peer,
-            pid: pid(),
+            pid: pid() | nil,
             peer_id: Syncordian.Basic_Types.peer_id(),
-            supervisor_pid: pid(),
+            supervisor_pid: pid() | nil,
             metadata: Syncordian.Metadata.metadata()
           )
 

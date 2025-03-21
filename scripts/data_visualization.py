@@ -26,7 +26,7 @@ metric_properties_map = {
         "linestyle": ":",
         "linewidth": 1.2,
     },
-    "delete_requeue_counter": {"name": "Delete messages requeued", "color": "#e85d04", "linestyle": ":", "linewidth": 2},  # Bright Orange
+    "requeue_counter": {"name": "Delete messages requeued", "color": "#e85d04", "linestyle": ":", "linewidth": 2},  # Bright Orange
     "delete_requeue_limit": {
         "name": "Delete messages reach requeue limit",
         "color": "#ff006e",  # Golden Orange

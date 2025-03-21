@@ -16,7 +16,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
-  import Syncordian.Utilities, only: [debug_print: 2]
+  # import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Node
   alias Syncordian.Utilities
 
@@ -146,22 +146,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   ## Returns
   The node at the specified position, or the root node if the position is invalid.
   """
-  # @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
-  # def node_i_position_from_values(tree, position) do
-  #   case traverse(tree) do
-  #     # TODO: Esto si puede pasar? []?
-  #     [] ->
-  #       get_root(tree) || Node.root()
-
-  #     list ->
-  #       cond do
-  #         position >= length(list) ->
-  #           List.last(list)
-  #         true ->
-  #           Enum.at(list, position)
-  #       end
-  #   end
-  # end
   @spec node_i_position_from_values(tree(), integer()) :: node_fugue()
   def node_i_position_from_values(tree, position) do
     list = traverse(tree)
@@ -178,13 +162,10 @@ defmodule Syncordian.CRDT.Fugue.Tree do
         # If position exceeds the list length, return the last node
         List.last(list)
 
-      # position == 0 and len >= 1 ->
-      #   List.first(list)
-
       true ->
         # If position is negative or the list is empty, return the root node
-        IO.puts("Error on node i position from values")
-        IO.puts("Position: #{position}, length: #{len}")
+        # IO.puts("Error on node i position from values")
+        # IO.puts("Position: #{position}, length: #{len}")
         Node.root()
     end
   end

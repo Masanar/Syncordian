@@ -11,7 +11,7 @@
     <div class="button-left">
       <form phx-change="select_node">
         <select class="button-89" name="node_id">
-          <%= for i <- 1..25 do %>
+          <%= for i <- 1..29 do %>
             <option value={i} selected={@peer_id == i}><%= i %></option>
           <% end %>
         </select>

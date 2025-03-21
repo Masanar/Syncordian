@@ -52,8 +52,15 @@ defmodule Syncordian.Supervisor do
             peer_module: module()
           )
 
+
   @spec get_peer_module(supervisor()) :: module()
   defp get_peer_module(supervisor), do: supervisor(supervisor, :peer_module)
+
+  @spec get_peer_module_string(supervisor()) :: String.t()
+  defp get_peer_module_string(supervisor) do
+    module = get_peer_module(supervisor)
+    module.get_module_name()
+  end
 
   @spec supervisor(supervisor(), atom()) :: integer()
   defp get_commit_counter(supervisor), do: supervisor(supervisor, :commit_counter)
@@ -92,6 +99,7 @@ defmodule Syncordian.Supervisor do
   @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
   defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
 
+  defp update_metadata(supervisor), do: supervisor(supervisor, metadata: Syncordian.Metadata.metadata())
   @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
   defp update_metadata(metadata, supervisor) do
     inc_metadata_peer_count(supervisor)
@@ -189,7 +197,7 @@ defmodule Syncordian.Supervisor do
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid, peer_module)
     # delay = len_position_changes(position_changes) * 100 + 1000 + 1000 * byzantine_nodes
-    delay = 2000
+    delay = 4000
     Process.sleep(delay)
     author_id
   end
@@ -256,7 +264,7 @@ defmodule Syncordian.Supervisor do
   @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::
           Syncordian.Basic_Types.peer_id()
   defp byzantine_peer_id(peer_id) do
-    peer_id * 23 + 71
+    peer_id * 73 + 73
   end
 
   @spec init_byzantine_peers(integer()) :: list()
@@ -278,7 +286,7 @@ defmodule Syncordian.Supervisor do
   @spec init(integer(), Syncordian.Basic_Types.crdt_id()) :: pid()
   def init(byzantine_nodes, crdt_id \\ :syncordian) do
     # Delete the all the files of the debug directory
-    delete_contents("debug/documents")
+    # delete_contents("debug/documents")
 
     # Before the document with the commit history was name test (I did not deleted it)
     # now it is ohmyzsh_README_git_log
@@ -342,7 +350,10 @@ defmodule Syncordian.Supervisor do
             peer_module
           )
 
-          send(self(), {:send_all_commits, live_view_pid, byzantine_nodes})
+          send(self(), {:restart_metadata})
+          Process.send_after(self(), {:collect_metadata_from_peers}, 10)
+          Process.send_after(self(), {:print_supervisor_metadata}, 1000)
+          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 6000)
 
           supervisor_loop(
             supervisor(supervisor,
@@ -352,6 +363,10 @@ defmodule Syncordian.Supervisor do
           )
         else
           IO.puts("All commits processed")
+          send(self(), {:write_current_peers_document})
+          # TODO: repetid code!
+          pid_individual =  supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
+          send(pid_individual, {:write_raw_document})
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end
@@ -387,6 +402,11 @@ defmodule Syncordian.Supervisor do
           supervisor_loop(supervisor)
         end
 
+      {:restart_metadata} ->
+        supervisor
+        |> update_metadata()
+        |> supervisor_loop()
+
       {:collect_metadata_from_peers} ->
         :global.whereis_name(:supervisor)
         |> perform_broadcast({:supervisor_request_metadata}, 0..0)
@@ -401,16 +421,14 @@ defmodule Syncordian.Supervisor do
         |> supervisor_loop
 
       {:print_supervisor_metadata} ->
+        peer_str =  "#{get_peer_module_string(supervisor)}/"
         commit_counter = supervisor |> get_commit_counter()
         get_metadata(supervisor)
         |> save_metadata(
           supervisor(supervisor, :byzantine_nodes),
-          commit_counter
+          commit_counter,
+          peer_str
         )
-        # This part is for saving the metadata of the individual peer for gathering
-        # the memory usage of just one peer.
-        pid_individual_metadata =  supervisor |> get_pid_list() |> Enum.at(0)
-        send(pid_individual_metadata, {:save_individual_peer_metadata, commit_counter})
 
         supervisor_loop(supervisor)
 

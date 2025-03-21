@@ -16,6 +16,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   import Syncordian.Basic_Types
   alias Syncordian.CRDT.Fugue.{Tree, Info, Node}
 
+  @peer_metadata_id 7
+
   defstruct peer_id: nil,
             document: Syncordian.CRDT.Fugue.Tree.new(),
             pid: nil,
@@ -24,7 +26,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
             metadata: Syncordian.Metadata.metadata(),
             counter: 0,
             external_counter_list: [],
-            network_size: 0
+            network_size: 0,
+            edit_count: 0
 
   @type t :: %__MODULE__{
           peer_id: Syncordian.Basic_Types.peer_id(),
@@ -35,10 +38,46 @@ defmodule Syncordian.CRDT.Fugue.Peer do
           metadata: Syncordian.Metadata.metadata(),
           counter: integer(),
           external_counter_list: [integer()],
-          network_size: integer()
+          network_size: integer(),
+          edit_count: integer()
         }
 
   @type peer_fugue :: t
+
+  @spec get_document_byte_size(peer_fugue()) :: integer()
+  def get_document_byte_size(peer) do
+    nodes = get_peer_document(peer) |> Tree.get_tree_nodes()
+    nodes_str = "#{inspect(nodes)}"
+    nodes_str |> byte_size
+  end
+
+  @spec get_edit_count(peer_fugue()) :: integer()
+  def get_edit_count(%__MODULE__{edit_count: edit_count}), do: edit_count
+
+  @spec tick_edit_count(peer_fugue()) :: peer_fugue()
+  def tick_edit_count(%__MODULE__{} = peer) do
+    new_count = get_edit_count(peer) + 1
+    %{peer | edit_count: new_count}
+  end
+
+  @spec get_module_name() :: String.t()
+  def get_module_name(), do: "fugue"
+
+  @spec save_peer_metadata_edit(peer_fugue()) :: :ok
+  defp save_peer_metadata_edit(peer) do
+    file_prefix = "edit"
+    folder = "fugue/"
+    peer_pid = get_peer_pid(peer)
+    current_edit = get_edit_count(peer)
+    nodes_size = get_document_byte_size(peer)
+
+    peer
+    |> get_metadata()
+    |> update_memory_info(peer_pid, nodes_size)
+    |> save_metadata_one_peer(current_edit, folder, file_prefix)
+
+    :ok
+  end
 
   @doc """
   Creates a new Fugue peer with a given peer ID.
@@ -151,6 +190,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   Increments the deleted count for this Fugue peer by 1. This is useful when
   a delete operation occurs on the peer's document.
   """
+  # I think that for fugue this is not needed, but I am going to keep it for now.
   @spec tick_peer_deleted_count(peer_fugue()) :: peer_fugue()
   def tick_peer_deleted_count(%__MODULE__{} = peer) do
     new_count = get_peer_deleted_count(peer) + 1
@@ -258,56 +298,93 @@ defmodule Syncordian.CRDT.Fugue.Peer do
     receive do
       ###################################### Delete related messages
       {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
+        peer_id = get_peer_id(peer)
         document = get_peer_document(peer)
-        # full_document_traverse = Tree.full_traverse(document)
-
-        # git_index_translated =
-        #   Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
-        # TODO: here the change is index - 1
+        # Get node to be deleted
         delete_node = Tree.delete(document, index)
         delete_node_id = Node.get_id(delete_node)
-        updated_peer = Tree.delete_local(document, delete_node_id) |> update_peer_document(peer)
 
-        # IO.puts("DELETE: \n\t index #{index - 1} \n\t git_index_translated #{git_index_translated} \n\t delete_node_id #{inspect(delete_node_id)} \n")
-        # IO.inspect(delete_node)
+        # Update the document with the deleted node, increment the deleted count and
+        # increment the edit count
+        updated_peer =
+          Tree.delete_local(document, delete_node_id)
+          |> update_peer_document(peer)
+          |> tick_peer_deleted_count()
+          |> tick_edit_count()
 
+        # Update the metadata of the peer with the new values
+        updated_peer_metadata = get_metadata(updated_peer) |> inc_delete_valid_counter()
+        updated_peer_delete_metadata = update_metadata(updated_peer_metadata, updated_peer)
+        peer_pid = get_peer_pid(updated_peer_delete_metadata)
 
-        send(get_peer_pid(peer), {:send_delete_broadcast, delete_node_id})
-        loop(updated_peer)
+        # Save the edit info is the peer is the chosen one
+        if peer_id == @peer_metadata_id do
+          save_peer_metadata_edit(updated_peer_delete_metadata)
+        end
+
+        # Send the broadcast to the network
+        send(peer_pid, {:send_delete_broadcast, delete_node_id})
+
+        # loop with the new peer node deleted and metadata updated
+        loop(updated_peer_delete_metadata)
 
       {:send_delete_broadcast, delete_node_id} ->
         perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_node_id})
         loop(peer)
 
       {:receive_delete_broadcast, delete_node_id} ->
-        get_peer_document(peer)
-        |> Tree.delete_local(delete_node_id)
-        |> update_peer_document(peer)
-        |> loop()
+        peer_id = get_peer_id(peer)
+        # update the peer with the document with the deleted node
+        updated_peer =
+          get_peer_document(peer)
+          |> Tree.delete_local(delete_node_id)
+          |> update_peer_document(peer)
+
+        # update the metadata of the new peer
+        updated_peer_metadata = get_metadata(updated_peer) |> inc_delete_valid_counter()
+
+        # Get the new peer with the metadata updated
+        updated_peer_delete_metadata =
+          update_metadata(updated_peer_metadata, updated_peer)
+          |> tick_edit_count
+          |> tick_peer_deleted_count
+
+        # Save the edit info is the peer is the chosen one
+        if peer_id == @peer_metadata_id do
+          save_peer_metadata_edit(updated_peer_delete_metadata)
+        end
+
+        loop(updated_peer_delete_metadata)
 
       ###################################### Insert related messages
       {:insert, [content, index]} ->
         peer_id = get_peer_id(peer)
         document = get_peer_document(peer)
         current_counter = get_peer_counter(peer)
-        # full_document_traverse = Tree.full_traverse(document)
-
-        # TODO: need to move one? last parameter
-        # It works with 1, and value root not tombstone the same 1 in delete
-        # git_index_translated_test =
-        #    Tree.translate_git_index_to_fugue_index(full_document_traverse, index, 0, 0)
 
         insert_node =
           Tree.insert(document, peer_id, current_counter, index, content)
 
-
         send(get_peer_pid(peer), {:send_insert_broadcast, insert_node})
 
-        document
-        |> Tree.insert_local(insert_node)
-        |> update_peer_document(peer)
-        |> increment_peer_counter()
-        |> loop()
+        new_node_peer =
+          document
+          |> Tree.insert_local(insert_node)
+          |> update_peer_document(peer)
+          |> increment_peer_counter()
+
+        new_node_peer_new_metadata =
+          new_node_peer
+          |> get_metadata
+          |> inc_insert_valid_counter
+          |> update_metadata(new_node_peer)
+          |> tick_edit_count
+
+        if peer_id == @peer_metadata_id do
+          save_peer_metadata_edit(new_node_peer)
+        end
+
+        loop(new_node_peer_new_metadata)
 
       {:send_insert_broadcast, insert_node} ->
         perform_broadcast_peer(
@@ -323,14 +400,33 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         external_counter_list = get_peer_external_counter_list(peer)
 
         if Node.check_sender_counter_projection_distance(insert_node, external_counter_list) do
-          get_peer_document(peer)
-          |> Tree.insert_local(insert_node)
-          |> update_peer_document(peer)
-          |> tick_peer_external_counter(insert_node_origin_peer_id)
-          |> loop()
+          new_node_peer =
+            get_peer_document(peer)
+            |> Tree.insert_local(insert_node)
+            |> update_peer_document(peer)
+            |> tick_peer_external_counter(insert_node_origin_peer_id)
+
+          new_node_peer_new_metadata =
+            new_node_peer
+            |> get_metadata
+            |> inc_insert_valid_counter
+            |> update_metadata(new_node_peer)
+            |> tick_edit_count()
+
+          peer_id = get_peer_id(peer)
+
+          if peer_id == @peer_metadata_id do
+            save_peer_metadata_edit(new_node_peer_new_metadata)
+          end
+
+          loop(new_node_peer_new_metadata)
         else
           send(peer_pid, {:receive_insert_broadcast, insert_node})
-          loop(peer)
+
+          get_metadata(peer)
+          |> inc_requeue_counter
+          |> update_metadata(peer)
+          |> loop
         end
 
       #################################### Gathering info related messages
@@ -384,48 +480,26 @@ defmodule Syncordian.CRDT.Fugue.Peer do
       {:supervisor_request_metadata} ->
         peer_pid = get_peer_pid(peer)
 
+        nodes_size = get_document_byte_size(peer)
+
         updated_memory_metadata =
           peer
           |> get_metadata()
-          |> update_memory_info(peer_pid)
+          |> update_memory_info(peer_pid, nodes_size)
 
         send(
           get_peer_supervisor_pid(peer),
           {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
 
-        # TODO: Refactor this part to be a function, currently it is duplicated
-        # in :supervisor_request_metadata and :save_individual_peer_metadata
-
-        # Here the metadata get 'restarted' to the default values, remember that
-        # the supervisor is the one that gather all the peers data. This reset is
-        # done to not count the same data twice.
-        update_metadata(Syncordian.Metadata.metadata(), peer)
+        update_metadata(updated_memory_metadata, peer)
         |> loop()
 
-      {:save_individual_peer_metadata, current_commit} ->
-        peer_pid = get_peer_pid(peer)
-
-        peer
-        |> get_metadata()
-        |> update_memory_info(peer_pid)
-        |> save_metadata_one_peer(current_commit)
-
-        # TODO: Refactor this part to be a function, currently it is duplicated
-        # in :supervisor_request_metadata and :save_individual_peer_metadata
-        # Here the metadata get 'restarted' to the default values, remember that
-        # the supervisor is the one that gather all the peers data. This reset is
-        # done to not count the same data twice.
-        update_metadata(Syncordian.Metadata.metadata(), peer)
-        |> loop()
-      ################ DEBUG
-      {:srt } ->
-        id = get_peer_id(peer)
-        file_path = "debug/documents/"
+      {:write_raw_document} ->
         document = get_peer_document(peer)
-        full_traverse = Tree.full_traverse(document)
         traverse = Tree.traverse(document)
-        # nodes = Tree.get_tree_nodes(document)
+        full_traverse = Tree.full_traverse(document)
+
         helper = fn list ->
           list
           |> Enum.map(fn node -> Node.node_to_string(node) end)
@@ -436,28 +510,26 @@ defmodule Syncordian.CRDT.Fugue.Peer do
 
         raw_full_traverse = full_traverse |> helper.()
 
-        # Format the nodes as a string
-        # raw_tree_content =
-        #   nodes
-        #   |> Enum.map(fn {id, {node, left, right}} ->
-        #     "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
-        #   end)
-        #   |> Enum.join("\n")
+        raw_tree_content =
+          Tree.get_tree_nodes(document)
+          |> Enum.map(fn {id, {node, left, right}} ->
+            "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
+          end)
+          |> Enum.join("\n")
 
-        time_stamp = :os.system_time(:seconds)
-        # Write the content to the specified file
-        # File.write(file_path <> "#{time_stamp}_#{id}_tree.txt"    , raw_tree_content)
-        File.write(file_path <> "#{time_stamp}_#{id}_traverse.txt", raw_traverse)
-        File.write(file_path <> "#{time_stamp}_#{id}_full_traverse.txt", raw_full_traverse)
+        file_path = "debug/documents/fugue/raw/"
+        File.write(file_path <> "tree", raw_tree_content)
+        File.write(file_path <> "traverse", raw_traverse)
+        File.write(file_path <> "full_traverse", raw_full_traverse)
 
-        IO.puts("Raw tree saved to #{file_path}")
         loop(peer)
-
 
       wrong_message ->
         IO.puts("Peer Fugue receive a wrong message")
         IO.inspect(wrong_message)
         loop(peer)
+
     end
+
   end
 end

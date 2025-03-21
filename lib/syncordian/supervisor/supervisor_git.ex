@@ -197,6 +197,8 @@ defmodule Syncordian.Supervisor do
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid, peer_module)
     # delay = len_position_changes(position_changes) * 100 + 1000 + 1000 * byzantine_nodes
+    delay = 4000
+    Process.sleep(delay)
     author_id
   end
 
@@ -262,7 +264,7 @@ defmodule Syncordian.Supervisor do
   @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::
           Syncordian.Basic_Types.peer_id()
   defp byzantine_peer_id(peer_id) do
-    peer_id * 23 + 71
+    peer_id * 73 + 73
   end
 
   @spec init_byzantine_peers(integer()) :: list()
@@ -284,7 +286,7 @@ defmodule Syncordian.Supervisor do
   @spec init(integer(), Syncordian.Basic_Types.crdt_id()) :: pid()
   def init(byzantine_nodes, crdt_id \\ :syncordian) do
     # Delete the all the files of the debug directory
-    delete_contents("debug/documents")
+    # delete_contents("debug/documents")
 
     # Before the document with the commit history was name test (I did not deleted it)
     # now it is ohmyzsh_README_git_log
@@ -349,9 +351,9 @@ defmodule Syncordian.Supervisor do
           )
 
           send(self(), {:restart_metadata})
-          Process.send_after(self(), {:collect_metadata_from_peers}, 500)
-          Process.send_after(self(), {:print_supervisor_metadata}, 3000)
-          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 7000)
+          Process.send_after(self(), {:collect_metadata_from_peers}, 10)
+          Process.send_after(self(), {:print_supervisor_metadata}, 1000)
+          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 6000)
 
           supervisor_loop(
             supervisor(supervisor,
@@ -363,7 +365,7 @@ defmodule Syncordian.Supervisor do
           IO.puts("All commits processed")
           send(self(), {:write_current_peers_document})
           # TODO: repetid code!
-          pid_individual =  supervisor |> get_pid_list() |> Enum.at(0)
+          pid_individual =  supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
           send(pid_individual, {:write_raw_document})
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)

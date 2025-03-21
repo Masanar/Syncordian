@@ -16,7 +16,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
-  import Syncordian.Utilities, only: [debug_print: 2]
+  # import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Node
   alias Syncordian.Utilities
 

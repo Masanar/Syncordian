@@ -174,6 +174,6 @@ defmodule SyncordianWeb.Supervisor do
     |> assign(:supervisor_pid, Map.get(session, "supervisor_pid", ""))
     |> assign(:disable_next_commit, Map.get(session, "disable_next_commit", false))
     |> assign(:byzantine_nodes, Map.get(session, "byzantine_nodes", 0))
-    |> assign(:crdt_module, Map.get(session, "crdt_module", :fugue))
+    |> assign(:crdt_module, Map.get(session, "crdt_module", :syncordian))
   end
 end

@@ -16,7 +16,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   import Syncordian.Basic_Types
   alias Syncordian.CRDT.Fugue.{Tree, Info, Node}
 
-  @peer_metadata_id 17
+  @peer_metadata_id 7
 
   defstruct peer_id: nil,
             document: Syncordian.CRDT.Fugue.Tree.new(),

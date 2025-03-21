@@ -18,6 +18,7 @@ defmodule Syncordian.Peer do
   import Syncordian.Utilities
   import Syncordian.Vector_Clock
   @delete_limit 10_000
+  @peer_metadata_id 7
   Record.defrecord(:peer,
     peer_id: None,
     document: None,
@@ -26,7 +27,8 @@ defmodule Syncordian.Peer do
     deleted_limit: @delete_limit,
     vector_clock: [],
     supervisor_pid: None,
-    metadata: Syncordian.Metadata.metadata()
+    metadata: Syncordian.Metadata.metadata(),
+    edit_count: 0
   )
 
   @type peer ::
@@ -37,12 +39,23 @@ defmodule Syncordian.Peer do
             deleted_count: integer(),
             deleted_limit: integer(),
             vector_clock: [integer],
-            supervisor_pid: pid()
+            supervisor_pid: pid(),
+            edit_count: integer()
           )
 
   ############################# Peer Data Structure Interface ############################
   # Getter and setter for the peer structure
 
+  @spec get_edit_count(peer) :: integer()
+  def get_edit_count(peer), do: peer(peer, :edit_count)
+
+  @spec tick_edit_count(peer) :: peer
+  def tick_edit_count(peer) do
+    new_count = get_edit_count(peer) + 1
+    peer(peer, edit_count: new_count)
+  end
+
+  @spec get_document_byte_size(peer()) :: integer
   def get_document_byte_size(peer) do
     document = get_peer_document(peer)
     document_str = "#{inspect(document)}"
@@ -244,6 +257,25 @@ defmodule Syncordian.Peer do
 
   ################################ Peer utility ################################
 
+  @spec save_peer_metadata_edit(peer()) :: peer()
+  defp save_peer_metadata_edit(peer) do
+    file_prefix = "edit"
+    folder = "syncordian/"
+    peer_pid = get_peer_pid(peer)
+    current_edit = get_edit_count(peer)
+    nodes_size = get_document_byte_size(peer)
+
+    peer_up = peer
+    |> get_metadata()
+    |> update_memory_info(peer_pid, nodes_size)
+    |> update_metadata(peer)
+
+    get_metadata(peer_up)
+    |> save_metadata_one_peer(current_edit, folder, file_prefix)
+
+    peer_up
+  end
+
   # Function to perform the filtering and broadcast messages to all peers in the network
   # except the current peer. or the supervisor. This one is define here because here the
   # delay makes sense to be define and then use the perform_broadcast function of the
@@ -289,17 +321,26 @@ defmodule Syncordian.Peer do
         ) :: any
   defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id) do
     document = get_peer_document(peer)
-
+    peer_id = get_peer_id(peer)
+    # TODO: THIS NEED TO BE UNCOMMENTED WHEN THE TEST IS DONE
     # send_confirmation_line_insertion(
-    #   get_peer_id(peer),
+    #   peer_id,
     #   incoming_peer_id,
     #   get_line_id(line)
     # )
 
-    add_line_to_document(line, document)
-    |> update_peer_document(peer)
-    |> tick_projection_peer_clock(incoming_peer_id)
-    |> loop
+    peer =
+      add_line_to_document(line, document)
+      |> update_peer_document(peer)
+      |> tick_projection_peer_clock(incoming_peer_id)
+      |> tick_edit_count()
+
+    peer_ud = if peer_id == @peer_metadata_id, do:
+              save_peer_metadata_edit(peer),
+              else: peer
+
+    loop(peer_ud)
+
   end
 
   @spec delete_valid_line_to_document_and_loop(
@@ -316,8 +357,13 @@ defmodule Syncordian.Peer do
       |> update_document_line_status(index_position, :tombstone)
       |> update_document_line_peer_id(index_position, peer_id)
       |> update_peer_document(peer)
+      |> tick_edit_count()
 
-    tick_peer_deleted_count(peer)
+    peer_up = if peer_id == @peer_metadata_id, do:
+           save_peer_metadata_edit(peer),
+           else: peer
+
+    tick_peer_deleted_count(peer_up)
   end
 
   ########################################################################################
@@ -363,6 +409,11 @@ defmodule Syncordian.Peer do
                 |> update_document_line_status(git_index_translated, :tombstone)
                 |> update_document_line_peer_id(git_index_translated, peer_id)
                 |> update_peer_document(peer)
+                |> tick_edit_count()
+
+              peer = if peer_id == @peer_metadata_id, do:
+                        save_peer_metadata_edit(peer),
+                        else: peer
 
               line_deleted =
                 get_document_line_by_index(document, git_index_translated)
@@ -396,11 +447,12 @@ defmodule Syncordian.Peer do
         if git_index_translated == -1 do
           # Due byzantine peers or network issues the line was not inserted in the
           # document of the peer, need to requeue the local delete operation.
-          # IO.puts(
-          #   "Line insert was not found in the document with index: #{test_index} and content: #{content}"
-          # )
+          IO.puts(
+            "Un insert llego al peer #{peer_id} con el indice: #{test_index} pero el indice trad es #{git_index_translated}"
+          )
 
           get_peer_pid(peer) |> send({:insert, [content, 0, test_index, 0, 0]})
+
           loop(peer)
         else
           [left_parent, right_parent] =
@@ -422,6 +474,7 @@ defmodule Syncordian.Peer do
             |> add_line_to_document(document)
             |> update_peer_document(peer)
             |> tick_individual_peer_clock
+            |> tick_edit_count()
 
           current_vector_clock = get_peer_vector_clock(peer)
 
@@ -429,6 +482,10 @@ defmodule Syncordian.Peer do
             get_peer_pid(peer),
             {:send_insert_broadcast, {new_line, current_vector_clock}}
           )
+
+          peer = if peer_id == @peer_metadata_id, do:
+                    save_peer_metadata_edit(peer),
+                    else: peer
 
           loop(peer)
         end
@@ -520,11 +577,14 @@ defmodule Syncordian.Peer do
                 # IO.puts("The delete signature is valid when stashed")
                 # send(peer_pid, {:delete_stash_succeeded})
 
-                get_metadata(peer)
+                u_peer = get_metadata(peer)
                 |> inc_delete_stash_counter
                 |> update_metadata(peer)
+
+                u_peer
+                |> get_metadata
                 |> inc_delete_valid_counter
-                |> update_metadata(peer)
+                |> update_metadata(u_peer)
                 |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
               false ->
@@ -745,6 +805,7 @@ defmodule Syncordian.Peer do
 
       # ✅
       {:supervisor_request_metadata} ->
+        # THIS IS EXACTLY THE SAME AS IN FUGUE, function?
         peer_pid = get_peer_pid(peer)
         document_size = get_document_byte_size(peer)
 
@@ -757,9 +818,19 @@ defmodule Syncordian.Peer do
           get_peer_supervisor_pid(peer),
           {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
         )
-        # TODO: Do no restart the metadata
-        update_metadata(Syncordian.Metadata.metadata(), peer)
+
+        update_metadata(updated_memory_metadata, peer)
         |> loop()
+
+      {:write_raw_document} ->
+        document_str =
+          get_peer_document(peer)
+          |> Enum.map(fn line -> "#{inspect(line)}" end)
+          |> Enum.join("\n")
+
+        file_path = "debug/documents/syncordian/raw/"
+        File.write(file_path <> "document", document_str)
+        loop(peer)
 
       test ->
         IO.puts("Wrong message")

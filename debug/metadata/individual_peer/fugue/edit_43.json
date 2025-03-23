@@ -14,6 +14,6 @@
   "insert_stash_fail_counter": 0,
   "insert_valid_counter": 43,
   "message_queue_length": 170,
-  "requeue_counter": 547,
-  "timestamp": "1742753040"
+  "requeue_counter": 559,
+  "timestamp": "1742762214"
 }

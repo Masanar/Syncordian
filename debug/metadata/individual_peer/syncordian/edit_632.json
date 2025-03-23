@@ -4,16 +4,16 @@
   "byzantine_nodes": 0,
   "current_commit": 632,
   "delete_requeue_limit": 0,
-  "delete_stash_counter": 2,
-  "delete_valid_counter": 153,
-  "heap_size": 15162,
-  "insert_distance_greater_than_one": 2618,
+  "delete_stash_counter": 4,
+  "delete_valid_counter": 157,
+  "heap_size": 182794,
+  "insert_distance_greater_than_one": 2958,
   "insert_request_counter": 0,
   "insert_request_limit_counter": 0,
   "insert_stash_counter": 0,
   "insert_stash_fail_counter": 0,
-  "insert_valid_counter": 479,
+  "insert_valid_counter": 475,
   "message_queue_length": 13,
   "requeue_counter": 0,
-  "timestamp": "1742752701"
+  "timestamp": "1742761118"
 }

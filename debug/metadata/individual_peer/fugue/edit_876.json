@@ -5,15 +5,15 @@
   "current_commit": 876,
   "delete_requeue_limit": 0,
   "delete_stash_counter": 0,
-  "delete_valid_counter": 218,
-  "heap_size": 7033,
+  "delete_valid_counter": 216,
+  "heap_size": 95947,
   "insert_distance_greater_than_one": 0,
   "insert_request_counter": 0,
   "insert_request_limit_counter": 0,
   "insert_stash_counter": 0,
   "insert_stash_fail_counter": 0,
-  "insert_valid_counter": 658,
+  "insert_valid_counter": 660,
   "message_queue_length": 42,
-  "requeue_counter": 1880,
-  "timestamp": "1742753442"
+  "requeue_counter": 2094,
+  "timestamp": "1742762616"
 }

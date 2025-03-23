@@ -47,8 +47,8 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   @spec get_document_byte_size(peer_fugue()) :: integer()
   def get_document_byte_size(peer) do
     nodes = get_peer_document(peer) |> Tree.get_tree_nodes()
-    nodes_str = "#{inspect(nodes)}"
-    nodes_str |> byte_size
+    inspect(nodes, limit: :infinity, printable_limit: :infinity)
+    |> byte_size
   end
 
   @spec get_edit_count(peer_fugue()) :: integer()
@@ -506,16 +506,22 @@ defmodule Syncordian.CRDT.Fugue.Peer do
           |> Enum.join("\n")
         end
 
+        helper_raw = fn list ->
+          list
+          |> inspect(limit: :infinity, printable_limit: :infinity)
+        end
+
         raw_traverse = traverse |> helper.()
 
         raw_full_traverse = full_traverse |> helper.()
 
         raw_tree_content =
-          Tree.get_tree_nodes(document)
-          |> Enum.map(fn {id, {node, left, right}} ->
-            "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
-          end)
-          |> Enum.join("\n")
+          document
+          |> helper_raw.()
+          # |> Enum.map(fn {id, {node, left, right}} ->
+          #   "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
+          # end)
+          # |> Enum.join("\n")
 
         file_path = "debug/documents/fugue/raw/"
         File.write(file_path <> "tree", raw_tree_content)

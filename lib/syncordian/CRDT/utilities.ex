@@ -253,7 +253,6 @@ defmodule Syncordian.Utilities do
 
     # Read the commit info JSON file
     commit_info = File.read!(@input_json_path) |> Jason.decode!()
-    IO.inspect(commit_info)
     # Process each commit to calculate byte size and edit number
     updated_commit_data =
       Enum.map(commit_info, fn %{"index" => index, "commit" => commit} ->
@@ -273,13 +272,11 @@ defmodule Syncordian.Utilities do
         # Find all corresponding JSON files for the commit
         json_files =
           Path.wildcard(Path.join(@metadata_directory, "commit_#{index}.json"))
-        IO.inspect(json_files)
 
         # Calculate the total insert_valid_counter and delete_valid_counter
         {insert_valid_counter, delete_valid_counter} =
           Enum.reduce(json_files, {0, 0}, fn file, {insert_acc, delete_acc} ->
             file_data = File.read!(file) |> Jason.decode!()
-            IO.inspect(file_data)
             {
               insert_acc + Map.get(file_data, "insert_valid_counter", 0),
               delete_acc + Map.get(file_data, "delete_valid_counter", 0)
@@ -289,7 +286,6 @@ defmodule Syncordian.Utilities do
 
         # Calculate the edit number as an integer
         edit_number = div(insert_valid_counter + delete_valid_counter, 30)
-        IO.puts("Edit number for commit #{commit}: #{edit_number} and insert_valid_counter: #{insert_valid_counter} and delete_valid_counter: #{delete_valid_counter}")
 
         # Add the byte size and edit number to the commit data
         %{

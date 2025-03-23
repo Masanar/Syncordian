@@ -6,8 +6,8 @@
   "delete_requeue_limit": 0,
   "delete_stash_counter": 0,
   "delete_valid_counter": 0,
-  "heap_size": 12130,
-  "insert_distance_greater_than_one": 356,
+  "heap_size": 14981,
+  "insert_distance_greater_than_one": 376,
   "insert_request_counter": 0,
   "insert_request_limit_counter": 0,
   "insert_stash_counter": 0,
@@ -15,5 +15,5 @@
   "insert_valid_counter": 39,
   "message_queue_length": 174,
   "requeue_counter": 0,
-  "timestamp": "1742752401"
+  "timestamp": "1742760817"
 }

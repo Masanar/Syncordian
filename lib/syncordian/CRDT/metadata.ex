@@ -68,9 +68,9 @@ defmodule Syncordian.Metadata do
 
     filename =
       if byzantine_nodes == 0,
-        do: "#{path_prefix}#{name}_#{current_commit}_#{current_date_unix}.json",
+        do: "#{path_prefix}#{name}_#{current_commit}.json",
         else:
-          "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}_#{current_date_unix}.json"
+          "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}.json"
 
     File.write(filename, metadata_json)
   end

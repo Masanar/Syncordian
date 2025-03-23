@@ -58,7 +58,7 @@ defmodule Syncordian.Peer do
   @spec get_document_byte_size(peer()) :: integer
   def get_document_byte_size(peer) do
     document = get_peer_document(peer)
-    document_str = "#{inspect(document)}"
+    document_str = inspect(document)
     document_str |> byte_size
   end
 

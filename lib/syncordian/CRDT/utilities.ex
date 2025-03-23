@@ -1,11 +1,9 @@
 defmodule Syncordian.Utilities do
   @moduledoc """
-      This module provides utility functions used in the Syncordian implementation, that
-      do not fit on the main modules.
+  Utility functions for processing commit sizes and metadata.
   """
   alias Syncordian.Basic_Types
   @debug true
-
   @type live_view_node_document :: %{
           content: String.t(),
           peer_id: Basic_Types.peer_id(),
@@ -15,6 +13,11 @@ defmodule Syncordian.Utilities do
           insertion_attempts: integer(),
           commit_at: Basic_Types.commit_list()
         }
+
+  @input_json_path "debug/README_versions/commit_info.json"
+  @output_json_path "debug/README_versions/commit_sizes_with_edits.json"
+  @readme_directory "debug/README_versions/"
+  @metadata_directory "debug/metadata/supervisor/fugue"
 
   @spec debug_print(String.t(), any()) :: any
   def debug_print(message, content) do
@@ -243,4 +246,64 @@ defmodule Syncordian.Utilities do
     }
   end
 
+  @spec calculate_commit_data() :: :ok
+  def calculate_commit_data do
+    # Ensure the output directory exists
+    File.mkdir_p!(Path.dirname(@output_json_path))
+
+    # Read the commit info JSON file
+    commit_info = File.read!(@input_json_path) |> Jason.decode!()
+    IO.inspect(commit_info)
+    # Process each commit to calculate byte size and edit number
+    updated_commit_data =
+      Enum.map(commit_info, fn %{"index" => index, "commit" => commit} ->
+        index = index + 1
+        # Calculate byte size
+        readme_file = Path.join(@readme_directory, "README_#{commit}.md")
+
+        byte_size =
+          if File.exists?(readme_file) do
+            File.read!(readme_file)
+            |> String.replace(~r/[\x00-\x1F\x7F]/, "") # Remove non-printable characters
+            |> byte_size()
+          else
+            8900 # If the file doesn't exist, set byte size to 0
+          end
+
+        # Find all corresponding JSON files for the commit
+        json_files =
+          Path.wildcard(Path.join(@metadata_directory, "commit_#{index}.json"))
+        IO.inspect(json_files)
+
+        # Calculate the total insert_valid_counter and delete_valid_counter
+        {insert_valid_counter, delete_valid_counter} =
+          Enum.reduce(json_files, {0, 0}, fn file, {insert_acc, delete_acc} ->
+            file_data = File.read!(file) |> Jason.decode!()
+            IO.inspect(file_data)
+            {
+              insert_acc + Map.get(file_data, "insert_valid_counter", 0),
+              delete_acc + Map.get(file_data, "delete_valid_counter", 0)
+            }
+          end)
+
+
+        # Calculate the edit number as an integer
+        edit_number = div(insert_valid_counter + delete_valid_counter, 30)
+        IO.puts("Edit number for commit #{commit}: #{edit_number} and insert_valid_counter: #{insert_valid_counter} and delete_valid_counter: #{delete_valid_counter}")
+
+        # Add the byte size and edit number to the commit data
+        %{
+          index: index,
+          commit: commit,
+          heap_size: byte_size,
+          edit_number: edit_number
+        }
+      end)
+
+    # Save the updated commit data as a JSON file
+    File.write!(@output_json_path, Jason.encode!(updated_commit_data, pretty: true))
+
+    IO.puts("Commit data saved to #{@output_json_path}")
+    :ok
+  end
 end

@@ -295,6 +295,21 @@ defmodule Syncordian.Supervisor do
     # Load the git log and the list of commits of the test files
     parsed_git_log = parser_git_log(git_log_file_name)
     list_of_commits = get_list_of_commits(git_log_file_name)
+
+    # # Prepare the data to save as JSON
+    # commit_info =
+    #   Enum.with_index(list_of_commits)
+    #   |> Enum.map(fn {commit, index} ->
+    #     %{
+    #       index: index,
+    #       commit: String.slice(commit, 0, 8)
+    #     }
+    #   end)
+
+    # # Save the data as a JSON file
+    # file_path = "debug/README_versions/commit_info.json"
+    # File.write!(file_path, Jason.encode!(commit_info))
+
     commit_group_map = group_by_commit(parsed_git_log)
 
     # Instance all the 30 peers independent  the number of commits in the test file
@@ -353,7 +368,7 @@ defmodule Syncordian.Supervisor do
           send(self(), {:restart_metadata})
           Process.send_after(self(), {:collect_metadata_from_peers}, 10)
           Process.send_after(self(), {:print_supervisor_metadata}, 1000)
-          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 6000)
+          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 2000)
 
           supervisor_loop(
             supervisor(supervisor,

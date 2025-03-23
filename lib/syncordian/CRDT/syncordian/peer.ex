@@ -58,8 +58,8 @@ defmodule Syncordian.Peer do
   @spec get_document_byte_size(peer()) :: integer
   def get_document_byte_size(peer) do
     document = get_peer_document(peer)
-    document_str = "#{inspect(document)}"
-    document_str |> byte_size
+    inspect(document, limit: :infinity, printable_limit: :infinity)
+    |> byte_size
   end
 
   @spec get_module_name() :: String.t()
@@ -823,10 +823,10 @@ defmodule Syncordian.Peer do
         |> loop()
 
       {:write_raw_document} ->
-        document_str =
-          get_peer_document(peer)
-          |> Enum.map(fn line -> "#{inspect(line)}" end)
-          |> Enum.join("\n")
+        document = get_peer_document(peer)
+        document_str = inspect(document, limit: :infinity, printable_limit: :infinity)
+          # |> Enum.map(fn line -> "#{inspect(line)}" end)
+          # |> Enum.join("\n")
 
         file_path = "debug/documents/syncordian/raw/"
         File.write(file_path <> "document", document_str)

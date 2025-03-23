@@ -1,0 +1,422 @@
+[
+  {
+    "heap_size": 8101,
+    "index": 1,
+    "commit": "26a07b0a",
+    "edit_number": 213
+  },
+  {
+    "heap_size": 8097,
+    "index": 2,
+    "commit": "2198ff05",
+    "edit_number": 215
+  },
+  {
+    "heap_size": 8423,
+    "index": 3,
+    "commit": "abe834d2",
+    "edit_number": 221
+  },
+  {
+    "heap_size": 8427,
+    "index": 4,
+    "commit": "89048668",
+    "edit_number": 223
+  },
+  {
+    "heap_size": 8502,
+    "index": 5,
+    "commit": "57fcee0f",
+    "edit_number": 238
+  },
+  {
+    "heap_size": 8504,
+    "index": 6,
+    "commit": "c861430d",
+    "edit_number": 242
+  },
+  {
+    "heap_size": 8519,
+    "index": 7,
+    "commit": "7d8618ec",
+    "edit_number": 252
+  },
+  {
+    "heap_size": 8698,
+    "index": 8,
+    "commit": "0f4d6a50",
+    "edit_number": 256
+  },
+  {
+    "heap_size": 8662,
+    "index": 9,
+    "commit": "3bd6be10",
+    "edit_number": 262
+  },
+  {
+    "heap_size": 8704,
+    "index": 10,
+    "commit": "80924959",
+    "edit_number": 266
+  },
+  {
+    "heap_size": 8703,
+    "index": 11,
+    "commit": "937a7f66",
+    "edit_number": 268
+  },
+  {
+    "heap_size": 8740,
+    "index": 12,
+    "commit": "e609fd5a",
+    "edit_number": 272
+  },
+  {
+    "heap_size": 8900,
+    "index": 13,
+    "commit": "a1d13aa0",
+    "edit_number": 280
+  },
+  {
+    "heap_size": 8914,
+    "index": 14,
+    "commit": "2e4539b0",
+    "edit_number": 283
+  },
+  {
+    "heap_size": 8913,
+    "index": 15,
+    "commit": "f812cfa1",
+    "edit_number": 285
+  },
+  {
+    "heap_size": 8915,
+    "index": 16,
+    "commit": "2526d71c",
+    "edit_number": 289
+  },
+  {
+    "heap_size": 8916,
+    "index": 17,
+    "commit": "970fcec4",
+    "edit_number": 291
+  },
+  {
+    "heap_size": 8966,
+    "index": 18,
+    "commit": "7a7480b9",
+    "edit_number": 313
+  },
+  {
+    "heap_size": 9069,
+    "index": 19,
+    "commit": "2ff9560a",
+    "edit_number": 315
+  },
+  {
+    "heap_size": 9071,
+    "index": 20,
+    "commit": "4fa4e5fe",
+    "edit_number": 317
+  },
+  {
+    "heap_size": 9076,
+    "index": 21,
+    "commit": "08153ff5",
+    "edit_number": 327
+  },
+  {
+    "heap_size": 9028,
+    "index": 22,
+    "commit": "f319aa84",
+    "edit_number": 329
+  },
+  {
+    "heap_size": 9028,
+    "index": 23,
+    "commit": "93461548",
+    "edit_number": 331
+  },
+  {
+    "heap_size": 9208,
+    "index": 24,
+    "commit": "4ddb2e38",
+    "edit_number": 337
+  },
+  {
+    "heap_size": 9260,
+    "index": 25,
+    "commit": "177d11d3",
+    "edit_number": 338
+  },
+  {
+    "heap_size": 11215,
+    "index": 26,
+    "commit": "c8ac4038",
+    "edit_number": 407
+  },
+  {
+    "heap_size": 11213,
+    "index": 27,
+    "commit": "b259cdf7",
+    "edit_number": 409
+  },
+  {
+    "heap_size": 11205,
+    "index": 28,
+    "commit": "29fb617e",
+    "edit_number": 412
+  },
+  {
+    "heap_size": 11224,
+    "index": 29,
+    "commit": "a6d71dda",
+    "edit_number": 418
+  },
+  {
+    "heap_size": 11322,
+    "index": 30,
+    "commit": "2810a374",
+    "edit_number": 420
+  },
+  {
+    "heap_size": 11477,
+    "index": 31,
+    "commit": "4888d4ad",
+    "edit_number": 421
+  },
+  {
+    "heap_size": 11379,
+    "index": 32,
+    "commit": "b80b1a1e",
+    "edit_number": 447
+  },
+  {
+    "heap_size": 11513,
+    "index": 33,
+    "commit": "671d21ac",
+    "edit_number": 451
+  },
+  {
+    "heap_size": 11537,
+    "index": 34,
+    "commit": "cf9aa420",
+    "edit_number": 459
+  },
+  {
+    "heap_size": 11621,
+    "index": 35,
+    "commit": "64a7f6b3",
+    "edit_number": 460
+  },
+  {
+    "heap_size": 11601,
+    "index": 36,
+    "commit": "df56d1ee",
+    "edit_number": 462
+  },
+  {
+    "heap_size": 11667,
+    "index": 37,
+    "commit": "578b0860",
+    "edit_number": 464
+  },
+  {
+    "heap_size": 11698,
+    "index": 38,
+    "commit": "498cd722",
+    "edit_number": 466
+  },
+  {
+    "heap_size": 11847,
+    "index": 39,
+    "commit": "9ce7de9f",
+    "edit_number": 472
+  },
+  {
+    "heap_size": 11847,
+    "index": 40,
+    "commit": "db94f60d",
+    "edit_number": 474
+  },
+  {
+    "heap_size": 12317,
+    "index": 41,
+    "commit": "7afaee85",
+    "edit_number": 498
+  },
+  {
+    "heap_size": 12437,
+    "index": 42,
+    "commit": "93f8c068",
+    "edit_number": 504
+  },
+  {
+    "heap_size": 12430,
+    "index": 43,
+    "commit": "c785db62",
+    "edit_number": 506
+  },
+  {
+    "heap_size": 12431,
+    "index": 44,
+    "commit": "814e0b3c",
+    "edit_number": 508
+  },
+  {
+    "heap_size": 12433,
+    "index": 45,
+    "commit": "bc9d4b89",
+    "edit_number": 512
+  },
+  {
+    "heap_size": 12593,
+    "index": 46,
+    "commit": "671745f4",
+    "edit_number": 573
+  },
+  {
+    "heap_size": 12593,
+    "index": 47,
+    "commit": "1be75bbc",
+    "edit_number": 575
+  },
+  {
+    "heap_size": 12598,
+    "index": 48,
+    "commit": "cacf5d04",
+    "edit_number": 577
+  },
+  {
+    "heap_size": 12730,
+    "index": 49,
+    "commit": "2657c87f",
+    "edit_number": 578
+  },
+  {
+    "heap_size": 12730,
+    "index": 50,
+    "commit": "6a7285bc",
+    "edit_number": 580
+  },
+  {
+    "heap_size": 13115,
+    "index": 51,
+    "commit": "75fe22b4",
+    "edit_number": 645
+  },
+  {
+    "heap_size": 13117,
+    "index": 52,
+    "commit": "b2f35a7b",
+    "edit_number": 647
+  },
+  {
+    "heap_size": 13341,
+    "index": 53,
+    "commit": "29b344a7",
+    "edit_number": 648
+  },
+  {
+    "heap_size": 13505,
+    "index": 54,
+    "commit": "8d02dabb",
+    "edit_number": 650
+  },
+  {
+    "heap_size": 13506,
+    "index": 55,
+    "commit": "2d3bae96",
+    "edit_number": 652
+  },
+  {
+    "heap_size": 14866,
+    "index": 56,
+    "commit": "0f2715bb",
+    "edit_number": 707
+  },
+  {
+    "heap_size": 15085,
+    "index": 57,
+    "commit": "eb00b95d",
+    "edit_number": 721
+  },
+  {
+    "heap_size": 15372,
+    "index": 58,
+    "commit": "ea4854db",
+    "edit_number": 731
+  },
+  {
+    "heap_size": 15373,
+    "index": 59,
+    "commit": "1c325de4",
+    "edit_number": 733
+  },
+  {
+    "heap_size": 15632,
+    "index": 60,
+    "commit": "8f6fbe23",
+    "edit_number": 745
+  },
+  {
+    "heap_size": 17023,
+    "index": 61,
+    "commit": "1ad167df",
+    "edit_number": 799
+  },
+  {
+    "heap_size": 17510,
+    "index": 62,
+    "commit": "c5208867",
+    "edit_number": 812
+  },
+  {
+    "heap_size": 17512,
+    "index": 63,
+    "commit": "aaf83d37",
+    "edit_number": 826
+  },
+  {
+    "heap_size": 17513,
+    "index": 64,
+    "commit": "bfeeda14",
+    "edit_number": 828
+  },
+  {
+    "heap_size": 17568,
+    "index": 65,
+    "commit": "974055f6",
+    "edit_number": 831
+  },
+  {
+    "heap_size": 17708,
+    "index": 66,
+    "commit": "ee857e3a",
+    "edit_number": 845
+  },
+  {
+    "heap_size": 17853,
+    "index": 67,
+    "commit": "b75b01a3",
+    "edit_number": 849
+  },
+  {
+    "heap_size": 17987,
+    "index": 68,
+    "commit": "6768906d",
+    "edit_number": 918
+  },
+  {
+    "heap_size": 17763,
+    "index": 69,
+    "commit": "1868c15e",
+    "edit_number": 919
+  },
+  {
+    "heap_size": 18826,
+    "index": 70,
+    "commit": "f9993d0c",
+    "edit_number": 931
+  }
+]

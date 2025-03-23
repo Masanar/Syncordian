@@ -2,6 +2,7 @@ import os
 import json
 import matplotlib.pyplot as plt
 import re
+from matplotlib.ticker import FuncFormatter
 
 # Function to extract the edit number from the filename
 def extract_edit_number(filename):
@@ -42,6 +43,12 @@ def read_commit_sizes_with_edits(filepath):
             heap_sizes.append(entry["heap_size"])  # Use "heap_size" for the y-axis
 
     return x_axis, heap_sizes
+
+# Function to format y-axis labels
+def format_y_axis(value, _):
+    if value >= 1000:
+        return f"{int(value / 1000)}kB"  # Convert to 'K' format
+    return str(int(value))  # Keep smaller values as-is
 
 # Function to plot the graph
 def plot_heap_sizes(fugue_data, syncordian_data, commit_data, output_path="../figures/heap_size_plot.pdf"):
@@ -84,9 +91,12 @@ def plot_heap_sizes(fugue_data, syncordian_data, commit_data, output_path="../fi
             alpha=0.5  # Add transparency
         )
 
+    # Customize the y-axis to display values in 'K' format
+    ax.yaxis.set_major_formatter(FuncFormatter(format_y_axis))
+
     # Customize the plot
     ax.set_xlabel("Edit Number")
-    ax.set_ylabel("Byte Size")
+    ax.set_ylabel("Document Size")
     ax.legend(loc="upper left")
     ax.grid(True)
 

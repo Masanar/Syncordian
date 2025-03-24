@@ -234,16 +234,8 @@ defmodule Syncordian.CRDT.Logoot.Peer do
       {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
         peer_pid = get_peer_pid(peer)
         sequence = get_peer_sequence(peer)
-        to_delete_atom = Sequence.get_sequence_atom_by_index(sequence, index)
+        to_delete_atom = Sequence.get_sequence_atom_by_index_delete(sequence, index)
         peer = perform_delete(to_delete_atom, peer)
-
-        if index < 10 and length(sequence) > 100 do
-          peer_id = get_peer_id(peer)
-          IO.puts("Delete on #{peer_id} with index #{index}")
-          IO.inspect(Enum.take(sequence,12))
-          IO.inspect(to_delete_atom)
-          IO.puts("\n\n")
-        end
 
         # Send the broadcast to the network
         send(peer_pid, {:send_delete_broadcast, to_delete_atom})
@@ -266,19 +258,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         sequence = get_peer_sequence(peer)
 
         {atom_ident, _term} =
-          cond do
-            index == 0 ->
               Sequence.get_sequence_atom_by_index(sequence, index)
-            true ->
-              Sequence.get_sequence_atom_by_index(sequence, index - 1)
-          end
-        if index < 10 and length(sequence) > 100 do
-          peer_id = get_peer_id(peer)
-          IO.puts("Insert on #{peer_id} with index #{index}")
-          IO.inspect(Enum.take(sequence,12))
-          IO.inspect(atom_ident)
-          IO.puts("\n\n")
-        end
 
         case Sequence.get_and_insert_after(sequence, atom_ident, content, agent) do
           {:ok, {new_sequence_atom, new_agent}} ->

@@ -77,16 +77,12 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
 
       [
         {{[{0, 0}], 0}, nil},
-        {{[{1, 1}], 0}, "This is an example of a Logoot Sequence"},
-        {{[{1, 1}, {1, 5}], 23}, "How to find a place between 1 and 1"},
-        {{[{1, 3}], 2}, "This line was the third made on replica 3"},
         {{[{32767, 0}], 1}, nil}
       ]
   """
   @type t :: [sequence_atom]
-
-  @spec get_sequence_atom_by_index(t, integer) :: sequence_atom
-  def get_sequence_atom_by_index(sequence, index) do
+  @spec get_sequence_atom_by_index_delete(t, integer) :: sequence_atom
+  def get_sequence_atom_by_index_delete(sequence, index) do
     cond do
       # Case: Sequence is empty (only contains min and max)
       length(sequence) == 2 ->
@@ -101,6 +97,23 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
       # Case: Valid index
       true ->
         Enum.at(sequence, index)
+    end
+  end
+
+  @spec get_sequence_atom_by_index(t, integer) :: sequence_atom
+  def get_sequence_atom_by_index(sequence, index) do
+    cond do
+      index == 0 or length(sequence) == 2 ->
+        Enum.at(sequence, 0)
+
+      # Case: Index is out of bounds (greater than the max index)
+      index >= length(sequence) - 2 ->
+        # Return the last valid atom (before max)
+        Enum.at(sequence, length(sequence) - 2)
+
+      # Case: Valid index
+      true ->
+        Enum.at(sequence, index - 1)
     end
   end
 

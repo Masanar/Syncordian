@@ -19,7 +19,7 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
   A tuple `{int, site}` where `int` is an integer and `site` is a site
   identifier.
   """
-  @type ident :: {0..32767, term}
+  @type ident :: {0..32767, Basic_Types.peer_id()}
 
   @typedoc """
   A list of `ident`s.
@@ -32,12 +32,42 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
   the vector clock of site `s`.
   """
   @type atom_ident :: {position, non_neg_integer}
+  @spec get_atom_ident_position_str(atom_ident) :: String.t()
+  def get_atom_ident_position_str({position, _vc}) do
+    position
+    # Format each `ident` as "int@site"
+    |> Enum.map(fn {int, site} -> "#{int}@#{site}" end)
+    # Join the formatted `ident`s with " -> "
+    |> Enum.join(" -> ")
+  end
+
+  @spec get_atom_ident_vc_str(atom_ident) :: String.t()
+  def get_atom_ident_vc_str({_position, vc}), do: Integer.to_string(vc)
 
   @typedoc """
   An item in a sequence represented by a tuple `{atom_ident, data}` where
   `atom_ident` is a `atom_ident` and `data` is any term.
   """
-  @type sequence_atom :: {atom_ident, term}
+  @type sequence_atom :: {atom_ident, Basic_Types.content()}
+
+  @spec get_sequence_atom_ident(sequence_atom) :: atom_ident
+  def get_sequence_atom_ident({atom_ident, _}), do: atom_ident
+
+  @spec get_sequence_atom_value(sequence_atom) :: term
+  def get_sequence_atom_value({_, value}), do: value
+
+  @spec get_sequence_atom_position_str(sequence_atom) :: String.t()
+  def get_sequence_atom_position_str(sequence_atom) do
+    "position: " <>
+      get_atom_ident_position_str(get_sequence_atom_ident(sequence_atom)) <>
+      " vc: " <>
+      get_atom_ident_vc_str(get_sequence_atom_ident(sequence_atom))
+  end
+
+  @spec get_sequence_atom_vc_str(sequence_atom) :: String.t()
+  def get_sequence_atom_vc_str(sequence_atom) do
+    get_atom_ident_vc_str(get_sequence_atom_ident(sequence_atom))
+  end
 
   @typedoc """
   A sequence of `sequence_atoms` used to represent an ordered set.
@@ -54,6 +84,27 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
       ]
   """
   @type t :: [sequence_atom]
+
+  @spec get_sequence_atom_by_index(t, integer) :: sequence_atom
+  def get_sequence_atom_by_index(sequence, index) do
+    cond do
+      # Case: Sequence is empty (only contains min and max)
+      length(sequence) == 2 ->
+        IO.puts("Warning: Sequence is empty. Returning the min atom.")
+        # Return the min atom
+        Enum.at(sequence, 0)
+
+      # Case: Index is out of bounds (greater than the max index)
+      index >= length(sequence) - 1 ->
+        IO.puts("Warning: Index #{index} is out of bounds. Returning the last valid atom.")
+        # Return the last valid atom (before max)
+        Enum.at(sequence, length(sequence) - 2)
+
+      # Case: Valid index
+      true ->
+        Enum.at(sequence, index)
+    end
+  end
 
   @typedoc """
   A `sequence_atom` that represents the beginning of any `Logoot.Sequence.t`.
@@ -107,9 +158,9 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
 
   Returns a tuple containing the new atom and the updated sequence.
   """
-  @spec get_and_insert_after(t, atom_ident, term, pid) ::
-          {:ok, {sequence_atom, t}} | {:error, String.t()}
-  def get_and_insert_after(sequence, prev_sibling_ident, value, agent_pid) do
+  @spec get_and_insert_after(t, atom_ident, term, Agent.t()) ::
+          {:ok, {sequence_atom, Agent.t()}} | {:error, String.t()}
+  def get_and_insert_after(sequence, prev_sibling_ident, value, agent) do
     prev_sibling_index =
       Enum.find_index(sequence, fn {atom_ident, _} ->
         atom_ident == prev_sibling_ident
@@ -117,15 +168,16 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
 
     {next_sibling_ident, _} = Enum.at(sequence, prev_sibling_index + 1)
 
-    case gen_atom_ident(agent_pid, prev_sibling_ident, next_sibling_ident) do
+    case gen_atom_ident(agent, prev_sibling_ident, next_sibling_ident) do
       error = {:error, _} ->
         error
 
-      {:ok, atom_ident} ->
-        IO.inspect("ESTO SI FUNKA!")
-        new_atom = {atom_ident, value}
+      {:ok, {atom_ident, agent}} ->
+        new_sequence_atom = {atom_ident, value}
+        new_sequence = List.insert_at(sequence, prev_sibling_index + 1, new_sequence_atom)
+        new_agent = Agent.update_sequence(agent, new_sequence)
 
-        {:ok, {new_atom, List.insert_at(sequence, prev_sibling_index + 1, new_atom)}}
+        {:ok, {new_sequence_atom, new_agent}}
     end
   end
 
@@ -162,7 +214,10 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
   @spec get_values(t) :: [term]
   def get_values(sequence) do
     sequence
-    |> Enum.slice(1..-2)
+    # Drop the first element
+    |> Enum.drop(1)
+    # Drop the last element
+    |> Enum.drop(-1)
     |> Enum.map(&elem(&1, 1))
   end
 
@@ -187,13 +242,15 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
           {:ok, {atom_ident, Agent.t()}} | {:error, String.t()}
   def gen_atom_ident(agent, min_atom_ident, max_atom_ident) do
     agent = Agent.tick_clock(agent)
+    agent_clock = Agent.get_clock(agent)
+    agent_id = Agent.get_id(agent)
 
-    case gen_position(agent.id, elem(min_atom_ident, 0), elem(max_atom_ident, 0)) do
+    case gen_position(agent_id, elem(min_atom_ident, 0), elem(max_atom_ident, 0)) do
       {:error, _error_message} = error ->
         error
 
-      atom_ident ->
-        {:ok, {atom_ident, agent}}
+      position ->
+        {:ok, {{position, agent_clock}, agent}}
     end
   end
 

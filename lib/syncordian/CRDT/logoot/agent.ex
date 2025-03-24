@@ -15,6 +15,10 @@ defmodule Syncordian.CRDT.Logoot.Agent do
           sequence: Sequence.t()
         }
 
+  @spec new() :: t()
+  def new(), do: %__MODULE__{}
+  @spec new(Basic_Types.peer_id()) :: t()
+  def new(id), do: %__MODULE__{id: id}
   # Getters
 
   @doc """

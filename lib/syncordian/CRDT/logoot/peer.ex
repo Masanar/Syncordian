@@ -178,7 +178,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
   @spec start(Syncordian.Basic_Types.peer_id(), integer) :: pid
   def start(peer_id, _network_size) do
     pid = spawn(__MODULE__, :loop, [new(peer_id)])
-    IO.puts("Fugue peer with id #{peer_id} started with pid #{inspect(pid)}")
+    IO.puts("Logoot peer with id #{peer_id} started with pid #{inspect(pid)}")
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, peer_id)
     Process.send_after(pid, {:register_supervisor_pid}, 50)
@@ -237,6 +237,14 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         to_delete_atom = Sequence.get_sequence_atom_by_index(sequence, index)
         peer = perform_delete(to_delete_atom, peer)
 
+        if index < 10 and length(sequence) > 100 do
+          peer_id = get_peer_id(peer)
+          IO.puts("Delete on #{peer_id} with index #{index}")
+          IO.inspect(Enum.take(sequence,12))
+          IO.inspect(to_delete_atom)
+          IO.puts("\n\n")
+        end
+
         # Send the broadcast to the network
         send(peer_pid, {:send_delete_broadcast, to_delete_atom})
 
@@ -256,7 +264,21 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         peer_pid = get_peer_pid(peer)
         agent = get_peer_agent(peer)
         sequence = get_peer_sequence(peer)
-        {atom_ident, _term} = Sequence.get_sequence_atom_by_index(sequence, index)
+
+        {atom_ident, _term} =
+          cond do
+            index == 0 ->
+              Sequence.get_sequence_atom_by_index(sequence, index)
+            true ->
+              Sequence.get_sequence_atom_by_index(sequence, index - 1)
+          end
+        if index < 10 and length(sequence) > 100 do
+          peer_id = get_peer_id(peer)
+          IO.puts("Insert on #{peer_id} with index #{index}")
+          IO.inspect(Enum.take(sequence,12))
+          IO.inspect(atom_ident)
+          IO.puts("\n\n")
+        end
 
         case Sequence.get_and_insert_after(sequence, atom_ident, content, agent) do
           {:ok, {new_sequence_atom, new_agent}} ->

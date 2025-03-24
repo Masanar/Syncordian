@@ -90,13 +90,11 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
     cond do
       # Case: Sequence is empty (only contains min and max)
       length(sequence) == 2 ->
-        IO.puts("Warning: Sequence is empty. Returning the min atom.")
         # Return the min atom
         Enum.at(sequence, 0)
 
       # Case: Index is out of bounds (greater than the max index)
       index >= length(sequence) - 1 ->
-        IO.puts("Warning: Index #{index} is out of bounds. Returning the last valid atom.")
         # Return the last valid atom (before max)
         Enum.at(sequence, length(sequence) - 2)
 

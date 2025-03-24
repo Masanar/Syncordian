@@ -330,13 +330,13 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   def insert(tree, replica_id, counter, position, value) do
     id = {replica_id, counter}
 
-    test = traverse(tree) |> length()
+    len = traverse(tree) |> length()
 
     left_origin =
       cond do
         position == 0 ->
           Node.root()
-        test == position ->
+        len == position ->
           List.last(traverse(tree))
         true ->
           node_i_position_from_values(tree, position - 1)

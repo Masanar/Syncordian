@@ -19,7 +19,6 @@ defmodule Syncordian.MixProject do
   def application do
     [
       mod: {Syncordian.Application, []},
-      applications: [:logoot],
       extra_applications: [:logger, :runtime_tools, :observer, :wx]
     ]
   end
@@ -58,7 +57,6 @@ defmodule Syncordian.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.2"},
       {:phoenix_live_session, "~> 0.1"}
-      {:logoot, "~> 0.1.0"}
     ]
   end
 

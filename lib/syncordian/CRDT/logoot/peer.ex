@@ -1,331 +1,391 @@
 defmodule Syncordian.CRDT.Logoot.Peer do
+  import Syncordian.Metadata
+  alias Syncordian.Utilities
+  alias Syncordian.CRDT.Logoot.{Agent, Sequence, Info}
 
-    defstruct peer_id : @null_id, 
-            clock: 0, 
-            sequence: nil,
-            metadata : Syncordian.Metadata.metadata()
+  defstruct agent: Agent.new(),
+            metadata: Syncordian.Metadata.metadata(),
+            supervisor_pid: nil,
+            pid: nil,
+            edit_count: 0
 
-    @type t :: [sequence_atom]
+  @type t :: %__MODULE__{
+          agent: Agent.t(),
+          metadata: Syncordian.Metadata.metadata(),
+          supervisor_pid: pid | nil,
+          pid: pid | nil,
+          edit_count: integer()
+        }
 
-    @typedoc """
-    A `sequence_atom` that represents the beginning of any `Logoot.Sequence.t`.
-    """
-    @type abs_min_atom_ident :: {nonempty_list({0, 0}), 0}
+  @type peer_logoot :: t
+  @peer_metadata_id 7
 
-    @typedoc """
-    A `sequence_atom` that represents the end of any `Logoot.Sequence.t`.
-    """
-    @type abs_max_atom_ident :: {nonempty_list({32767, 0}), 1}
+  @spec get_module_name() :: String.t()
+  def get_module_name(), do: "logoot"
 
-    @doc """
-    Get the minimum sequence atom.
-    """
-    @spec min :: abs_min_atom_ident
-    def min, do: @abs_min_atom_ident
+  @spec get_edit_count(peer_logoot()) :: integer()
+  def get_edit_count(%__MODULE__{edit_count: edit_count}), do: edit_count
 
-    @doc """
-    Get the maximum sequence atom.
-    """
-    @spec max :: abs_max_atom_ident
-    def max, do: @abs_max_atom_ident
+  @spec tick_edit_count(peer_logoot()) :: peer_logoot()
+  def tick_edit_count(%__MODULE__{} = peer) do
+    new_count = get_edit_count(peer) + 1
+    %{peer | edit_count: new_count}
+  end
 
-    def start(peer_id, _network_size) do
-        agent = %SyncordianCRDT.Logoot.Peer{}
-        :global.register_name(peer_id, agent)
-        save_peer_pid(pid, peer_id)
-        agent
+  ################################## Getters ##################################
+
+  @spec get_document_byte_size(peer_logoot()) :: integer()
+  def get_document_byte_size(peer) do
+    sequence = get_peer_sequence(peer)
+
+    inspect(sequence, limit: :infinity, printable_limit: :infinity)
+    |> byte_size
+  end
+
+  @spec get_peer_supervisor_pid(peer_logoot) :: pid() | nil
+  def get_peer_supervisor_pid(peer), do: peer.supervisor_pid
+
+  @spec get_peer_pid(peer_logoot) :: pid()
+  def get_peer_pid(peer), do: peer.pid
+
+  @spec get_peer_agent(peer_logoot) :: Agent.t()
+  def get_peer_agent(peer), do: peer.agent
+
+  @spec get_peer_metadata(peer_logoot) :: Syncordian.Metadata.metadata()
+  def get_peer_metadata(peer), do: peer.metadata
+
+  @spec get_peer_id(peer_logoot) :: Syncordian.Basic_Types.peer_id()
+  def get_peer_id(peer), do: Agent.get_id(get_peer_agent(peer))
+
+  @spec get_peer_clock(peer_logoot) :: non_neg_integer()
+  def get_peer_clock(peer), do: Agent.get_clock(get_peer_agent(peer))
+
+  @spec get_peer_sequence(peer_logoot) :: Sequence.t()
+  def get_peer_sequence(peer), do: Agent.get_sequence(get_peer_agent(peer))
+
+  ################################## Setters ##################################
+
+  @spec set_peer_supervisor_pid(peer_logoot(), pid()) :: peer_logoot()
+  def set_peer_supervisor_pid(%__MODULE__{} = peer, supervisor_pid),
+    do: %{peer | supervisor_pid: supervisor_pid}
+
+  @spec update_peer_pid(
+          {pid(), Syncordian.Basic_Types.peer_id()},
+          peer_logoot()
+        ) ::
+          peer_logoot()
+  def update_peer_pid({pid, peer_id}, %__MODULE__{} = peer) do
+    updated_peer = update_peer_id(peer_id, peer)
+    %{updated_peer | pid: pid}
+  end
+
+  @spec update_peer_agent(Agent.t(), peer_logoot) :: peer_logoot
+  def update_peer_agent(new_agent, peer) do
+    %{peer | agent: new_agent}
+  end
+
+  @spec update_peer_metadata(Syncordian.Metadata.metadata(), peer_logoot) :: peer_logoot
+  def update_peer_metadata(new_metadata, peer) do
+    %{peer | metadata: new_metadata}
+  end
+
+  @spec update_peer_id(Syncordian.Basic_Types.peer_id(), peer_logoot) :: peer_logoot
+  def update_peer_id(new_id, peer) do
+    agent = get_peer_agent(peer)
+    updated_agent = Agent.update_id(agent, new_id)
+    update_peer_agent(updated_agent, peer)
+  end
+
+  @spec update_peer_sequence(Sequence.t(), peer_logoot) :: peer_logoot
+  def update_peer_sequence(new_sequence, peer) do
+    updated_agent = Agent.update_sequence(get_peer_agent(peer), new_sequence)
+    update_peer_agent(updated_agent, peer)
+  end
+
+  ################################## Peer Initialization ##################################
+
+  @spec new(Syncordian.Basic_Types.peer_id()) :: peer_logoot()
+  def new(peer_id), do: %__MODULE__{agent: Agent.new(peer_id)}
+
+  # This part of code is basically the same in all peers definition! if you have time
+  # in the future improve this.
+  ################################## Peer Loop Interface #################################
+
+  @doc """
+      This function prints the whole document as a list of lists by sending a message to the
+      loop peer function with the atom :print.
+  """
+  @spec raw_print(pid) :: any
+  def raw_print(pid), do: send(pid, {:print, :document})
+
+  @doc """
+      This function prints in console the whole document no matter if the status of the line
+      each line of the document is printed in a new line as a string.
+  """
+  @spec print_content(pid) :: any
+  def print_content(pid), do: send(pid, {:print_content, :document})
+
+  @doc """
+      This function saves the content of the document of the peer in a file with the name
+      document_peer_{peer_id} where peer_id is the id of the peer. The file is saved in the
+      debug/documents folder. This function filter the first and last line of the document
+      and the lines that are marked as tombstone.
+  """
+  @spec save_content(pid) :: any
+  def save_content(pid), do: send(pid, {:save_content, :document})
+
+  @doc """
+      This function is use to delete a line at the given index in the current document of
+      the peer by sending a message to the loop peer function. Where:
+      - pid: the pid of the peer
+      - index_position: the index position of the line to be deleted
+      - global_position: the global position of the current commit, in other words the
+          beginning position of the line in the context lines.
+  """
+  @spec delete_line(pid, integer, integer, integer, integer) :: any
+  def delete_line(pid, index_position, test_index, global_position, current_delete_ops),
+    do:
+      send(
+        pid,
+        {:delete_line, [index_position, test_index, global_position, current_delete_ops]}
+      )
+
+  @doc """
+      This function inserts a content at the given index and a pid by sending a message to
+      the loop peer function. The messages uses the following format:
+      {:insert,[content,index, global_position] }
+      where:
+      - content: the content to be inserted in the peers local document
+      - index_position: the index position where the content will be inserted
+      - global_position: the global position of the current commit, in other words the
+          beginning position of the line in the context lines.
+
+  """
+  @spec insert(pid, String.t(), integer, integer, integer, integer) :: any
+  def insert(pid, content, _, test_index, _, _),
+    do: send(pid, {:insert, [content, test_index]})
+
+  # This is a private function used to save the pid of the peer in the record.
+  @spec save_peer_pid(pid, integer) :: any
+  def save_peer_pid(pid, peer_id),
+    do: send(pid, {:save_pid, {pid, peer_id}})
+
+  @doc """
+      This function starts a peer with the given peer_id and registers it in the global
+      registry. The returned content is the pid of the peer. The pid is the corresponding
+      content of the pid of the spawned process.
+  """
+  @spec start(Syncordian.Basic_Types.peer_id(), integer) :: pid
+  def start(peer_id, _network_size) do
+    pid = spawn(__MODULE__, :loop, [new(peer_id)])
+    IO.puts("Logoot peer with id #{peer_id} started with pid #{inspect(pid)}")
+    :global.register_name(peer_id, pid)
+    save_peer_pid(pid, peer_id)
+    Process.send_after(pid, {:register_supervisor_pid}, 50)
+    pid
+  end
+
+  ########################################################################################
+
+  @spec perform_broadcast_peer(peer_logoot(), any) :: any
+  defp perform_broadcast_peer(peer, message) do
+    peer_pid = get_peer_pid(peer)
+    delay = 0..0
+    Utilities.perform_broadcast(peer_pid, message, delay)
+  end
+
+  @spec save_peer_metadata_edit(peer_logoot()) :: :ok
+  defp save_peer_metadata_edit(peer) do
+    folder = "logoot/"
+    file_prefix = "edit"
+    peer_pid = get_peer_pid(peer)
+    current_edit = get_edit_count(peer)
+    nodes_size = get_document_byte_size(peer)
+
+    peer
+    |> get_peer_metadata()
+    |> update_memory_info(peer_pid, nodes_size)
+    |> save_metadata_one_peer(current_edit, folder, file_prefix)
+
+    :ok
+  end
+
+  @spec perform_delete(Sequence.sequence_atom(), peer_logoot()) :: peer_logoot()
+  def perform_delete(to_delete_atom, peer) do
+    peer_id = get_peer_id(peer)
+
+    new_peer =
+      get_peer_sequence(peer)
+      |> Sequence.delete_atom(to_delete_atom)
+      |> update_peer_sequence(peer)
+      |> tick_edit_count()
+
+    if peer_id == @peer_metadata_id do
+      save_peer_metadata_edit(new_peer)
     end
 
-    @spec save_peer_pid(pid, integer) :: any
-    defp save_peer_pid(pid, peer_id), do: send(pid, {:save_pid, {pid, peer_id}})
+    new_peer
+  end
 
-    # This is a private function used whenever an update to the document is needed. It
-  # updates the record peer with the new document.
-  @spec update_peer_document(Syncordian.Basic_Types.document(), peer()) :: peer()
-  defp update_peer_document(document, peer), do: peer(peer, document: document)
+  @spec loop(peer_logoot) :: any
+  def loop(peer) do
+    receive do
+      ###################################### Delete related messages
+      {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
+        peer_pid = get_peer_pid(peer)
+        sequence = get_peer_sequence(peer)
+        to_delete_atom = Sequence.get_sequence_atom_by_index_delete(sequence, index)
+        peer = perform_delete(to_delete_atom, peer)
 
-    @spec loop(peer_logoot()) :: any
-    def loop(peer) do
-        receive do
-            ###################################### Delete related messages
-            {:delete_line, [_index_position, index, _global_position, _current_delete_ops]} ->
+        # Send the broadcast to the network
+        send(peer_pid, {:send_delete_broadcast, to_delete_atom})
+
+        loop(peer)
+
+      {:send_delete_broadcast, delete_node_id} ->
+        perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_node_id})
+        loop(peer)
+
+      {:receive_delete_broadcast, to_delete_atom} ->
+        peer = perform_delete(to_delete_atom, peer)
+
+        loop(peer)
+
+      ###################################### Insert related messages
+      {:insert, [content, index]} ->
+        peer_pid = get_peer_pid(peer)
+        agent = get_peer_agent(peer)
+        sequence = get_peer_sequence(peer)
+
+        {atom_ident, _term} =
+              Sequence.get_sequence_atom_by_index(sequence, index)
+
+        case Sequence.get_and_insert_after(sequence, atom_ident, content, agent) do
+          {:ok, {new_sequence_atom, new_agent}} ->
             peer_id = get_peer_id(peer)
-            document = get_peer_document(peer)
+            new_peer = update_peer_agent(new_agent, peer) |> tick_edit_count()
+            send(peer_pid, {:send_insert_broadcast, new_sequence_atom})
 
-            # Get node to be deleted
-            git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
-
-            [left_parent, right_parent] =
-                get_parents_by_index(
-                    document,
-                    git_index_translated
-                )
-            atom_to_delete = gen_atom_ident(peer_pid, left_parent, right_parent)
-            new_sequence = delete_atom(document, atom_to_delete)
-            
-            # Update the document with the deleted node, increment the deleted count and
-            # increment the edit count
-            updated_peer = update_peer_document(peer)
-                |> tick_peer_deleted_count()
-                |> tick_edit_count()
-
-            # Update the metadata of the peer with the new values
-            updated_peer_metadata = get_metadata(updated_peer) |> inc_delete_valid_counter()
-            updated_peer_delete_metadata = update_metadata(updated_peer_metadata, updated_peer)
-            peer_pid = get_peer_pid(updated_peer_delete_metadata)
-
-            # Save the edit info is the peer is the chosen one
             if peer_id == @peer_metadata_id do
-                save_peer_metadata_edit(updated_peer_delete_metadata)
+              save_peer_metadata_edit(new_peer)
             end
 
-            # Send the broadcast to the network
-            send(peer_pid, {:send_delete_broadcast, delete_node_id})
+            loop(new_peer)
 
-            # loop with the new peer node deleted and metadata updated
-            loop(updated_peer_delete_metadata)
-
-            {:send_delete_broadcast, delete_node_id} ->
-            perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_node_id})
+          {:error, error} ->
+            IO.puts("Error inserting the content")
+            IO.inspect(error)
             loop(peer)
+        end
 
-            {:receive_delete_broadcast, delete_node_id} ->
+      {:send_insert_broadcast, new_sequence_atom} ->
+        perform_broadcast_peer(
+          peer,
+          {:receive_insert_broadcast, new_sequence_atom}
+        )
+
+        loop(peer)
+
+      {:receive_insert_broadcast, new_sequence_atom} ->
+        sequence = get_peer_sequence(peer)
+
+        case Sequence.insert_atom(sequence, new_sequence_atom) do
+          {:ok, new_sequence} ->
             peer_id = get_peer_id(peer)
-            # update the peer with the document with the deleted node
-            updated_peer =
-                get_peer_document(peer)
-                |> Tree.delete_local(delete_node_id)
-                |> update_peer_document(peer)
-
-            # update the metadata of the new peer
-            updated_peer_metadata = get_metadata(updated_peer) |> inc_delete_valid_counter()
-
-            # Get the new peer with the metadata updated
-            updated_peer_delete_metadata =
-                update_metadata(updated_peer_metadata, updated_peer)
-                |> tick_edit_count
-                |> tick_peer_deleted_count
-
-            # Save the edit info is the peer is the chosen one
-            if peer_id == @peer_metadata_id do
-                save_peer_metadata_edit(updated_peer_delete_metadata)
-            end
-
-            loop(updated_peer_delete_metadata)
-
-            ###################################### Insert related messages
-            {:insert, [content, index]} ->
-            peer_id = get_peer_id(peer)
-            document = get_peer_document(peer)
-            
-            git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
-
-            [left_parent, right_parent] =
-                get_parents_by_index(
-                    document,
-                    git_index_translated
-                )
-
-            new_atom_index = gen_atom_ident(peer_pid, left_parent, right_parent)
-            atom = {new_atom_index, content}
-            {:ok, new_sequence} = insert_atom(document, atom)
-            new_peer =  update_peer_document(new_sequence, peer)
-                
-
-            send(get_peer_pid(peer), {:send_insert_broadcast, atom})
+            new_peer = update_peer_sequence(new_sequence, peer) |> tick_edit_count()
 
             if peer_id == @peer_metadata_id do
-                save_peer_metadata_edit(new_peeer)
+              save_peer_metadata_edit(new_peer)
             end
 
-            loop(new_node_peer_new_metadata)
+            loop(new_peer)
 
-            {:send_insert_broadcast, insert_node} ->
-            perform_broadcast_peer(
-                peer,
-                {:receive_insert_broadcast, insert_node}
+          {:error, error} ->
+            IO.puts("Error inserting local content Logoot peer")
+            IO.inspect(error)
+            loop(peer)
+        end
+
+      #################################### Gathering info related messages
+
+      {:request_live_view_document, live_view_pid} ->
+        peer_id = get_peer_id(peer)
+        list_document = get_peer_sequence(peer)
+
+        handler_function = fn
+          node ->
+            Utilities.create_map_live_view_node_document(
+              Syncordian.CRDT.Logoot.Sequence.get_sequence_atom_value(node),
+              peer_id,
+              Syncordian.CRDT.Logoot.Sequence.get_sequence_atom_position_str(node)
             )
-
-            loop(peer)
-
-            {:receive_insert_broadcast, insert_node} ->
-            peer_pid = get_peer_pid(peer)
-            insert_node_origin_peer_id = Node.get_peer_id(insert_node)
-            external_counter_list = get_peer_external_counter_list(peer)
-
-            if Node.check_sender_counter_projection_distance(insert_node, external_counter_list) do
-                new_node_peer =
-                get_peer_document(peer)
-                |> Tree.insert_local(insert_node)
-                |> update_peer_document(peer)
-                |> tick_peer_external_counter(insert_node_origin_peer_id)
-
-                new_node_peer_new_metadata =
-                new_node_peer
-                |> get_metadata
-                |> inc_insert_valid_counter
-                |> update_metadata(new_node_peer)
-                |> tick_edit_count()
-
-                peer_id = get_peer_id(peer)
-
-                if peer_id == @peer_metadata_id do
-                save_peer_metadata_edit(new_node_peer_new_metadata)
-                end
-
-                loop(new_node_peer_new_metadata)
-            else
-                send(peer_pid, {:receive_insert_broadcast, insert_node})
-
-                get_metadata(peer)
-                |> inc_requeue_counter
-                |> update_metadata(peer)
-                |> loop
-            end
-
-            #################################### Gathering info related messages
-
-            {:print_content, :document} ->
-            peer_id = get_peer_id(peer)
-
-            get_peer_document(peer)
-            |> Info.print_tree_content(peer_id)
-
-            loop(peer)
-
-            {:save_content, :document} ->
-            peer_id = get_peer_id(peer)
-            document = get_peer_document(peer)
-            Info.save_tree_content(document, peer_id)
-            loop(peer)
-
-            {:request_live_view_document, live_view_pid} ->
-            list_document = get_peer_document(peer) |> Tree.full_traverse()
-            peer_id = get_peer_id(peer)
-
-            handler_function = fn
-                node ->
-                Syncordian.Utilities.create_map_live_view_node_document(
-                    Syncordian.CRDT.Fugue.Node.get_value(node),
-                    peer_id,
-                    Syncordian.CRDT.Fugue.Node.get_id_str(node),
-                    Syncordian.CRDT.Fugue.Node.get_side(node)
-                )
-            end
-
-            send(live_view_pid, {:receive_live_view_document, list_document, handler_function})
-            loop(peer)
-
-            {:save_pid, info} ->
-            info
-            |> update_peer_pid(peer)
-            |> loop
-
-            {:print, _} ->
-            IO.inspect(peer)
-            loop(peer)
-
-            {:register_supervisor_pid} ->
-            supervisor_pid = :global.whereis_name(:supervisor)
-
-            set_peer_supervisor_pid(peer, supervisor_pid)
-            |> loop
-
-            {:supervisor_request_metadata} ->
-            peer_pid = get_peer_pid(peer)
-
-            nodes_size = get_document_byte_size(peer)
-
-            updated_memory_metadata =
-                peer
-                |> get_metadata()
-                |> update_memory_info(peer_pid, nodes_size)
-
-            send(
-                get_peer_supervisor_pid(peer),
-                {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
-            )
-
-            update_metadata(updated_memory_metadata, peer)
-            |> loop()
-
-            {:write_raw_document} ->
-            document = get_peer_document(peer)
-            traverse = Tree.traverse(document)
-            full_traverse = Tree.full_traverse(document)
-
-            helper = fn list ->
-                list
-                |> Enum.map(fn node -> Node.node_to_string(node) end)
-                |> Enum.join("\n")
-            end
-
-            raw_traverse = traverse |> helper.()
-
-            raw_full_traverse = full_traverse |> helper.()
-
-            raw_tree_content =
-                Tree.get_tree_nodes(document)
-                |> Enum.map(fn {id, {node, left, right}} ->
-                "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
-                end)
-                |> Enum.join("\n")
-
-            file_path = "debug/documents/logoot/raw/"
-            File.write(file_path <> "doc", raw_tree_content)
-            
-            loop(peer)
-
-            wrong_message ->
-            IO.puts("Peer Logoot receive a wrong message")
-            IO.inspect(wrong_message)
-            loop(peer)
         end
-    end
 
-    @doc """
-    Delete the given atom from the sequence.
-    """
-    @spec delete_atom(t, sequence_atom) :: t
-    def delete_atom([atom | tail], atom), do: tail
-    def delete_atom([head | tail], atom), do: [head | delete_atom(tail, atom)]
-    def delete_atom([], _atom), do: []
+        send(live_view_pid, {:receive_live_view_document, list_document, handler_function})
+        loop(peer)
 
-    @doc """
-    Insert the given atom into the sequence.
-    """
-    @spec insert_atom(t, sequence_atom) :: {:ok, t} | {:error, String.t}
-    def insert_atom(list = [prev | tail = [next | _]], atom) do
-    {{prev_position, _}, _} = prev
-    {{next_position, _}, _} = next
-    {{position, _}, _} = atom
+      {:supervisor_request_metadata} ->
+        peer_pid = get_peer_pid(peer)
+        supervisor_pid = get_peer_supervisor_pid(peer)
 
-    case {compare_positions(position, prev_position),
-            compare_positions(position, next_position)} do
-        {:gt, :lt} ->
-        {:ok, [prev | [atom | tail]]}
-        {:gt, :gt} ->
-        case insert_atom(tail, atom) do
-            error = {:error, _} -> error
-            {:ok, tail} -> {:ok, [prev | tail]}
+        nodes_size = get_document_byte_size(peer)
+
+        updated_memory_metadata =
+          peer
+          |> get_peer_metadata()
+          |> update_memory_info(peer_pid, nodes_size)
+
+        send(
+          supervisor_pid,
+          {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
+        )
+
+        update_peer_metadata(updated_memory_metadata, peer)
+        |> loop()
+
+      {:save_content, :document} ->
+        peer_id = get_peer_id(peer)
+        document = get_peer_sequence(peer)
+        Info.save_tree_content(document, peer_id)
+        loop(peer)
+
+      {:write_raw_document} ->
+        document = get_peer_sequence(peer)
+
+        helper_raw = fn list ->
+          list
+          |> inspect(limit: :infinity, printable_limit: :infinity)
         end
-        {:lt, :gt} ->
-        {:error, "Sequence out of order"}
-        {_, :eq} ->
-        {:ok, list}
-    end
 
-    # Compare two positions.
-    @spec compare_positions(position, position) :: comparison
-    defp compare_positions([], []), do: :eq
-    defp compare_positions(_, []), do: :gt
-    defp compare_positions([], _), do: :lt
+        raw_document = helper_raw.(document)
 
-    defp compare_positions([head_a | tail_a], [head_b | tail_b]) do
-        case compare_idents(head_a, head_b) do
-        :gt -> :gt
-        :lt -> :lt
-        :eq -> compare_positions(tail_a, tail_b)
+        file_path = "debug/documents/logoot/raw/"
+
+        # Ensure the directory exists
+        unless File.dir?(file_path) do
+          File.mkdir_p!(file_path)
         end
+
+        # Write the file
+        File.write!(file_path <> "document", raw_document)
+
+        loop(peer)
+
+      {:register_supervisor_pid} ->
+        supervisor_pid = :global.whereis_name(:supervisor)
+
+        set_peer_supervisor_pid(peer, supervisor_pid)
+        |> loop
+
+      {:save_pid, info} ->
+        info
+        |> update_peer_pid(peer)
+        |> loop
+
+      wrong ->
+        IO.puts("Wrong message received at Logoot per")
+        IO.inspect(wrong)
+        loop(peer)
     end
+  end
 end

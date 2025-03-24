@@ -51,7 +51,7 @@ def format_y_axis(value, _):
     return str(int(value))  # Keep smaller values as-is
 
 # Function to plot the graph
-def plot_heap_sizes(fugue_data, syncordian_data, commit_data, output_path="../figures/heap_size_plot.pdf"):
+def plot_heap_sizes(fugue_data, syncordian_data, logoot_data, commit_data, output_path="../figures/heap_size_plot.pdf"):
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Plot Fugue data
@@ -69,6 +69,15 @@ def plot_heap_sizes(fugue_data, syncordian_data, commit_data, output_path="../fi
         label="Syncordian",
         color="green",
         linestyle="--",
+        linewidth=2
+    )
+
+    # Plot Logoot data
+    ax.plot(
+        logoot_data[0], logoot_data[1],
+        label="Logoot",
+        color="orange",
+        linestyle="-.",
         linewidth=2
     )
 
@@ -110,12 +119,14 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     fugue_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/fugue")
     syncordian_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/syncordian")
+    logoot_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/logoot")  # New directory for Logoot
     commit_sizes_path = os.path.join(script_dir, "../debug/README_versions/commit_sizes_with_edits.json")
     output_path = os.path.join(script_dir, "../figures/heap_size_plot.pdf")
 
-    # Read data for Fugue and Syncordian
+    # Read data for Fugue, Syncordian, and Logoot
     fugue_x, fugue_heap_sizes = read_json_files(fugue_dir)
     syncordian_x, syncordian_heap_sizes = read_json_files(syncordian_dir)
+    logoot_x, logoot_heap_sizes = read_json_files(logoot_dir)  # Read Logoot data
 
     # Read data for Commit Sizes
     commit_x, commit_heap_sizes = read_commit_sizes_with_edits(commit_sizes_path)
@@ -124,6 +135,7 @@ def main():
     plot_heap_sizes(
         (fugue_x, fugue_heap_sizes),
         (syncordian_x, syncordian_heap_sizes),
+        (logoot_x, logoot_heap_sizes),  # Pass Logoot data
         (commit_x, commit_heap_sizes),
         output_path
     )

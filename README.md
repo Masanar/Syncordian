@@ -9,7 +9,7 @@ insertions, deletions, and update operations in share documents. Our scheme with
 Byzantine nodes, providing immunity against Sybil attacks and ensuring strong eventual
 consistency. Moreover, the presented algorithm naturally avoids interleavings when
 synchronizing nodes. To evaluate Syncordian we use collaborative editing document taken
-from github with over 700 concurrent edit operations contributed by 25 network peers. With
+from github with over 930 concurrent edit operations contributed by 30 network peers. With
 this evaluation we validate Syncordian is effective in maintaining document consistency
 across all peers, even in the presence of Byzantine nodes. Moreover, we evaluate the
 performance of the Syncordian with respect to memory consumption, network load, and

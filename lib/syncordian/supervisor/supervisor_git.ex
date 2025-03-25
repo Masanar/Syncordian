@@ -197,7 +197,7 @@ defmodule Syncordian.Supervisor do
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
     parse_edits(position_changes, peer_pid, peer_module)
     # delay = len_position_changes(position_changes) * 100 + 1000 + 1000 * byzantine_nodes
-    delay = 4000
+    delay = 400
     Process.sleep(delay)
     author_id
   end
@@ -367,8 +367,8 @@ defmodule Syncordian.Supervisor do
 
           send(self(), {:restart_metadata})
           Process.send_after(self(), {:collect_metadata_from_peers}, 10)
-          Process.send_after(self(), {:print_supervisor_metadata}, 1000)
-          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 2000)
+          Process.send_after(self(), {:print_supervisor_metadata}, 500)
+          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 1000)
 
           supervisor_loop(
             supervisor(supervisor,

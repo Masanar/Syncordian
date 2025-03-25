@@ -190,7 +190,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
   @spec perform_broadcast_peer(peer_logoot(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = 0..0
+    delay = 0..15
     Utilities.perform_broadcast(peer_pid, message, delay)
   end
 

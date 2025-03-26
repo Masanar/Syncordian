@@ -244,6 +244,7 @@ defmodule Syncordian.Peer do
     pid = spawn(__MODULE__, :loop, [define(peer_id, network_size)])
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, network_size, peer_id)
+    IO.puts("Logoot peer with id #{peer_id} started with pid #{inspect(pid)}")
     Process.send_after(pid, {:register_supervisor_pid}, 50)
     pid
   end

@@ -43,12 +43,21 @@ def main():
     # Calculate average differences for all files
     result['average'] = total_diff / count_files if count_files > 0 else 0
 
-    # Save the comparison results to a JSON file
-    output_json_path = 'diff_comparison.json'
-    with open(output_json_path, 'w', encoding='utf-8') as f:
-        json.dump(result, f, indent=4)
+    # Sort document keys by number and add average at the end.
+    sorted_result = {}
+    doc_keys = [k for k in result if k.startswith("document_")]
+    doc_keys.sort(key=lambda k: int(k.split('_')[1]))
+    for key in doc_keys:
+        sorted_result[key] = result[key]
+    sorted_result['average'] = result['average']
 
-    print(f"Comparison finished. Results saved in {output_json_path}")
+    # Save the comparison results to a text file in /debug
+    output_text_path = os.path.join('debug', 'diff_comparison.txt')
+    with open(output_text_path, 'w', encoding='utf-8') as f:
+        for key in sorted_result:
+            f.write(f"{key}: {sorted_result[key]}\n")
+
+    print(f"Comparison finished. Results saved in {output_text_path}")
 
 if __name__ == '__main__':
     main()

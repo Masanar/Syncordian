@@ -74,7 +74,7 @@ defmodule Syncordian.ByzantinePeer do
 
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, _, incoming_vc}} ->
+      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, _, incoming_vc, op_id}} ->
         # This is the way to prevent the feedback between the byzantine peers, the
         # signature from a valid peer muts be a hash from sha256 (or similar) and such
         # signatures have a length of 64 characters. Then is the signature is different
@@ -91,7 +91,13 @@ defmodule Syncordian.ByzantinePeer do
             # dependency-based, so a forged message is rejected by its signature and, if
             # undeliverable, reclaimed by the receiver's edit-count horizon rather than by
             # an inflated retry counter. Kept at 0 for message-shape compatibility.
-            {:receive_delete_broadcast, {line_deleted_id, byzantine_signature, 0, incoming_vc}}
+            # The op_id is preserved from the observed message: a replayed/tampered delete
+            # carries the original id, so an honest peer that already applied the genuine
+            # delete rejects this copy as a replay, while one that has not yet seen it
+            # rejects it on the forged signature. The forged signature is never recorded, so
+            # the genuine delete is not mistaken for a replay later.
+            {:receive_delete_broadcast,
+             {line_deleted_id, byzantine_signature, 0, incoming_vc, op_id}}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
@@ -104,7 +110,7 @@ defmodule Syncordian.ByzantinePeer do
           byzantine_peer_loop(byzantine_peer)
         end
 
-      {:receive_insert_broadcast, line, incoming_vc} ->
+      {:receive_insert_broadcast, line, incoming_vc, op_id} ->
         if String.length(get_signature(line)) != 10 and send?() do
           byzantine_signature = generate_string()
 
@@ -114,7 +120,7 @@ defmodule Syncordian.ByzantinePeer do
           perform_broadcast_byzantine(
             byzantine_peer,
             {:receive_insert_broadcast, update_line_signature(line, byzantine_signature),
-             incoming_vc}
+             incoming_vc, op_id}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")

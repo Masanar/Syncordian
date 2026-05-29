@@ -18,8 +18,16 @@ defmodule Syncordian.Peer do
   import Syncordian.Utilities
   import Syncordian.Vector_Clock
   alias Syncordian.PendingOps
+  alias Syncordian.SeenOps
   @delete_limit 10_000
   @peer_metadata_id 7
+  # Epoch size, in applied edits, for the bounded replay-protection seen-set
+  # (Syncordian.SeenOps). The set keeps two generations and rotates every @seen_ops_epoch
+  # edits, so memory is bounded by the distinct operations applied within the last two
+  # epochs while any replay observed within that window is still rejected. Sized at the same
+  # order as @dependency_wait_horizon: a replayed message is reorder-bounded under reliable
+  # eventual delivery, so a window this large catches every in-flight replay.
+  @seen_ops_epoch 5_000
   # Liveness backstop for the dependency-based delivery buffer (Syncordian.PendingOps).
   # A suspended operation is reclaimed once the peer has applied this many edits without
   # the operation's dependency arriving. Under reliable eventual delivery with monotone
@@ -38,7 +46,11 @@ defmodule Syncordian.Peer do
     supervisor_pid: None,
     metadata: Syncordian.Metadata.metadata(),
     edit_count: 0,
-    pending: nil
+    pending: nil,
+    # Per-peer monotonic counter for minting operation ids (op_seq), and the bounded set of
+    # op_ids already applied, used to reject replays (Syncordian.SeenOps).
+    op_seq: 0,
+    seen_ops: nil
   )
 
   @type peer ::
@@ -51,7 +63,9 @@ defmodule Syncordian.Peer do
             vector_clock: [integer],
             supervisor_pid: pid(),
             edit_count: integer(),
-            pending: Syncordian.PendingOps.t() | nil
+            pending: Syncordian.PendingOps.t() | nil,
+            op_seq: non_neg_integer(),
+            seen_ops: Syncordian.SeenOps.t() | nil
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -112,6 +126,46 @@ defmodule Syncordian.Peer do
 
   @spec update_pending(Syncordian.PendingOps.t(), peer()) :: peer()
   defp update_pending(pending, peer), do: peer(peer, pending: pending)
+
+  # --- Replay protection (Syncordian.SeenOps) ----------------------------------------
+  # Allocates the next operation id {peer_id, op_seq} for a locally originated insert or
+  # delete, bumping the per-peer sequence counter. The op_id is fixed once here and travels
+  # unchanged in the broadcast, so a replayed message carries the same id and is rejected by
+  # the receiver's seen-set.
+  @spec next_op_id(peer()) :: {Syncordian.Basic_Types.op_id(), peer()}
+  defp next_op_id(peer) do
+    seq = peer(peer, :op_seq) + 1
+    {{get_peer_id(peer), seq}, peer(peer, op_seq: seq)}
+  end
+
+  @spec get_seen_ops(peer()) :: SeenOps.t()
+  defp get_seen_ops(peer), do: peer(peer, :seen_ops)
+
+  @spec seen_op?(peer(), Syncordian.Basic_Types.op_id()) :: boolean()
+  defp seen_op?(peer, op_id), do: SeenOps.seen?(get_seen_ops(peer), op_id)
+
+  # Records op_id as applied and rotates the bounded seen-set against the current edit count.
+  # Called exactly at the point an operation takes effect (insert/delete apply, or local
+  # origin), so that an operation that was only suspended — not yet applied — stays
+  # processable when its dependency arrives, and a rejected Byzantine copy is never recorded.
+  @spec record_seen(peer(), Syncordian.Basic_Types.op_id()) :: peer()
+  defp record_seen(peer, op_id) do
+    seen =
+      get_seen_ops(peer)
+      |> SeenOps.record(op_id)
+      |> SeenOps.rotate(get_edit_count(peer), @seen_ops_epoch)
+
+    peer(peer, seen_ops: seen)
+  end
+
+  # Drops a replayed broadcast: bumps the replay-rejected metadata counter and loops.
+  @spec reject_replay(peer()) :: any()
+  defp reject_replay(peer) do
+    get_metadata(peer)
+    |> inc_replay_rejected_counter
+    |> update_metadata(peer)
+    |> loop()
+  end
 
   # Suspends an undeliverable operation against the event it is waiting for, stamping it
   # with the current edit count for staleness reclamation, then reclaims any entry that has
@@ -235,7 +289,12 @@ defmodule Syncordian.Peer do
       create_supremum_line(peer_id, network_size)
     ]
 
-    peer(peer_id: peer_id, document: initial_peer_document, pending: PendingOps.new())
+    peer(
+      peer_id: peer_id,
+      document: initial_peer_document,
+      pending: PendingOps.new(),
+      seen_ops: SeenOps.new()
+    )
   end
 
   ########################################################################################
@@ -383,9 +442,10 @@ defmodule Syncordian.Peer do
   @spec add_valid_line_to_document_and_loop(
           peer(),
           Syncordian.Line_Object.line(),
-          Syncordian.Basic_Types.peer_id()
+          Syncordian.Basic_Types.peer_id(),
+          Syncordian.Basic_Types.op_id()
         ) :: any
-  defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id) do
+  defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id, op_id) do
     document = get_peer_document(peer)
     peer_id = get_peer_id(peer)
     # TODO: THIS NEED TO BE UNCOMMENTED WHEN THE TEST IS DONE
@@ -400,6 +460,7 @@ defmodule Syncordian.Peer do
       |> update_peer_document(peer)
       |> tick_projection_peer_clock(incoming_peer_id)
       |> tick_edit_count()
+      |> record_seen(op_id)
 
     # This apply is the only event that can make suspended operations deliverable: the
     # sender's progress-vector component advanced, and a new line is now present. Wake any
@@ -424,9 +485,10 @@ defmodule Syncordian.Peer do
   @spec delete_valid_line_to_document_and_loop(
           peer :: peer(),
           document :: Syncordian.Basic_Types.document(),
-          line_deleted_id :: Syncordian.Basic_Types.line_id()
+          line_deleted_id :: Syncordian.Basic_Types.line_id(),
+          op_id :: Syncordian.Basic_Types.op_id()
         ) :: any
-  defp delete_valid_line_to_document_and_loop(peer, document, line_deleted_id) do
+  defp delete_valid_line_to_document_and_loop(peer, document, line_deleted_id, op_id) do
     peer_id = get_peer_id(peer)
     index_position = get_document_index_by_line_id(document, line_deleted_id)
 
@@ -436,6 +498,7 @@ defmodule Syncordian.Peer do
       |> update_document_line_peer_id(index_position, peer_id)
       |> update_peer_document(peer)
       |> tick_edit_count()
+      |> record_seen(op_id)
 
     # A delete settled: re-evaluate operations suspended on a generic progress dependency
     # (\ie deletes whose signature could not be validated against any stash window yet).
@@ -509,11 +572,13 @@ defmodule Syncordian.Peer do
 
               line_delete_signature = create_signature_delete(left_parent, right_parent)
               peer_vector_clock = get_peer_vector_clock(peer)
+              {op_id, peer} = next_op_id(peer)
+              peer = record_seen(peer, op_id)
 
               send(
                 get_peer_pid(peer),
                 {:send_delete_broadcast,
-                 {line_deleted_id, line_delete_signature, 0, peer_vector_clock}}
+                 {line_deleted_id, line_delete_signature, 0, peer_vector_clock, op_id}}
               )
 
               tick_peer_deleted_count(peer)
@@ -560,11 +625,13 @@ defmodule Syncordian.Peer do
             |> tick_individual_peer_clock
             |> tick_edit_count()
 
+          {op_id, peer} = next_op_id(peer)
+          peer = record_seen(peer, op_id)
           current_vector_clock = get_peer_vector_clock(peer)
 
           send(
             get_peer_pid(peer),
-            {:send_insert_broadcast, {new_line, current_vector_clock}}
+            {:send_insert_broadcast, {new_line, current_vector_clock, op_id}}
           )
 
           peer =
@@ -576,10 +643,10 @@ defmodule Syncordian.Peer do
         end
 
       # ✅
-      {:send_insert_broadcast, {new_line, insertion_state_vector_clock}} ->
+      {:send_insert_broadcast, {new_line, insertion_state_vector_clock, op_id}} ->
         perform_broadcast_peer(
           peer,
-          {:receive_insert_broadcast, new_line, insertion_state_vector_clock}
+          {:receive_insert_broadcast, new_line, insertion_state_vector_clock, op_id}
         )
 
         loop(peer)
@@ -591,232 +658,243 @@ defmodule Syncordian.Peer do
 
       # ✅
       {:receive_delete_broadcast,
-       {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}} ->
-        document = get_peer_document(peer)
-        current_document_line = get_document_line_by_line_id(document, line_deleted_id)
-        current_document_line? = current_document_line != nil
+       {line_deleted_id, line_delete_signature, attempt_count, incoming_vc, op_id}} ->
+        if seen_op?(peer, op_id) do
+          # Already applied this delete: drop the duplicate (a replay) without effect.
+          reject_replay(peer)
+        else
+          document = get_peer_document(peer)
+          current_document_line = get_document_line_by_line_id(document, line_deleted_id)
+          current_document_line? = current_document_line != nil
 
-        [left_parent, right_parent] =
-          get_document_line_fathers(document, current_document_line)
+          [left_parent, right_parent] =
+            get_document_line_fathers(document, current_document_line)
 
-        valid_signature? =
-          check_signature_delete(
-            line_delete_signature,
-            left_parent,
-            right_parent
-          )
-
-        # Payload re-dispatched verbatim once the delete becomes deliverable. The
-        # attempt_count field is retained for message-shape compatibility but is no longer
-        # a retry gate; suspension is dependency-based (see Syncordian.PendingOps).
-        delete_payload =
-          {:receive_delete_broadcast,
-           {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}}
-
-        case {current_document_line?, valid_signature?} do
-          {false, _} ->
-            # The target line is not in the document yet: suspend until its insert arrives,
-            # instead of busy re-queuing.
-            get_metadata(peer)
-            |> inc_requeue_counter
-            |> update_metadata(peer)
-            |> suspend_operation(
-              delete_payload,
-              {:line, line_deleted_id},
-              &inc_delete_requeue_limit_counter/1
+          valid_signature? =
+            check_signature_delete(
+              line_delete_signature,
+              left_parent,
+              right_parent
             )
-            |> loop
 
-          {_, true} ->
-            # IO.puts("The delete signature is valid")
-            # send(peer_pid, {:deleted_valid_line})
+          # Payload re-dispatched verbatim once the delete becomes deliverable. The
+          # attempt_count field is retained for message-shape compatibility but is no longer
+          # a retry gate; suspension is dependency-based (see Syncordian.PendingOps). The
+          # op_id rides along so a re-dispatched (not yet replayed) delete keeps its identity.
+          delete_payload =
+            {:receive_delete_broadcast,
+             {line_deleted_id, line_delete_signature, attempt_count, incoming_vc, op_id}}
 
-            get_metadata(peer)
-            |> inc_delete_valid_counter
-            |> update_metadata(peer)
-            |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
+          case {current_document_line?, valid_signature?} do
+            {false, _} ->
+              # The target line is not in the document yet: suspend until its insert arrives,
+              # instead of busy re-queuing.
+              get_metadata(peer)
+              |> inc_requeue_counter
+              |> update_metadata(peer)
+              |> suspend_operation(
+                delete_payload,
+                {:line, line_deleted_id},
+                &inc_delete_requeue_limit_counter/1
+              )
+              |> loop
 
-          {_, false} ->
-            local_vector_clock = get_peer_vector_clock(peer)
+            {_, true} ->
+              # IO.puts("The delete signature is valid")
+              # send(peer_pid, {:deleted_valid_line})
 
-            valid_line? =
-              if String.length(line_delete_signature) == 10 do
-                false
-              else
-                {v?, _} =
-                  stash_document_lines_delete(
-                    document,
-                    line_deleted_id,
-                    line_delete_signature,
-                    local_vector_clock,
-                    incoming_vc
-                  )
+              get_metadata(peer)
+              |> inc_delete_valid_counter
+              |> update_metadata(peer)
+              |> delete_valid_line_to_document_and_loop(document, line_deleted_id, op_id)
 
-                v?
-              end
+            {_, false} ->
+              local_vector_clock = get_peer_vector_clock(peer)
 
-            case valid_line? do
-              true ->
-                # IO.puts("The delete signature is valid when stashed")
-                # send(peer_pid, {:delete_stash_succeeded})
+              valid_line? =
+                if String.length(line_delete_signature) == 10 do
+                  false
+                else
+                  {v?, _} =
+                    stash_document_lines_delete(
+                      document,
+                      line_deleted_id,
+                      line_delete_signature,
+                      local_vector_clock,
+                      incoming_vc
+                    )
 
-                u_peer =
+                  v?
+                end
+
+              case valid_line? do
+                true ->
+                  # IO.puts("The delete signature is valid when stashed")
+                  # send(peer_pid, {:delete_stash_succeeded})
+
+                  u_peer =
+                    get_metadata(peer)
+                    |> inc_delete_stash_counter
+                    |> update_metadata(peer)
+
+                  u_peer
+                  |> get_metadata
+                  |> inc_delete_valid_counter
+                  |> update_metadata(u_peer)
+                  |> delete_valid_line_to_document_and_loop(document, line_deleted_id, op_id)
+
+                false ->
+                  # The line is present but its signature cannot be validated against any
+                  # stash window yet (neighboring concurrent edits not settled). Suspend on
+                  # the generic progress dependency: re-evaluated on the next local apply.
                   get_metadata(peer)
-                  |> inc_delete_stash_counter
+                  |> inc_requeue_counter
                   |> update_metadata(peer)
-
-                u_peer
-                |> get_metadata
-                |> inc_delete_valid_counter
-                |> update_metadata(u_peer)
-                |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
-
-              false ->
-                # The line is present but its signature cannot be validated against any
-                # stash window yet (neighboring concurrent edits not settled). Suspend on
-                # the generic progress dependency: re-evaluated on the next local apply.
-                get_metadata(peer)
-                |> inc_requeue_counter
-                |> update_metadata(peer)
-                |> suspend_operation(
-                  delete_payload,
-                  :progress,
-                  &inc_delete_requeue_limit_counter/1
-                )
-                |> loop
-            end
+                  |> suspend_operation(
+                    delete_payload,
+                    :progress,
+                    &inc_delete_requeue_limit_counter/1
+                  )
+                  |> loop
+              end
+          end
         end
 
       # ✅
-      {:receive_insert_broadcast, line, incoming_vc} ->
-        incoming_peer_id = get_line_peer_id(line)
-        local_vector_clock = get_peer_vector_clock(peer)
+      {:receive_insert_broadcast, line, incoming_vc, op_id} ->
+        if seen_op?(peer, op_id) do
+          # Already applied this insert: drop the duplicate (a replay) without effect.
+          reject_replay(peer)
+        else
+          incoming_peer_id = get_line_peer_id(line)
+          local_vector_clock = get_peer_vector_clock(peer)
 
-        clock_distance_usual =
-          distance_between_vector_clocks(
-            local_vector_clock,
-            incoming_vc,
-            incoming_peer_id
-          )
-
-        clock_distance =
-          if clock_distance_usual == 0 do
-            projection_distance(local_vector_clock, incoming_vc)
-          else
-            clock_distance_usual
-          end
-
-        case {clock_distance > 1, clock_distance == 1} do
-          {true, _} ->
-            # The insert is not deliverable yet (progress-vector distance > 1). Rather than
-            # busy re-queuing it to ourselves until a fixed counter expires, suspend it
-            # against the event that would make it deliverable.
-            incoming_at = Enum.at(incoming_vc, incoming_peer_id)
-            local_at = Enum.at(local_vector_clock, incoming_peer_id)
-
-            dependency =
-              if incoming_at > local_at + 1 do
-                # The sender is genuinely ahead on its own component: wait until we have
-                # applied the sender's immediately-preceding edit.
-                {:clock, incoming_peer_id, incoming_at - 1}
-              else
-                # The sender's component matches/precedes ours, but the local replica is
-                # behind on other peers' edits (projection distance > 1): re-evaluate on
-                # the next local apply.
-                :progress
-              end
-
-            get_metadata(peer)
-            |> inc_insert_distance_greater_than_one
-            |> update_metadata(peer)
-            |> suspend_operation(
-              {:receive_insert_broadcast, line, incoming_vc},
-              dependency,
-              &inc_insert_request_limit_counter/1
+          clock_distance_usual =
+            distance_between_vector_clocks(
+              local_vector_clock,
+              incoming_vc,
+              incoming_peer_id
             )
-            |> loop
 
-          {_, true} ->
-            # Component-wise vector-clock partial order.
-            # True ⇒ local ≤ incoming: incoming is in our future, deliver directly.
-            # False ⇒ incoming < local OR concurrent: route to stash so the edit-block
-            # protection logic decides how to merge. The previous sum-based comparison
-            # misclassified concurrent pairs (e.g. [2,0] vs [0,2]) as ordered.
-            order_vc =
-              happens_before_or_equal?(
-                local_vector_clock,
-                incoming_vc
-              )
-
-            document = get_peer_document(peer)
-            line_index = get_document_new_index_by_incoming_line_id(line, document)
-            [left_parent, right_parent] = get_parents_by_index(document, line_index)
-
-            case order_vc do
-              # local_vc ≤ incoming_vc — deliver
-              true ->
-                # check the signature of the incoming line
-                # - if it is valid merge the line
-                # - else:
-                #   - if room for lines attempts requeue and loop over
-                #   - else delete the line from the queue and loop over
-                # TODO: check if the next code could be refactored into a function
-                valid_line? = check_signature_insert(left_parent, line, right_parent)
-
-                case valid_line? do
-                  true ->
-                    # send(peer_pid, {:insertion_valid_line})
-
-                    get_metadata(peer)
-                    |> inc_insert_valid_counter
-                    |> update_metadata(peer)
-                    |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
-
-                  false ->
-                    # Deliverable by the progress vector but the signature does not verify
-                    # against the local neighbors. This is a rejection, not a wait: under
-                    # the partial order the relevant predecessors are already present, so
-                    # the mismatch indicates a forged/garbled edit rather than reordering.
-                    # send(peer_pid, {:insertion_request_requeue})
-
-                    get_metadata(peer)
-                    |> inc_insert_request_counter
-                    |> update_metadata(peer)
-                    |> loop
-                end
-
-              # local_vc > incoming_vc
-              false ->
-                {valid_line?, _} =
-                  stash_document_lines_insert(
-                    document,
-                    line,
-                    local_vector_clock,
-                    incoming_vc
-                  )
-
-                case valid_line? do
-                  true ->
-                    # send(peer_pid, {:insertion_stash_succeeded})
-
-                    get_metadata(peer)
-                    |> inc_insert_stash_counter
-                    |> update_metadata(peer)
-                    |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
-
-                  false ->
-                    # send(peer_pid, {:insertion_stash_fail})
-
-                    get_metadata(peer)
-                    |> inc_insert_stash_fail_counter
-                    |> update_metadata(peer)
-                    |> loop
-                end
+          clock_distance =
+            if clock_distance_usual == 0 do
+              projection_distance(local_vector_clock, incoming_vc)
+            else
+              clock_distance_usual
             end
 
-          {_, _} ->
-            IO.puts("Something happen")
-            loop(peer)
+          case {clock_distance > 1, clock_distance == 1} do
+            {true, _} ->
+              # The insert is not deliverable yet (progress-vector distance > 1). Rather than
+              # busy re-queuing it to ourselves until a fixed counter expires, suspend it
+              # against the event that would make it deliverable.
+              incoming_at = Enum.at(incoming_vc, incoming_peer_id)
+              local_at = Enum.at(local_vector_clock, incoming_peer_id)
+
+              dependency =
+                if incoming_at > local_at + 1 do
+                  # The sender is genuinely ahead on its own component: wait until we have
+                  # applied the sender's immediately-preceding edit.
+                  {:clock, incoming_peer_id, incoming_at - 1}
+                else
+                  # The sender's component matches/precedes ours, but the local replica is
+                  # behind on other peers' edits (projection distance > 1): re-evaluate on
+                  # the next local apply.
+                  :progress
+                end
+
+              get_metadata(peer)
+              |> inc_insert_distance_greater_than_one
+              |> update_metadata(peer)
+              |> suspend_operation(
+                {:receive_insert_broadcast, line, incoming_vc, op_id},
+                dependency,
+                &inc_insert_request_limit_counter/1
+              )
+              |> loop
+
+            {_, true} ->
+              # Component-wise vector-clock partial order.
+              # True ⇒ local ≤ incoming: incoming is in our future, deliver directly.
+              # False ⇒ incoming < local OR concurrent: route to stash so the edit-block
+              # protection logic decides how to merge. The previous sum-based comparison
+              # misclassified concurrent pairs (e.g. [2,0] vs [0,2]) as ordered.
+              order_vc =
+                happens_before_or_equal?(
+                  local_vector_clock,
+                  incoming_vc
+                )
+
+              document = get_peer_document(peer)
+              line_index = get_document_new_index_by_incoming_line_id(line, document)
+              [left_parent, right_parent] = get_parents_by_index(document, line_index)
+
+              case order_vc do
+                # local_vc ≤ incoming_vc — deliver
+                true ->
+                  # check the signature of the incoming line
+                  # - if it is valid merge the line
+                  # - else:
+                  #   - if room for lines attempts requeue and loop over
+                  #   - else delete the line from the queue and loop over
+                  # TODO: check if the next code could be refactored into a function
+                  valid_line? = check_signature_insert(left_parent, line, right_parent)
+
+                  case valid_line? do
+                    true ->
+                      # send(peer_pid, {:insertion_valid_line})
+
+                      get_metadata(peer)
+                      |> inc_insert_valid_counter
+                      |> update_metadata(peer)
+                      |> add_valid_line_to_document_and_loop(line, incoming_peer_id, op_id)
+
+                    false ->
+                      # Deliverable by the progress vector but the signature does not verify
+                      # against the local neighbors. This is a rejection, not a wait: under
+                      # the partial order the relevant predecessors are already present, so
+                      # the mismatch indicates a forged/garbled edit rather than reordering.
+                      # send(peer_pid, {:insertion_request_requeue})
+
+                      get_metadata(peer)
+                      |> inc_insert_request_counter
+                      |> update_metadata(peer)
+                      |> loop
+                  end
+
+                # local_vc > incoming_vc
+                false ->
+                  {valid_line?, _} =
+                    stash_document_lines_insert(
+                      document,
+                      line,
+                      local_vector_clock,
+                      incoming_vc
+                    )
+
+                  case valid_line? do
+                    true ->
+                      # send(peer_pid, {:insertion_stash_succeeded})
+
+                      get_metadata(peer)
+                      |> inc_insert_stash_counter
+                      |> update_metadata(peer)
+                      |> add_valid_line_to_document_and_loop(line, incoming_peer_id, op_id)
+
+                    false ->
+                      # send(peer_pid, {:insertion_stash_fail})
+
+                      get_metadata(peer)
+                      |> inc_insert_stash_fail_counter
+                      |> update_metadata(peer)
+                      |> loop
+                  end
+              end
+
+            {_, _} ->
+              IO.puts("Something happen")
+              loop(peer)
+          end
         end
 
       # ✅ Not needed in Fugue

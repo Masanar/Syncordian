@@ -15,6 +15,7 @@ defmodule Syncordian.Metadata do
     insert_stash_fail_counter: 0,
     byzantine_insert_counter: 0,
     byzantine_delete_counter: 0,
+    replay_rejected_counter: 0,
     heap_size: 0,
     message_queue_length: 0
   )
@@ -31,6 +32,9 @@ defmodule Syncordian.Metadata do
             insert_stash_counter: integer(),
             insert_valid_counter: integer(),
             insert_stash_fail_counter: integer(),
+            byzantine_insert_counter: integer(),
+            byzantine_delete_counter: integer(),
+            replay_rejected_counter: integer(),
             heap_size: integer(),
             message_queue_length: integer()
           )
@@ -49,6 +53,7 @@ defmodule Syncordian.Metadata do
       "insert_stash_fail_counter" => metadata(metadata, :insert_stash_fail_counter),
       "byzantine_insert_counter" => metadata(metadata, :byzantine_insert_counter),
       "byzantine_delete_counter" => metadata(metadata, :byzantine_delete_counter),
+      "replay_rejected_counter" => metadata(metadata, :replay_rejected_counter),
       "heap_size" => metadata(metadata, :heap_size),
       "message_queue_length" => metadata(metadata, :message_queue_length),
       "byzantine_nodes" => byzantine_nodes,
@@ -60,7 +65,13 @@ defmodule Syncordian.Metadata do
   end
 
   # Saves metadata to a file with a path based on the given parameters.
-  defp save_metadata_to_file(metadata, current_commit, byzantine_nodes, path_prefix, name \\ "commit") do
+  defp save_metadata_to_file(
+         metadata,
+         current_commit,
+         byzantine_nodes,
+         path_prefix,
+         name \\ "commit"
+       ) do
     current_date_unix = System.os_time(:second) |> to_string()
 
     metadata_json =
@@ -69,8 +80,7 @@ defmodule Syncordian.Metadata do
     filename =
       if byzantine_nodes == 0,
         do: "#{path_prefix}#{name}_#{current_commit}.json",
-        else:
-          "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}.json"
+        else: "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}.json"
 
     File.write(filename, metadata_json)
   end
@@ -79,7 +89,7 @@ defmodule Syncordian.Metadata do
     Saves metadata for an individual peer. This function is used for keep track of just
     one peer's metadata.
   """
-  def save_metadata_one_peer(metadata, current_commit, module_name, name\\"commit") do
+  def save_metadata_one_peer(metadata, current_commit, module_name, name \\ "commit") do
     save_metadata_to_file(
       metadata,
       current_commit,
@@ -142,6 +152,9 @@ defmodule Syncordian.Metadata do
       byzantine_delete_counter:
         metadata(metadata1, :byzantine_delete_counter) +
           metadata(metadata2, :byzantine_delete_counter),
+      replay_rejected_counter:
+        metadata(metadata1, :replay_rejected_counter) +
+          metadata(metadata2, :replay_rejected_counter),
       heap_size: metadata(metadata1, :heap_size) + metadata(metadata2, :heap_size),
       message_queue_length:
         metadata(metadata1, :message_queue_length) +
@@ -167,6 +180,17 @@ defmodule Syncordian.Metadata do
     do:
       metadata(metadata,
         byzantine_insert_counter: metadata(metadata, :byzantine_insert_counter) + 1
+      )
+
+  @doc """
+    Counts operations dropped as replays: an insert/delete broadcast whose `op_id` was
+    already applied within the receiver's bounded seen-set (`Syncordian.SeenOps`).
+  """
+  @spec inc_replay_rejected_counter(metadata()) :: metadata()
+  def inc_replay_rejected_counter(metadata),
+    do:
+      metadata(metadata,
+        replay_rejected_counter: metadata(metadata, :replay_rejected_counter) + 1
       )
 
   @spec inc_insert_stash_fail_counter(metadata()) :: metadata()

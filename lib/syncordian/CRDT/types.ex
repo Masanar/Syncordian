@@ -48,6 +48,14 @@ defmodule Syncordian.Basic_Types do
   @type peer_id :: integer()
 
   @typedoc """
+      Operation identifier stamped on each insert/delete at its origin: a per-peer
+      monotonic sequence number paired with the originating peer id. It is stable across
+      retransmissions, so a replayed message carries the same `op_id` and is rejected by a
+      receiver's bounded seen-set — see `Syncordian.SeenOps`.
+  """
+  @type op_id :: {peer_id(), non_neg_integer()}
+
+  @typedoc """
       Position identifier of a Syncordian document line. Variable-length, totally
       ordered, dense — see `Syncordian.PathId` for the constructors, comparator and
       midpoint allocator.

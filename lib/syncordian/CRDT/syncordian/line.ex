@@ -10,6 +10,9 @@ defmodule Syncordian.Line_Object do
   Record.defrecord(:line,
     line_id: nil,
     content: "",
+    # Immutable identifier: set once at insertion and never recomputed (see the signature
+    # invariant in Syncordian.Byzantine). Neighbor drift is reconciled by the windowed
+    # search, not by rehashing.
     signature: "",
     peer_id: 9_999_999,
     status: :aura,
@@ -77,6 +80,13 @@ defmodule Syncordian.Line_Object do
   def get_signature(line),
     do: line(line, :signature)
 
+  @doc """
+    Overwrites a line's signature. This is **not** part of the honest protocol: a line's
+    signature is an immutable identifier set once at insertion (see the signature
+    invariant in `Syncordian.Byzantine`) and is never recomputed when neighbors change.
+    The only caller is `Syncordian.ByzantinePeer`, which forges a signature to model an
+    adversary; honest peers reconcile neighbor drift via the windowed search instead.
+  """
   def update_line_signature(line, new_signature) do
     line(line, signature: new_signature)
   end

@@ -74,8 +74,7 @@ defmodule Syncordian.ByzantinePeer do
 
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      {:receive_delete_broadcast,
-       {line_deleted_id, line_delete_signature, _, incoming_vc}} ->
+      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, _, incoming_vc}} ->
         # This is the way to prevent the feedback between the byzantine peers, the
         # signature from a valid peer muts be a hash from sha256 (or similar) and such
         # signatures have a length of 64 characters. Then is the signature is different
@@ -88,9 +87,13 @@ defmodule Syncordian.ByzantinePeer do
 
           perform_broadcast_byzantine(
             byzantine_peer,
-            {:receive_delete_broadcast,
-             {line_deleted_id, byzantine_signature, 9_000, incoming_vc}}
+            # The attempt_count field (third element) is legacy: delivery is now
+            # dependency-based, so a forged message is rejected by its signature and, if
+            # undeliverable, reclaimed by the receiver's edit-count horizon rather than by
+            # an inflated retry counter. Kept at 0 for message-shape compatibility.
+            {:receive_delete_broadcast, {line_deleted_id, byzantine_signature, 0, incoming_vc}}
           )
+
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
 
           get_metadata(byzantine_peer)
@@ -104,14 +107,18 @@ defmodule Syncordian.ByzantinePeer do
       {:receive_insert_broadcast, line, incoming_vc} ->
         if String.length(get_signature(line)) != 10 and send?() do
           byzantine_signature = generate_string()
-          new_line = tick_line_insertion_attempts(line, 9_000)
 
+          # The forged signature is the attack. Delivery is now dependency-based, so the
+          # receiver rejects the forged line by its signature (and reclaims it via the
+          # edit-count horizon if it is undeliverable); no retry-counter inflation needed.
           perform_broadcast_byzantine(
             byzantine_peer,
-            {:receive_insert_broadcast, update_line_signature(new_line, byzantine_signature),
+            {:receive_insert_broadcast, update_line_signature(line, byzantine_signature),
              incoming_vc}
           )
+
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")
+
           get_metadata(byzantine_peer)
           |> inc_byzantine_insert_counter()
           |> update_metadata(byzantine_peer)

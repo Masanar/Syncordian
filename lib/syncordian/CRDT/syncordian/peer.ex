@@ -17,8 +17,17 @@ defmodule Syncordian.Peer do
   import Syncordian.Line_Object
   import Syncordian.Utilities
   import Syncordian.Vector_Clock
+  alias Syncordian.PendingOps
   @delete_limit 10_000
   @peer_metadata_id 7
+  # Liveness backstop for the dependency-based delivery buffer (Syncordian.PendingOps).
+  # A suspended operation is reclaimed once the peer has applied this many edits without
+  # the operation's dependency arriving. Under reliable eventual delivery with monotone
+  # per-sender progress vectors, an honest operation's dependency is satisfied within the
+  # in-flight reorder window, so any horizon at least that large never drops an honest
+  # operation, while the live buffer stays bounded by @dependency_wait_horizon * peers.
+  # This replaces the previous unjustified @max_insertion_attempts constant.
+  @dependency_wait_horizon 5_000
   Record.defrecord(:peer,
     peer_id: None,
     document: None,
@@ -28,7 +37,8 @@ defmodule Syncordian.Peer do
     vector_clock: [],
     supervisor_pid: None,
     metadata: Syncordian.Metadata.metadata(),
-    edit_count: 0
+    edit_count: 0,
+    pending: nil
   )
 
   @type peer ::
@@ -40,7 +50,8 @@ defmodule Syncordian.Peer do
             deleted_limit: integer(),
             vector_clock: [integer],
             supervisor_pid: pid(),
-            edit_count: integer()
+            edit_count: integer(),
+            pending: Syncordian.PendingOps.t() | nil
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -94,6 +105,59 @@ defmodule Syncordian.Peer do
   # Getter for the current vector clock of the peer
   @spec get_peer_vector_clock(peer()) :: Syncordian.Basic_Types.vector_clock()
   defp get_peer_vector_clock(peer), do: peer(peer, :vector_clock)
+
+  # Getter/setter for the dependency-based delivery buffer (Syncordian.PendingOps).
+  @spec get_pending(peer()) :: Syncordian.PendingOps.t()
+  defp get_pending(peer), do: peer(peer, :pending)
+
+  @spec update_pending(Syncordian.PendingOps.t(), peer()) :: peer()
+  defp update_pending(pending, peer), do: peer(peer, pending: pending)
+
+  # Suspends an undeliverable operation against the event it is waiting for, stamping it
+  # with the current edit count for staleness reclamation, then reclaims any entry that has
+  # exceeded @dependency_wait_horizon edits. Each reclaimed (abandoned) entry bumps the
+  # given metadata counter, so the evaluation plots that previously counted
+  # counter-exhausted retries now count horizon-abandoned operations instead. Returns the
+  # updated peer.
+  @spec suspend_operation(
+          peer(),
+          term(),
+          Syncordian.PendingOps.dependency(),
+          (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
+        ) :: peer()
+  defp suspend_operation(peer, payload, dependency, drop_counter) do
+    edit_count = get_edit_count(peer)
+
+    {dropped, pending} =
+      get_pending(peer)
+      |> PendingOps.suspend(payload, dependency, edit_count)
+      |> PendingOps.gc(edit_count, @dependency_wait_horizon)
+
+    metadata =
+      Enum.reduce(1..dropped//1, get_metadata(peer), fn _, m -> drop_counter.(m) end)
+
+    peer
+    |> then(&update_metadata(metadata, &1))
+    |> then(&update_pending(pending, &1))
+  end
+
+  # Releases every operation whose dependency is satisfied by the given apply events and
+  # re-dispatches each released payload to the peer's own mailbox. Returns the peer with the
+  # trimmed buffer. Called from the apply paths, which are the only points that change
+  # deliverability (progress-vector tick and/or document mutation).
+  @spec wake_pending(peer(), [Syncordian.PendingOps.event()]) :: peer()
+  defp wake_pending(peer, events) do
+    peer_pid = get_peer_pid(peer)
+
+    pending =
+      Enum.reduce(events, get_pending(peer), fn event, buf ->
+        {ready, buf} = PendingOps.release(buf, event)
+        Enum.each(ready, &send(peer_pid, &1))
+        buf
+      end)
+
+    update_pending(pending, peer)
+  end
 
   # This is a private function used to get the number of marked as deleted lines of the
   # document of the peer.
@@ -171,7 +235,7 @@ defmodule Syncordian.Peer do
       create_supremum_line(peer_id, network_size)
     ]
 
-    peer(peer_id: peer_id, document: initial_peer_document)
+    peer(peer_id: peer_id, document: initial_peer_document, pending: PendingOps.new())
   end
 
   ########################################################################################
@@ -337,6 +401,18 @@ defmodule Syncordian.Peer do
       |> tick_projection_peer_clock(incoming_peer_id)
       |> tick_edit_count()
 
+    # This apply is the only event that can make suspended operations deliverable: the
+    # sender's progress-vector component advanced, and a new line is now present. Wake any
+    # operations waiting on either, plus the generic progress dependency.
+    sender_clock_value = Enum.at(get_peer_vector_clock(peer), incoming_peer_id)
+
+    peer =
+      wake_pending(peer, [
+        {:clock_advanced, incoming_peer_id, sender_clock_value},
+        {:line_added, get_line_id(line)},
+        :progress
+      ])
+
     peer_ud =
       if peer_id == @peer_metadata_id,
         do: save_peer_metadata_edit(peer),
@@ -360,6 +436,10 @@ defmodule Syncordian.Peer do
       |> update_document_line_peer_id(index_position, peer_id)
       |> update_peer_document(peer)
       |> tick_edit_count()
+
+    # A delete settled: re-evaluate operations suspended on a generic progress dependency
+    # (\ie deletes whose signature could not be validated against any stash window yet).
+    peer = wake_pending(peer, [:progress])
 
     peer_up =
       if peer_id == @peer_metadata_id,
@@ -526,30 +606,28 @@ defmodule Syncordian.Peer do
             right_parent
           )
 
-        max_attempts_reach? = compare_max_insertion_attempts(attempt_count)
+        # Payload re-dispatched verbatim once the delete becomes deliverable. The
+        # attempt_count field is retained for message-shape compatibility but is no longer
+        # a retry gate; suspension is dependency-based (see Syncordian.PendingOps).
+        delete_payload =
+          {:receive_delete_broadcast,
+           {line_deleted_id, line_delete_signature, attempt_count, incoming_vc}}
 
-        requeue = fn x ->
-          # IO.puts("requeue delete request")
+        case {current_document_line?, valid_signature?} do
+          {false, _} ->
+            # The target line is not in the document yet: suspend until its insert arrives,
+            # instead of busy re-queuing.
+            get_metadata(peer)
+            |> inc_requeue_counter
+            |> update_metadata(peer)
+            |> suspend_operation(
+              delete_payload,
+              {:line, line_deleted_id},
+              &inc_delete_requeue_limit_counter/1
+            )
+            |> loop
 
-          send(
-            get_peer_pid(peer),
-            {:receive_delete_broadcast,
-             {line_deleted_id, line_delete_signature, attempt_count + x, incoming_vc}}
-          )
-
-          # send(peer_pid, {:delete_request_requeue})
-          get_metadata(peer)
-          |> inc_requeue_counter
-          |> update_metadata(peer)
-          |> loop
-        end
-
-        case {current_document_line?, valid_signature?, max_attempts_reach?} do
-          {false, _, _} ->
-            # IO.puts("The line to delete does not exist")
-            requeue.(1)
-
-          {_, true, false} ->
+          {_, true} ->
             # IO.puts("The delete signature is valid")
             # send(peer_pid, {:deleted_valid_line})
 
@@ -558,7 +636,7 @@ defmodule Syncordian.Peer do
             |> update_metadata(peer)
             |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
-          {_, false, false} ->
+          {_, false} ->
             local_vector_clock = get_peer_vector_clock(peer)
 
             valid_line? =
@@ -594,20 +672,19 @@ defmodule Syncordian.Peer do
                 |> delete_valid_line_to_document_and_loop(document, line_deleted_id)
 
               false ->
-                # IO.puts(
-                #   "The delete signature is invalid when stashed in the peer #{get_peer_id(peer)} with attempt count: #{attempt_count} and line id: #{line_deleted_id}"
-                # )
-
-                requeue.(10)
+                # The line is present but its signature cannot be validated against any
+                # stash window yet (neighboring concurrent edits not settled). Suspend on
+                # the generic progress dependency: re-evaluated on the next local apply.
+                get_metadata(peer)
+                |> inc_requeue_counter
+                |> update_metadata(peer)
+                |> suspend_operation(
+                  delete_payload,
+                  :progress,
+                  &inc_delete_requeue_limit_counter/1
+                )
+                |> loop
             end
-
-          {_, _, true} ->
-            # send(peer_pid, {:delete_request_limit})
-
-            get_metadata(peer)
-            |> inc_delete_requeue_limit_counter
-            |> update_metadata(peer)
-            |> loop
         end
 
       # ✅
@@ -629,34 +706,35 @@ defmodule Syncordian.Peer do
             clock_distance_usual
           end
 
-        insertion_attempts_reach? = check_insertions_attempts(line)
-
         case {clock_distance > 1, clock_distance == 1} do
           {true, _} ->
-            # TODO: Refactor this code, doing the same as bellow. This was done because
-            # the byzantine peers generating cpu overload. GO BACK HERE AND FIX THIS
-            # AND CHECK IF THIS MAKES SENSE.
-            if insertion_attempts_reach? do
-              # send(peer_pid, {:insertion_request_requeue_limit})
-              get_metadata(peer)
-              |> inc_insert_request_limit_counter
-              |> update_metadata(peer)
-              |> loop
-            else
-              new_line = tick_line_insertion_attempts(line, 1)
+            # The insert is not deliverable yet (progress-vector distance > 1). Rather than
+            # busy re-queuing it to ourselves until a fixed counter expires, suspend it
+            # against the event that would make it deliverable.
+            incoming_at = Enum.at(incoming_vc, incoming_peer_id)
+            local_at = Enum.at(local_vector_clock, incoming_peer_id)
 
-              # send(peer_pid, {:insertion_clock_distance_greater_than_one})
+            dependency =
+              if incoming_at > local_at + 1 do
+                # The sender is genuinely ahead on its own component: wait until we have
+                # applied the sender's immediately-preceding edit.
+                {:clock, incoming_peer_id, incoming_at - 1}
+              else
+                # The sender's component matches/precedes ours, but the local replica is
+                # behind on other peers' edits (projection distance > 1): re-evaluate on
+                # the next local apply.
+                :progress
+              end
 
-              send(
-                get_peer_pid(peer),
-                {:receive_insert_broadcast, new_line, incoming_vc}
-              )
-
-              get_metadata(peer)
-              |> inc_insert_distance_greater_than_one
-              |> update_metadata(peer)
-              |> loop
-            end
+            get_metadata(peer)
+            |> inc_insert_distance_greater_than_one
+            |> update_metadata(peer)
+            |> suspend_operation(
+              {:receive_insert_broadcast, line, incoming_vc},
+              dependency,
+              &inc_insert_request_limit_counter/1
+            )
+            |> loop
 
           {_, true} ->
             # Component-wise vector-clock partial order.
@@ -685,8 +763,8 @@ defmodule Syncordian.Peer do
                 # TODO: check if the next code could be refactored into a function
                 valid_line? = check_signature_insert(left_parent, line, right_parent)
 
-                case {valid_line?, insertion_attempts_reach?} do
-                  {true, false} ->
+                case valid_line? do
+                  true ->
                     # send(peer_pid, {:insertion_valid_line})
 
                     get_metadata(peer)
@@ -694,31 +772,15 @@ defmodule Syncordian.Peer do
                     |> update_metadata(peer)
                     |> add_valid_line_to_document_and_loop(line, incoming_peer_id)
 
-                  {false, false} ->
-                    # new_line = tick_line_insertion_attempts(line)
-
-                    # IO.puts(
-                    #   "The line signature is invalid #{get_line_insertion_attempts(new_line)}"
-                    # )
-
+                  false ->
+                    # Deliverable by the progress vector but the signature does not verify
+                    # against the local neighbors. This is a rejection, not a wait: under
+                    # the partial order the relevant predecessors are already present, so
+                    # the mismatch indicates a forged/garbled edit rather than reordering.
                     # send(peer_pid, {:insertion_request_requeue})
 
                     get_metadata(peer)
                     |> inc_insert_request_counter
-                    |> update_metadata(peer)
-                    |> loop
-
-                  # TODO: uncomment this code when the test is done
-                  # send(get_peer_pid(peer), {:receive_insert_broadcast, new_line, incoming_vc})
-                  # loop(peer)
-
-                  {false, true} ->
-                    # The line has reach the maximum number of attempts and it was not
-                    # possible to check if the line is valid or not.
-                    # send(peer_pid, {:insertion_request_requeue_limit})
-
-                    get_metadata(peer)
-                    |> inc_insert_request_limit_counter
                     |> update_metadata(peer)
                     |> loop
                 end

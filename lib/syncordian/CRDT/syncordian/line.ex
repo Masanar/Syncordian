@@ -6,17 +6,16 @@ defmodule Syncordian.Line_Object do
   require Record
   import Syncordian.Utilities
   alias Syncordian.PathId
-  # This insertion attempt value is used by the insertion and delete operations
-  # to know when to stop trying to insert/delete a line. May be a better name should be
-  # used for this value.
-  # TODO: Check this value
-  @max_insertion_attempts 10_000
+
   Record.defrecord(:line,
     line_id: nil,
     content: "",
     signature: "",
     peer_id: 9_999_999,
     status: :aura,
+    # Retained for the LiveView node view only; no longer a retry gate. Undeliverable
+    # operations are now suspended on their dependency (see Syncordian.PendingOps) instead
+    # of being re-tried up to a fixed counter, so this stays 0 in normal operation.
     insertion_attempts: 0,
     commit_at: []
   )
@@ -37,29 +36,6 @@ defmodule Syncordian.Line_Object do
           Syncordian.Basic_Types.commit_list()
   def get_commit_at(line),
     do: line(line, :commit_at)
-
-  @spec check_insertions_attempts(Syncordian.Line_Object.line()) :: boolean()
-  def check_insertions_attempts(line),
-    do: line |> get_line_insertion_attempts |> compare_max_insertion_attempts
-
-  @doc """
-    Compares the count of attempts to delete a broadcasted line with the predefine maximum
-    number, currently the insertion and deletion have both the same maximum number of
-    attempts.
-
-    true when the count of attempts to insert a line is greater than the maximum number.
-    false otherwise.
-  """
-  @spec compare_max_insertion_attempts(integer()) :: boolean()
-  def compare_max_insertion_attempts(count), do: count > @max_insertion_attempts
-
-  @spec tick_line_insertion_attempts(line()) :: line()
-  def tick_line_insertion_attempts(line),
-    do: line(line, insertion_attempts: line(line, :insertion_attempts) + 1)
-
-  @spec tick_line_insertion_attempts(line(), integer()) :: line()
-  def tick_line_insertion_attempts(line, acc),
-    do: line(line, insertion_attempts: line(line, :insertion_attempts) + acc)
 
   @spec get_line_insertion_attempts(line()) :: integer()
   def get_line_insertion_attempts(line), do: line(line, :insertion_attempts)

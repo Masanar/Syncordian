@@ -5,15 +5,14 @@ defmodule Syncordian.Line_Object do
   # use TypeCheck
   require Record
   import Syncordian.Utilities
-  @min_float 130.0
-  @max_float 230_584_300_921.0
+  alias Syncordian.PathId
   # This insertion attempt value is used by the insertion and delete operations
   # to know when to stop trying to insert/delete a line. May be a better name should be
   # used for this value.
   # TODO: Check this value
   @max_insertion_attempts 10_000
   Record.defrecord(:line,
-    line_id: 0.0,
+    line_id: nil,
     content: "",
     signature: "",
     peer_id: 9_999_999,
@@ -25,7 +24,7 @@ defmodule Syncordian.Line_Object do
   @type line ::
           record(
             :line,
-            line_id: float(),
+            line_id: Syncordian.Basic_Types.line_id() | nil,
             content: Syncordian.Basic_Types.content(),
             signature: Syncordian.Basic_Types.signature(),
             peer_id: Syncordian.Basic_Types.peer_id(),
@@ -136,7 +135,7 @@ defmodule Syncordian.Line_Object do
   def create_infimum_line(peer_id, network_size),
     do:
       line(
-        line_id: @min_float,
+        line_id: PathId.infimum(),
         content: "Infimum",
         signature: "Infimum",
         status: :settled,
@@ -155,7 +154,7 @@ defmodule Syncordian.Line_Object do
   def create_supremum_line(peer_id, network_size),
     do:
       line(
-        line_id: @max_float,
+        line_id: PathId.supremum(),
         content: "Supremum",
         signature: "Supremum",
         status: :settled,
@@ -197,6 +196,7 @@ defmodule Syncordian.Line do
   import Syncordian.Utilities
   import Syncordian.Byzantine
   import Syncordian.Line_Object
+  alias Syncordian.PathId
 
   @doc """
     Given two lines, left_parent and right_parent, this function creates a new line
@@ -226,7 +226,7 @@ defmodule Syncordian.Line do
     empty_commit_list = List.duplicate(false, network_size)
 
     new_line_id =
-      get_random_range(right_parent_id, left_parent_id)
+      PathId.between(left_parent_id, right_parent_id, peer_id)
 
     signature =
       create_signature_insert(
@@ -246,33 +246,28 @@ defmodule Syncordian.Line do
   end
 
   @doc """
-    Given two lines this function defines the order between them, mainly based on the
-    line_id field of the lines and the usual number comparison. It returns:
+    Given two lines this function defines the order between them, based on the
+    line_id field of the lines compared via the PathId total order. It returns:
       - 1 if the first line is greater than the second line
       - 0 if the first line is equal to the second line
       - -1 if the first line is less than the second line
-      TODO: When is the case that the distance between the lines is 1 is important review
-      this, I think that in the case the 0 option should be returned (?)
   """
   @spec compare_lines(
           line1 :: Syncordian.Line_Object.line(),
           line2 :: Syncordian.Line_Object.line()
         ) :: 0 | 1 | -1
   def compare_lines(line1, line2) do
-    line1_id = get_line_id(line1)
-    line2_id = get_line_id(line2)
-
-    case {line1_id - line2_id > 0, line1_id - line2_id == 0, line1_id - line2_id < 0} do
-      {true, _, _} -> 1
-      {_, true, _} -> 0
-      {_, _, true} -> -1
+    case PathId.compare(get_line_id(line1), get_line_id(line2)) do
+      :gt -> 1
+      :eq -> 0
+      :lt -> -1
     end
   end
 
   @spec line_to_string(Syncordian.Line_Object.line()) :: String.t()
   # This is just for debugging purposes
   def line_to_string(line) do
-    "#{get_line_id(line)}" <>
+    PathId.to_string(get_line_id(line)) <>
       ", " <>
       Integer.to_string(get_line_peer_id(line)) <>
       ", " <>

@@ -58,6 +58,7 @@ defmodule Syncordian.Peer do
   @spec get_document_byte_size(peer()) :: integer
   def get_document_byte_size(peer) do
     document = get_peer_document(peer)
+
     inspect(document, limit: :infinity, printable_limit: :infinity)
     |> byte_size
   end
@@ -265,10 +266,11 @@ defmodule Syncordian.Peer do
     current_edit = get_edit_count(peer)
     nodes_size = get_document_byte_size(peer)
 
-    peer_up = peer
-    |> get_metadata()
-    |> update_memory_info(peer_pid, nodes_size)
-    |> update_metadata(peer)
+    peer_up =
+      peer
+      |> get_metadata()
+      |> update_memory_info(peer_pid, nodes_size)
+      |> update_metadata(peer)
 
     get_metadata(peer_up)
     |> save_metadata_one_peer(current_edit, folder, file_prefix)
@@ -335,12 +337,12 @@ defmodule Syncordian.Peer do
       |> tick_projection_peer_clock(incoming_peer_id)
       |> tick_edit_count()
 
-    peer_ud = if peer_id == @peer_metadata_id, do:
-              save_peer_metadata_edit(peer),
-              else: peer
+    peer_ud =
+      if peer_id == @peer_metadata_id,
+        do: save_peer_metadata_edit(peer),
+        else: peer
 
     loop(peer_ud)
-
   end
 
   @spec delete_valid_line_to_document_and_loop(
@@ -359,9 +361,10 @@ defmodule Syncordian.Peer do
       |> update_peer_document(peer)
       |> tick_edit_count()
 
-    peer_up = if peer_id == @peer_metadata_id, do:
-           save_peer_metadata_edit(peer),
-           else: peer
+    peer_up =
+      if peer_id == @peer_metadata_id,
+        do: save_peer_metadata_edit(peer),
+        else: peer
 
     tick_peer_deleted_count(peer_up)
   end
@@ -411,9 +414,10 @@ defmodule Syncordian.Peer do
                 |> update_peer_document(peer)
                 |> tick_edit_count()
 
-              peer = if peer_id == @peer_metadata_id, do:
-                        save_peer_metadata_edit(peer),
-                        else: peer
+              peer =
+                if peer_id == @peer_metadata_id,
+                  do: save_peer_metadata_edit(peer),
+                  else: peer
 
               line_deleted =
                 get_document_line_by_index(document, git_index_translated)
@@ -483,9 +487,10 @@ defmodule Syncordian.Peer do
             {:send_insert_broadcast, {new_line, current_vector_clock}}
           )
 
-          peer = if peer_id == @peer_metadata_id, do:
-                    save_peer_metadata_edit(peer),
-                    else: peer
+          peer =
+            if peer_id == @peer_metadata_id,
+              do: save_peer_metadata_edit(peer),
+              else: peer
 
           loop(peer)
         end
@@ -577,9 +582,10 @@ defmodule Syncordian.Peer do
                 # IO.puts("The delete signature is valid when stashed")
                 # send(peer_pid, {:delete_stash_succeeded})
 
-                u_peer = get_metadata(peer)
-                |> inc_delete_stash_counter
-                |> update_metadata(peer)
+                u_peer =
+                  get_metadata(peer)
+                  |> inc_delete_stash_counter
+                  |> update_metadata(peer)
 
                 u_peer
                 |> get_metadata
@@ -653,8 +659,13 @@ defmodule Syncordian.Peer do
             end
 
           {_, true} ->
+            # Component-wise vector-clock partial order.
+            # True ⇒ local ≤ incoming: incoming is in our future, deliver directly.
+            # False ⇒ incoming < local OR concurrent: route to stash so the edit-block
+            # protection logic decides how to merge. The previous sum-based comparison
+            # misclassified concurrent pairs (e.g. [2,0] vs [0,2]) as ordered.
             order_vc =
-              order_vector_clocks_definition(
+              happens_before_or_equal?(
                 local_vector_clock,
                 incoming_vc
               )
@@ -664,7 +675,7 @@ defmodule Syncordian.Peer do
             [left_parent, right_parent] = get_parents_by_index(document, line_index)
 
             case order_vc do
-              # local_vc < incoming_vc
+              # local_vc ≤ incoming_vc — deliver
               true ->
                 # check the signature of the incoming line
                 # - if it is valid merge the line
@@ -825,8 +836,8 @@ defmodule Syncordian.Peer do
       {:write_raw_document} ->
         document = get_peer_document(peer)
         document_str = inspect(document, limit: :infinity, printable_limit: :infinity)
-          # |> Enum.map(fn line -> "#{inspect(line)}" end)
-          # |> Enum.join("\n")
+        # |> Enum.map(fn line -> "#{inspect(line)}" end)
+        # |> Enum.join("\n")
 
         file_path = "debug/documents/syncordian/raw/"
         File.write(file_path <> "document", document_str)

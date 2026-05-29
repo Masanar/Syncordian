@@ -6,6 +6,7 @@ defmodule Syncordian.Document do
   import Syncordian.Byzantine
   import Syncordian.Utilities
   import Syncordian.Basic_Types
+  alias Syncordian.PathId
 
   @doc """
     This is a function used to get the index (position in the document i.e. list)
@@ -28,12 +29,10 @@ defmodule Syncordian.Document do
     get_document_new_index_by_incoming_line_id_aux(line_id, document, 0)
   end
 
-  # This is an private recursive auxiliar function over the length of the document to get
-  # the index of the line by its line_id.
-  # NOTE: It is important to keep the precondition of not having any line ID greater than
-  # the @max_float defined at Syncordian.Line module! or else this function will get to an
-  # empty document and will return an error. I define a case for this situation, but it is
-  # better just to ensure that the line_id is always less than the @max_float.
+  # Private recursive helper that walks the document and returns the first index where
+  # the head line's PathId is strictly greater than the incoming line_id. The supremum
+  # sentinel at the document tail guarantees the walk terminates before running off the
+  # end; the empty-document clause is therefore a defensive fallback.
   @spec get_document_new_index_by_incoming_line_id_aux(
           Syncordian.Basic_Types.line_id(),
           Syncordian.Basic_Types.document(),
@@ -41,14 +40,14 @@ defmodule Syncordian.Document do
         ) :: integer
 
   defp get_document_new_index_by_incoming_line_id_aux(_, [], _) do
-    IO.puts("There is an error with the line id it is greater than the maximum float")
+    IO.puts("There is an error: incoming line_id sorted past the document supremum")
     1
   end
 
   defp get_document_new_index_by_incoming_line_id_aux(line_id, [head | tail], index) do
     head_line_id = get_line_id(head)
 
-    case line_id < head_line_id do
+    case PathId.less?(line_id, head_line_id) do
       true -> index
       _ -> get_document_new_index_by_incoming_line_id_aux(line_id, tail, index + 1)
     end
@@ -520,7 +519,7 @@ defmodule Syncordian.Document do
     The corresponding Syncordian document index, or -1 if the traversal does not find a valid position.
     The -1 is because the last line is the supremum.
   """
-    # The -1 is because the last line is the supremum
+  # The -1 is because the last line is the supremum
   def translate_git_index_to_syncordian_index([], 0, 0, index), do: index - 1
 
   def translate_git_index_to_syncordian_index([], _, _, _), do: -1
@@ -548,6 +547,4 @@ defmodule Syncordian.Document do
         translate_git_index_to_syncordian_index(t, target - 1, tombstones, index + 1)
     end
   end
-
-
 end

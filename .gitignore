@@ -42,4 +42,6 @@ syncordian-*.tar
 .devcontainer
 .github
 TODO.md
+debug/metadata/
+debug/documents/
 

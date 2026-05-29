@@ -2,7 +2,8 @@ defmodule Syncordian.Basic_Types do
   @moduledoc """
       This module provides the types used in the Syncordian implementation
   """
-#   use TypeCheck
+
+  #   use TypeCheck
 
   @typedoc """
     Type that represents the status of a Syncordian document line, those are: -
@@ -16,7 +17,7 @@ defmodule Syncordian.Basic_Types do
         - :conflict: The line was stash due to a clock inconsistency, and will be reinserted
             in the document when the stash is resolved.
   """
-  @type status :: :tombstone | :aura | :settled | :conflict | :nil
+  @type status :: :tombstone | :aura | :settled | :conflict | nil
 
   @typedoc """
       Type that represents the content of a Syncordian document line
@@ -47,9 +48,11 @@ defmodule Syncordian.Basic_Types do
   @type peer_id :: integer()
 
   @typedoc """
-      Type that represents the position identifier of a Syncordian document's line
+      Position identifier of a Syncordian document line. Variable-length, totally
+      ordered, dense — see `Syncordian.PathId` for the constructors, comparator and
+      midpoint allocator.
   """
-  @type line_id :: float()
+  @type line_id :: Syncordian.PathId.t()
 
   #   Type that represents a line of a Syncordian document
   # No longer needed, instead define within the Line module

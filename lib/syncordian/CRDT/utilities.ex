@@ -94,20 +94,6 @@ defmodule Syncordian.Utilities do
   #   Enum.concat(Enum.take(list, index + 1), [new_element | Enum.drop(list, index + 1)])
   # end
 
-  def get_less_than_one_positive_random() do
-    random = abs(:rand.normal(0, 0.002))
-
-    if random > 1 do
-      get_less_than_one_positive_random()
-    else
-      random
-    end
-  end
-
-  def get_random_range(right, left) do
-    get_less_than_one_positive_random() * (right - left) + left
-  end
-
   def remove_first_and_last([_head | []]), do: []
   def remove_first_and_last([_head | tail]), do: remove_last(tail)
 
@@ -263,10 +249,12 @@ defmodule Syncordian.Utilities do
         byte_size =
           if File.exists?(readme_file) do
             File.read!(readme_file)
-            |> String.replace(~r/[\x00-\x1F\x7F]/, "") # Remove non-printable characters
+            # Remove non-printable characters
+            |> String.replace(~r/[\x00-\x1F\x7F]/, "")
             |> byte_size()
           else
-            8900 # If the file doesn't exist, set byte size to 0
+            # If the file doesn't exist, set byte size to 0
+            8900
           end
 
         # Find all corresponding JSON files for the commit
@@ -277,12 +265,12 @@ defmodule Syncordian.Utilities do
         {insert_valid_counter, delete_valid_counter} =
           Enum.reduce(json_files, {0, 0}, fn file, {insert_acc, delete_acc} ->
             file_data = File.read!(file) |> Jason.decode!()
+
             {
               insert_acc + Map.get(file_data, "insert_valid_counter", 0),
               delete_acc + Map.get(file_data, "delete_valid_counter", 0)
             }
           end)
-
 
         # Calculate the edit number as an integer
         edit_number = div(insert_valid_counter + delete_valid_counter, 30)

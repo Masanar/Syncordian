@@ -2,7 +2,6 @@ defmodule Syncordian.ByzantinePeer do
   require Record
   import Syncordian.Metadata
   import Syncordian.Utilities
-  import Syncordian.Line_Object
 
   Record.defrecord(:byzantine_peer,
     pid: nil,
@@ -74,30 +73,25 @@ defmodule Syncordian.ByzantinePeer do
 
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      {:receive_delete_broadcast, {line_deleted_id, line_delete_signature, _, incoming_vc, op_id}} ->
-        # This is the way to prevent the feedback between the byzantine peers, the
-        # signature from a valid peer muts be a hash from sha256 (or similar) and such
-        # signatures have a length of 64 characters. Then is the signature is different
-        # from 10 (the length of a signature from a byzantine peer) then the signature is
-        # valid and the message is broadcasted to the network. In the other case the
-        # message is ignored.
-        # if String.length(line_delete_signature) != 10 and send?() do
-        if String.length(line_delete_signature) != 10 and send?() do
-          byzantine_signature = generate_string()
+      {:receive_delete_broadcast, {line_deleted_id, delete_tag, op_id}, alpha} ->
+        # This guard prevents feedback between byzantine peers: an honest delete tag is a
+        # sha256 digest of 64 characters, while a forged one is the 10-character string
+        # generated below, so a byzantine peer never re-forges another byzantine forgery.
+        if String.length(delete_tag) != 10 and send?() do
+          byzantine_tag = generate_string()
 
+          # The attack: tamper with the authorization tag and rebroadcast, keeping the
+          # observed admission authenticator UNCHANGED. The simulator models an outsider
+          # that does not hold the boundary secret, so it cannot recompute a valid
+          # authenticator over its mutated payload — replaying the stale one is its
+          # strongest available move (garbling it too is strictly weaker). Honest peers
+          # therefore drop the forgery at admission (admission_rejected_counter), never
+          # applying or buffering it. The op_id is preserved from the observed message;
+          # since the forged copy is rejected before the replay check, it is never
+          # recorded, and the genuine delete is not later mistaken for a replay.
           perform_broadcast_byzantine(
             byzantine_peer,
-            # The attempt_count field (third element) is legacy: delivery is now
-            # dependency-based, so a forged message is rejected by its signature and, if
-            # undeliverable, reclaimed by the receiver's edit-count horizon rather than by
-            # an inflated retry counter. Kept at 0 for message-shape compatibility.
-            # The op_id is preserved from the observed message: a replayed/tampered delete
-            # carries the original id, so an honest peer that already applied the genuine
-            # delete rejects this copy as a replay, while one that has not yet seen it
-            # rejects it on the forged signature. The forged signature is never recorded, so
-            # the genuine delete is not mistaken for a replay later.
-            {:receive_delete_broadcast,
-             {line_deleted_id, byzantine_signature, 0, incoming_vc, op_id}}
+            {:receive_delete_broadcast, {line_deleted_id, byzantine_tag, op_id}, alpha}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
@@ -110,17 +104,18 @@ defmodule Syncordian.ByzantinePeer do
           byzantine_peer_loop(byzantine_peer)
         end
 
-      {:receive_insert_broadcast, line, incoming_vc, op_id} ->
-        if String.length(get_signature(line)) != 10 and send?() do
-          byzantine_signature = generate_string()
+      {:receive_insert_broadcast, {line_id, content, peer_id, insert_tag, incoming_vc, op_id},
+       alpha} ->
+        if String.length(insert_tag) != 10 and send?() do
+          byzantine_tag = generate_string()
 
-          # The forged signature is the attack. Delivery is now dependency-based, so the
-          # receiver rejects the forged line by its signature (and reclaims it via the
-          # edit-count horizon if it is undeliverable); no retry-counter inflation needed.
+          # The forged wire tag is the attack; the stale admission authenticator no
+          # longer matches the mutated payload, so honest receivers reject the message at
+          # admission — see the delete clause above for the modeling rationale.
           perform_broadcast_byzantine(
             byzantine_peer,
-            {:receive_insert_broadcast, update_line_signature(line, byzantine_signature),
-             incoming_vc, op_id}
+            {:receive_insert_broadcast,
+             {line_id, content, peer_id, byzantine_tag, incoming_vc, op_id}, alpha}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")

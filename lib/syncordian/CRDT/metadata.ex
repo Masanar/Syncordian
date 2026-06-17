@@ -16,6 +16,9 @@ defmodule Syncordian.Metadata do
     byzantine_insert_counter: 0,
     byzantine_delete_counter: 0,
     replay_rejected_counter: 0,
+    ack_rejected_counter: 0,
+    admission_rejected_counter: 0,
+    delete_rejected_counter: 0,
     heap_size: 0,
     message_queue_length: 0
   )
@@ -35,6 +38,9 @@ defmodule Syncordian.Metadata do
             byzantine_insert_counter: integer(),
             byzantine_delete_counter: integer(),
             replay_rejected_counter: integer(),
+            ack_rejected_counter: integer(),
+            admission_rejected_counter: integer(),
+            delete_rejected_counter: integer(),
             heap_size: integer(),
             message_queue_length: integer()
           )
@@ -54,6 +60,9 @@ defmodule Syncordian.Metadata do
       "byzantine_insert_counter" => metadata(metadata, :byzantine_insert_counter),
       "byzantine_delete_counter" => metadata(metadata, :byzantine_delete_counter),
       "replay_rejected_counter" => metadata(metadata, :replay_rejected_counter),
+      "ack_rejected_counter" => metadata(metadata, :ack_rejected_counter),
+      "admission_rejected_counter" => metadata(metadata, :admission_rejected_counter),
+      "delete_rejected_counter" => metadata(metadata, :delete_rejected_counter),
       "heap_size" => metadata(metadata, :heap_size),
       "message_queue_length" => metadata(metadata, :message_queue_length),
       "byzantine_nodes" => byzantine_nodes,
@@ -155,6 +164,15 @@ defmodule Syncordian.Metadata do
       replay_rejected_counter:
         metadata(metadata1, :replay_rejected_counter) +
           metadata(metadata2, :replay_rejected_counter),
+      ack_rejected_counter:
+        metadata(metadata1, :ack_rejected_counter) +
+          metadata(metadata2, :ack_rejected_counter),
+      admission_rejected_counter:
+        metadata(metadata1, :admission_rejected_counter) +
+          metadata(metadata2, :admission_rejected_counter),
+      delete_rejected_counter:
+        metadata(metadata1, :delete_rejected_counter) +
+          metadata(metadata2, :delete_rejected_counter),
       heap_size: metadata(metadata1, :heap_size) + metadata(metadata2, :heap_size),
       message_queue_length:
         metadata(metadata1, :message_queue_length) +
@@ -168,6 +186,12 @@ defmodule Syncordian.Metadata do
     metadata(metadata, heap_size: bytes, message_queue_length: message_queue_len)
   end
 
+  @doc """
+    Counts forged deletes *injected by the adversary* (incremented by the Byzantine
+    simulator at send time). On the honest side these forgeries are dropped at admission
+    — the simulator cannot recompute the admission authenticator over its tampered
+    payload — and are tallied there in `admission_rejected_counter`.
+  """
   @spec inc_byzantine_delete_counter(metadata()) :: metadata()
   def inc_byzantine_delete_counter(metadata),
     do:
@@ -175,6 +199,11 @@ defmodule Syncordian.Metadata do
         byzantine_delete_counter: metadata(metadata, :byzantine_delete_counter) + 1
       )
 
+  @doc """
+    Counts forged inserts *injected by the adversary* (incremented by the Byzantine
+    simulator at send time). See `inc_byzantine_delete_counter/1` for where they land on
+    the honest side.
+  """
   @spec inc_byzantine_insert_counter(metadata()) :: metadata()
   def inc_byzantine_insert_counter(metadata),
     do:
@@ -191,6 +220,46 @@ defmodule Syncordian.Metadata do
     do:
       metadata(metadata,
         replay_rejected_counter: metadata(metadata, :replay_rejected_counter) + 1
+      )
+
+  @doc """
+    Counts insertion responses that passed admission but whose response tag does not
+    verify against the acknowledged line's stored signature and the claimed peer (a
+    stale or mismatched acknowledgement; defense in depth behind the admission check).
+  """
+  @spec inc_ack_rejected_counter(metadata()) :: metadata()
+  def inc_ack_rejected_counter(metadata),
+    do:
+      metadata(metadata,
+        ack_rejected_counter: metadata(metadata, :ack_rejected_counter) + 1
+      )
+
+  @doc """
+    Counts messages dropped at admission: the admission authenticator does not verify
+    against the boundary secret, so the message is forged or tampered traffic from a
+    node that does not hold the secret. Per the formal receipt rule such a message is
+    neither applied nor buffered (`Syncordian.Byzantine.check_admission/4`). Forged
+    broadcasts from the Byzantine simulator land here.
+  """
+  @spec inc_admission_rejected_counter(metadata()) :: metadata()
+  def inc_admission_rejected_counter(metadata),
+    do:
+      metadata(metadata,
+        admission_rejected_counter: metadata(metadata, :admission_rejected_counter) + 1
+      )
+
+  @doc """
+    Counts deletes that passed admission but whose authorization tag does not verify
+    against the present target line's stored signature. The check is intrinsic to the
+    target, so a mismatch is a forgery rather than a reordering — the operation is
+    rejected, not suspended. Expected to stay at zero under the modeled outsider, whose
+    forgeries already die at admission.
+  """
+  @spec inc_delete_rejected_counter(metadata()) :: metadata()
+  def inc_delete_rejected_counter(metadata),
+    do:
+      metadata(metadata,
+        delete_rejected_counter: metadata(metadata, :delete_rejected_counter) + 1
       )
 
   @spec inc_insert_stash_fail_counter(metadata()) :: metadata()

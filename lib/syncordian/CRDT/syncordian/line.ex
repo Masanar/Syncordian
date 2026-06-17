@@ -10,9 +10,11 @@ defmodule Syncordian.Line_Object do
   Record.defrecord(:line,
     line_id: nil,
     content: "",
-    # Immutable identifier: set once at insertion and never recomputed (see the signature
-    # invariant in Syncordian.Byzantine). Neighbor drift is reconciled by the windowed
-    # search, not by rehashing.
+    # Stored signature σ: immutable identifier, set exactly once — by the author at
+    # creation, or sealed by a receiver from the accepted parent pair — and never
+    # recomputed (see the invariant in Syncordian.Byzantine). It is never transmitted:
+    # only domain-separated wire tags travel, and each replica derives the identical σ
+    # locally. Neighbor drift is reconciled by the windowed search, not by rehashing.
     signature: "",
     peer_id: 9_999_999,
     status: :aura,
@@ -81,14 +83,42 @@ defmodule Syncordian.Line_Object do
     do: line(line, :signature)
 
   @doc """
-    Overwrites a line's signature. This is **not** part of the honest protocol: a line's
-    signature is an immutable identifier set once at insertion (see the signature
-    invariant in `Syncordian.Byzantine`) and is never recomputed when neighbors change.
-    The only caller is `Syncordian.ByzantinePeer`, which forges a signature to model an
-    adversary; honest peers reconcile neighbor drift via the windowed search instead.
+    Attaches the locally computed stored signature σ to a remotely received line —
+    called exactly once per line, after the insert wire tag verified against the
+    accepted parent pair. This is the only signature write outside line creation:
+    stored signatures are immutable identifiers, never recomputed on neighbor drift and
+    never received from the wire (every replica derives the identical value from the
+    same accepted parents — see `Syncordian.Byzantine.create_signature_doc/4`).
   """
-  def update_line_signature(line, new_signature) do
-    line(line, signature: new_signature)
+  @spec seal_line_signature(line(), Syncordian.Basic_Types.signature()) :: line()
+  def seal_line_signature(line, signature) do
+    line(line, signature: signature)
+  end
+
+  @doc """
+    Builds the local line record for a remotely received insert. Only the public fields
+    travel on the wire (position, content, author); the stored signature is *not* among
+    them — the receiver computes it from the accepted parents and attaches it with
+    `seal_line_signature/2`. The response checklist is initialized exactly as the author
+    initialized its own copy: all false except the author's own entry.
+  """
+  @spec create_line_from_wire(
+          line_id :: Syncordian.Basic_Types.line_id(),
+          content :: Syncordian.Basic_Types.content(),
+          peer_id :: Syncordian.Basic_Types.peer_id(),
+          network_size :: integer()
+        ) :: line()
+  def create_line_from_wire(line_id, content, peer_id, network_size) do
+    commit_at =
+      List.duplicate(false, network_size)
+      |> update_list_value(peer_id, true)
+
+    line(
+      line_id: line_id,
+      content: content,
+      peer_id: peer_id,
+      commit_at: commit_at
+    )
   end
 
   @doc """
@@ -215,7 +245,7 @@ defmodule Syncordian.Line do
       PathId.between(left_parent_id, right_parent_id, peer_id)
 
     signature =
-      create_signature_insert(
+      create_signature_doc(
         get_signature(left_parent),
         content,
         get_signature(right_parent),

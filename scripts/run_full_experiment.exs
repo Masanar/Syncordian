@@ -15,7 +15,7 @@
 # iff every dumped peer document is byte-identical.
 
 defmodule FullExperiment do
-  def run do
+  def run(byzantine_count) do
     out_dir = "debug/documents/syncordian"
     IO.puts("Cleaning #{out_dir}/document_peer_* …")
     File.mkdir_p!(out_dir)
@@ -23,8 +23,8 @@ defmodule FullExperiment do
     Path.wildcard(Path.join(out_dir, "document_peer_*"))
     |> Enum.each(&File.rm!/1)
 
-    IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=0 …")
-    sup_pid = Syncordian.Supervisor.init(0, :syncordian)
+    IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=#{byzantine_count} …")
+    sup_pid = Syncordian.Supervisor.init(byzantine_count, :syncordian)
     IO.puts("Supervisor pid: #{inspect(sup_pid)}")
 
     # Give peers a moment to fully register with :global and bind to the supervisor.
@@ -91,7 +91,10 @@ defmodule FullExperiment do
   defp verify_convergence([ref | rest]) do
     ref_bytes = File.read!(ref)
     ref_sha = :crypto.hash(:sha256, ref_bytes) |> Base.encode16(case: :lower)
-    IO.puts("Reference: #{ref}  sha256=#{String.slice(ref_sha, 0, 12)}…  size=#{byte_size(ref_bytes)}")
+
+    IO.puts(
+      "Reference: #{ref}  sha256=#{String.slice(ref_sha, 0, 12)}…  size=#{byte_size(ref_bytes)}"
+    )
 
     {ok, mismatches} =
       Enum.reduce(rest, {0, []}, fn path, {ok_count, bad} ->
@@ -123,4 +126,16 @@ defmodule FullExperiment do
   end
 end
 
-FullExperiment.run()
+# Optional first CLI argument: number of Byzantine peers (default 0). With
+#   mix run --no-start scripts/run_full_experiment.exs 3
+# the supervisor spawns 30 author peers plus 3 Byzantine peers; the convergence
+# check still ranges over the 30 honest author documents (Byzantine peers hold no
+# document and write no dump), so byte-identity to the 0-Byzantine baseline shows
+# every forged message was dropped at admission.
+byzantine_count =
+  case System.argv() do
+    [n | _] -> String.to_integer(n)
+    _ -> 0
+  end
+
+FullExperiment.run(byzantine_count)

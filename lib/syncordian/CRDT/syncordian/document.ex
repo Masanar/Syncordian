@@ -229,28 +229,34 @@ defmodule Syncordian.Document do
   #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
   # end
 
+  @doc """
+    Windowed parent search for an out-of-order (stashed) insert. The receiver knows the
+    incoming line's position but its neighbors may have shifted under concurrent edits;
+    this function slides a bounded window — sized by the progress-vector projection
+    distance — around the insertion point, looking for the candidate parent pair whose
+    stored signatures verify the insert wire tag `t_ins`.
+
+    Up to a hash collision exactly one parent pair verifies (the authored one), so every
+    replica that accepts the tag — directly or at any window offset — accepts the same
+    parents. On success the accepted pair is returned so the caller can seal the line's
+    stored signature from it; on failure `{false, {nil, nil}}`.
+  """
   @spec stash_document_lines_insert(
           document :: Syncordian.Basic_Types.document(),
           incoming_line :: Syncordian.Line_Object.line(),
           local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
-          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
-        ) :: {boolean(), {integer(), integer()}}
+          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock(),
+          insert_tag :: Syncordian.Basic_Types.signature()
+        ) ::
+          {boolean(),
+           {Syncordian.Line_Object.line() | nil, Syncordian.Line_Object.line() | nil}}
   def stash_document_lines_insert(
         document,
         incoming_line,
         local_peer_vc,
-        incoming_peer_vc
+        incoming_peer_vc,
+        insert_tag
       ) do
-    # TODO: There are things here that are removable
-    # Les't try this:
-    # 1. Calculate the number of lines to stash by comparing the incoming_peer_vc with the
-    #    local_peer_vc in the projection of the incoming_peer_id in the local_peer_vc.
-    # 2. Base on the aforementioned number, stash the lines in the document in a stack.
-    #    using a sliding window process that alway contains the incoming_line_id.
-    # 3. For each slide, check if the incoming_line is checkable, if so, the incoming_line
-    #    is a valid line and continue the insert process. Else continue the stash process.
-    #    if the incoming_line is never checkable, then the incoming_line is a invalid line
-
     window_size = projection_distance(local_peer_vc, incoming_peer_vc)
     document_length = get_document_length(document) + 1
     window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
@@ -258,54 +264,34 @@ defmodule Syncordian.Document do
     new_document =
       add_element_list_in_given_index(document, window_center - 1, incoming_line)
 
-    window_stash_check_signature(
-      {document_length, window_size, window_center, new_document, incoming_line,
-       get_trivial_signature()}
-    )
-  end
-
-  @spec stash_document_lines_delete(
-          document :: Syncordian.Basic_Types.document(),
-          line_deleted_id :: Syncordian.Basic_Types.line_id(),
-          line_delete_signature :: Syncordian.Basic_Types.signature(),
-          local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
-          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock()
-        ) :: {boolean(), {integer(), integer()}}
-  def stash_document_lines_delete(
-        document,
-        line_deleted_id,
-        line_delete_signature,
-        local_peer_vc,
-        incoming_peer_vc
-      ) do
-    window_size = projection_distance(local_peer_vc, incoming_peer_vc)
-    document_length = get_document_length(document) + 1
-
-    window_center =
-      get_document_new_index_by_incoming_line_id_aux(
-        line_deleted_id,
-        document,
-        0
+    window_search_result =
+      window_stash_check_signature(
+        {document_length, window_size, window_center, new_document, incoming_line,
+         insert_tag}
       )
 
-    window_stash_check_signature(
-      {document_length, window_size, window_center, document, get_empty_line(),
-       line_delete_signature}
-    )
+    case window_search_result do
+      {true, {left_parent_index, right_parent_index}} ->
+        {true,
+         {get_document_line_by_index(new_document, left_parent_index),
+          get_document_line_by_index(new_document, right_parent_index)}}
+
+      {false, _} ->
+        {false, {nil, nil}}
+    end
   end
 
   # This function checks if the incoming line is checkable in the window of the document
-  # defined by the window_center, window_size, and the document_length. It need to check
+  # defined by the window_center, window_size, and the document_length. It needs to check
   # any window size until the window_size attribute in the available part of the document,
   # based on the document_length, window_size and window center. If the incoming line is
-  # checkable, it returns true, otherwise, it returns false. Additionally, it returns the
-  # left and right shift of the window.
+  # checkable — i.e. some candidate parent pair verifies the insert wire tag — it returns
+  # true together with the (document-index) positions of the accepted parents; otherwise
+  # false.
   #
-  # This function is used by the stash_document_lines_insert and
-  # stash_document_lines_delete, to check if the incoming line is valid to be inserted or
-  # deleted. The difference in the call of this function is that the
-  # stash_document_lines_insert uses the incoming_line and the stash_document_lines_delete
-  # uses the line_delete_signature.
+  # Deletes no longer use this search: their authorization tag binds the target line's
+  # stored signature directly (an intrinsic check), so locating shifted neighbors is
+  # unnecessary for them.
   @spec window_stash_check_signature(
           fix_parameter :: {
             integer(),
@@ -321,7 +307,7 @@ defmodule Syncordian.Document do
   defp window_stash_check_signature(
          fix_parameter =
            {document_length, window_size, window_center, document, incoming_line,
-            line_delete_signature},
+            insert_tag},
          left_shift \\ -1,
          right_shift \\ 1
        ) do
@@ -330,12 +316,7 @@ defmodule Syncordian.Document do
 
     not_found_value = {false, {0, 0}}
 
-    check_value =
-      if is_empty_line(incoming_line) do
-        check_signature_delete(line_delete_signature, left_parent, right_parent)
-      else
-        check_signature_insert(left_parent, incoming_line, right_parent)
-      end
+    check_value = check_tag_insert(left_parent, incoming_line, right_parent, insert_tag)
 
     if right_parent != nil do
       if check_value do
@@ -382,73 +363,6 @@ defmodule Syncordian.Document do
       not_found_value
     end
   end
-
-  # defp window_stash_check_signature(
-  #        fix_parameter =
-  #          {document_length, window_size, window_center, document, incoming_line,
-  #           line_delete_signature},
-  #        left_shift \\ -1,
-  #        right_shift \\ 1
-  #      ) do
-  #   left_parent = get_document_line_by_index(document, window_center + left_shift)
-  #   right_parent = get_document_line_by_index(document, window_center + right_shift)
-
-  #   not_found_value = {false, {0, 0}}
-
-  #   check_value =
-  #     if is_empty_line(incoming_line) do
-  #       check_signature_delete(line_delete_signature, left_parent, right_parent)
-  #     else
-  #       check_signature_insert(left_parent, incoming_line, right_parent)
-  #     end
-
-  #   # TODO: I KNOW THIS IS NO THE CLEANEST WAY TO DO THIS, BUT I'M TIRED AND I WANT TO
-  #   # FIX THIS NOW. I WILL FIX THIS LATER. Just in case this change is recorded in the
-  #   # commit after f8ac522 syncordian repository.
-  #   if right_parent != nil do
-  #     case check_value do
-  #       true ->
-  #         {true, {left_shift + window_center, right_shift + window_center}}
-
-  #       false ->
-  #         new_left_shift = left_shift - 1
-  #         new_right_shift = right_shift + 1
-
-  #         result_left =
-  #           if window_center + new_left_shift >= 0 and
-  #                new_left_shift * -1 + right_shift <= window_size + 2 do
-  #             window_stash_check_signature(fix_parameter, new_left_shift, right_shift)
-  #           else
-  #             not_found_value
-  #           end
-
-  #         result_right =
-  #           if window_center + new_right_shift < document_length and
-  #                left_shift * -1 + new_right_shift <= window_size + 2 and !elem(result_left, 0) do
-  #             window_stash_check_signature(fix_parameter, left_shift, new_right_shift)
-  #           else
-  #             not_found_value
-  #           end
-
-  #         case {elem(result_left, 0), elem(result_right, 0)} do
-  #           {false, false} ->
-  #             not_found_value
-
-  #           {true, false} ->
-  #             result_left
-
-  #           {false, true} ->
-  #             result_right
-
-  #           _ ->
-  #             IO.puts("Error in the window_stash_check_signature")
-  #             result_right
-  #         end
-  #     end
-  #   else
-  #     not_found_value
-  #   end
-  # end
 
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index. The line_pos_index_status is the status of the line in the

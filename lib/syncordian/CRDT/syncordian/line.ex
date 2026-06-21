@@ -22,7 +22,16 @@ defmodule Syncordian.Line_Object do
     # operations are now suspended on their dependency (see Syncordian.PendingOps) instead
     # of being re-tried up to a fixed counter, so this stays 0 in normal operation.
     insertion_attempts: 0,
-    commit_at: []
+    commit_at: [],
+    # Authored identity, used to reconstruct edit blocks for interleaving detection
+    # (def:editblock). op_id is the {writer, seq} of the insert that created this line;
+    # parent_left_op_id / parent_right_op_id are the op_ids of its authored parents — the
+    # pair the writer created it between, located on receivers by the verifying signature
+    # (the verifying pair is the authored pair). nil on the boundary sentinels, which
+    # belong to no block. Immutable, like the stored signature.
+    op_id: nil,
+    parent_left_op_id: nil,
+    parent_right_op_id: nil
   )
 
   @type line ::
@@ -34,7 +43,10 @@ defmodule Syncordian.Line_Object do
             peer_id: Syncordian.Basic_Types.peer_id(),
             status: Syncordian.Basic_Types.status(),
             insertion_attempts: integer(),
-            commit_at: Syncordian.Basic_Types.commit_list()
+            commit_at: Syncordian.Basic_Types.commit_list(),
+            op_id: Syncordian.Basic_Types.op_id() | nil,
+            parent_left_op_id: Syncordian.Basic_Types.op_id() | nil,
+            parent_right_op_id: Syncordian.Basic_Types.op_id() | nil
           )
 
   @spec get_commit_at(Syncordian.Line_Object.line()) ::
@@ -83,6 +95,26 @@ defmodule Syncordian.Line_Object do
     do: line(line, :signature)
 
   @doc """
+    Getter for the op_id of a line: the {writer, seq} of the insert that created it
+    (nil on the boundary sentinels).
+  """
+  @spec get_line_op_id(Syncordian.Line_Object.line()) :: Syncordian.Basic_Types.op_id() | nil
+  def get_line_op_id(line),
+    do: line(line, :op_id)
+
+  @doc "Getter for the op_id of the line's authored left parent (nil if a boundary)."
+  @spec get_line_parent_left_op_id(Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.op_id() | nil
+  def get_line_parent_left_op_id(line),
+    do: line(line, :parent_left_op_id)
+
+  @doc "Getter for the op_id of the line's authored right parent (nil if a boundary)."
+  @spec get_line_parent_right_op_id(Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.op_id() | nil
+  def get_line_parent_right_op_id(line),
+    do: line(line, :parent_right_op_id)
+
+  @doc """
     Attaches the locally computed stored signature σ to a remotely received line —
     called exactly once per line, after the insert wire tag verified against the
     accepted parent pair. This is the only signature write outside line creation:
@@ -93,6 +125,30 @@ defmodule Syncordian.Line_Object do
   @spec seal_line_signature(line(), Syncordian.Basic_Types.signature()) :: line()
   def seal_line_signature(line, signature) do
     line(line, signature: signature)
+  end
+
+  @doc """
+    Seals a remotely received line's authored identity in one step: its stored signature
+    (computed locally from the accepted parent pair) together with its op_id and the op_ids
+    of its authored parents (that same accepted pair, which up to a hash collision is the
+    pair the author created it between). Set exactly once, here, and never recomputed — the
+    op_ids let every replica reconstruct authored edit blocks identically for interleaving
+    detection (`Syncordian.Interleaving`, def:editblock).
+  """
+  @spec seal_line_authored(
+          line(),
+          Syncordian.Basic_Types.signature(),
+          Syncordian.Basic_Types.op_id(),
+          Syncordian.Basic_Types.op_id() | nil,
+          Syncordian.Basic_Types.op_id() | nil
+        ) :: line()
+  def seal_line_authored(line, signature, op_id, parent_left_op_id, parent_right_op_id) do
+    line(line,
+      signature: signature,
+      op_id: op_id,
+      parent_left_op_id: parent_left_op_id,
+      parent_right_op_id: parent_right_op_id
+    )
   end
 
   @doc """
@@ -228,13 +284,15 @@ defmodule Syncordian.Line do
           content :: Syncordian.Basic_Types.content(),
           left_parent :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line(),
-          peer_id :: Syncordian.Basic_Types.peer_id()
+          peer_id :: Syncordian.Basic_Types.peer_id(),
+          op_id :: Syncordian.Basic_Types.op_id()
         ) :: Syncordian.Line_Object.line()
   def create_line_between_two_lines(
         content,
         left_parent,
         right_parent,
-        peer_id
+        peer_id,
+        op_id
       ) do
     left_parent_id = get_line_id(left_parent)
     right_parent_id = get_line_id(right_parent)
@@ -257,7 +315,10 @@ defmodule Syncordian.Line do
       content: content,
       signature: signature,
       peer_id: peer_id,
-      commit_at: update_list_value(empty_commit_list, peer_id, true)
+      commit_at: update_list_value(empty_commit_list, peer_id, true),
+      op_id: op_id,
+      parent_left_op_id: get_line_op_id(left_parent),
+      parent_right_op_id: get_line_op_id(right_parent)
     )
   end
 

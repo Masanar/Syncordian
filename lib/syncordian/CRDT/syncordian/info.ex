@@ -28,7 +28,10 @@ defmodule Syncordian.Info do
       |> remove_first_and_last
       |> Enum.reduce("", fn current_line, acc ->
         case get_line_status(current_line) do
+          # Tombstoned lines are deleted; :conflict lines are superseded mid-re-placement
+          # (their content is carried by the freshly re-issued line). Neither is present.
           :tombstone -> acc
+          :conflict -> acc
           _ -> acc <> get_content(current_line) <> "\n"
         end
       end)

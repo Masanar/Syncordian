@@ -20,7 +20,10 @@ defmodule Syncordian.Metadata do
     admission_rejected_counter: 0,
     delete_rejected_counter: 0,
     heap_size: 0,
-    message_queue_length: 0
+    message_queue_length: 0,
+    settle_counter: 0,
+    conflict_detected_counter: 0,
+    replacement_issued_counter: 0
   )
 
   @type metadata ::
@@ -42,7 +45,10 @@ defmodule Syncordian.Metadata do
             admission_rejected_counter: integer(),
             delete_rejected_counter: integer(),
             heap_size: integer(),
-            message_queue_length: integer()
+            message_queue_length: integer(),
+            settle_counter: integer(),
+            conflict_detected_counter: integer(),
+            replacement_issued_counter: integer()
           )
 
   defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
@@ -65,6 +71,9 @@ defmodule Syncordian.Metadata do
       "delete_rejected_counter" => metadata(metadata, :delete_rejected_counter),
       "heap_size" => metadata(metadata, :heap_size),
       "message_queue_length" => metadata(metadata, :message_queue_length),
+      "settle_counter" => metadata(metadata, :settle_counter),
+      "conflict_detected_counter" => metadata(metadata, :conflict_detected_counter),
+      "replacement_issued_counter" => metadata(metadata, :replacement_issued_counter),
       "byzantine_nodes" => byzantine_nodes,
       "current_commit" => current_commit,
       "timestamp" => current_date_unix
@@ -176,7 +185,15 @@ defmodule Syncordian.Metadata do
       heap_size: metadata(metadata1, :heap_size) + metadata(metadata2, :heap_size),
       message_queue_length:
         metadata(metadata1, :message_queue_length) +
-          metadata(metadata2, :message_queue_length)
+          metadata(metadata2, :message_queue_length),
+      settle_counter:
+        metadata(metadata1, :settle_counter) + metadata(metadata2, :settle_counter),
+      conflict_detected_counter:
+        metadata(metadata1, :conflict_detected_counter) +
+          metadata(metadata2, :conflict_detected_counter),
+      replacement_issued_counter:
+        metadata(metadata1, :replacement_issued_counter) +
+          metadata(metadata2, :replacement_issued_counter)
     )
   end
 
@@ -336,5 +353,38 @@ defmodule Syncordian.Metadata do
     do:
       metadata(metadata,
         insert_valid_counter: metadata(metadata, :insert_valid_counter) + 1
+      )
+
+  @doc """
+    Counts lines this peer transitioned :aura -> :settled once their response checklist
+    filled (every trusted peer acknowledged the line). See the ack case of `def:apply` in
+    the formal model.
+  """
+  @spec inc_settle_counter(metadata()) :: metadata()
+  def inc_settle_counter(metadata),
+    do: metadata(metadata, settle_counter: metadata(metadata, :settle_counter) + 1)
+
+  @doc """
+    Counts interleaving conflicts detected: a live line of one authored block found
+    lord-strictly between two live lines of another distinct-writer block
+    (`Syncordian.Interleaving`, `def:intention`).
+  """
+  @spec inc_conflict_detected_counter(metadata()) :: metadata()
+  def inc_conflict_detected_counter(metadata),
+    do:
+      metadata(metadata,
+        conflict_detected_counter: metadata(metadata, :conflict_detected_counter) + 1
+      )
+
+  @doc """
+    Counts re-placement inserts this peer issued as the lower-priority block's writer to
+    resolve an interleaving (the suffix re-issued at fresh, disjoint positions; see
+    `sec:formal-intention`).
+  """
+  @spec inc_replacement_issued_counter(metadata()) :: metadata()
+  def inc_replacement_issued_counter(metadata),
+    do:
+      metadata(metadata,
+        replacement_issued_counter: metadata(metadata, :replacement_issued_counter) + 1
       )
 end

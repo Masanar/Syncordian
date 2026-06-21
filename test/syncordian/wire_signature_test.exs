@@ -27,7 +27,8 @@ defmodule Syncordian.WireSignatureTest do
   defp author_side(content) do
     infimum = create_infimum_line(0, @network_size)
     supremum = create_supremum_line(0, @network_size)
-    authored_line = create_line_between_two_lines(content, infimum, supremum, @author_peer)
+    authored_line =
+      create_line_between_two_lines(content, infimum, supremum, @author_peer, {@author_peer, 1})
 
     insert_tag =
       Byzantine.create_tag_insert(
@@ -77,7 +78,7 @@ defmodule Syncordian.WireSignatureTest do
 
       # A different candidate pair — e.g. one guessed by an observer who never learns
       # stored signatures — does not verify.
-      other_line = create_line_between_two_lines("other", infimum, supremum, 2)
+      other_line = create_line_between_two_lines("other", infimum, supremum, 2, {2, 1})
       refute Byzantine.check_tag_insert(other_line, provisional, supremum, insert_tag)
       refute Byzantine.check_tag_insert(infimum, provisional, other_line, insert_tag)
     end
@@ -171,7 +172,8 @@ defmodule Syncordian.WireSignatureTest do
 
     test "lines differing in one character of content yield different delete tags" do
       {line_a, _, infimum, supremum} = author_side("content a")
-      line_b = create_line_between_two_lines("content b", infimum, supremum, @author_peer)
+      line_b =
+        create_line_between_two_lines("content b", infimum, supremum, @author_peer, {@author_peer, 1})
 
       tag_a = Byzantine.create_tag_delete(get_signature(line_a))
       refute Byzantine.check_tag_delete(tag_a, line_b)

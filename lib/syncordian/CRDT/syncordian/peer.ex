@@ -19,6 +19,7 @@ defmodule Syncordian.Peer do
   import Syncordian.Vector_Clock
   alias Syncordian.PendingOps
   alias Syncordian.SeenOps
+  alias Syncordian.Interleaving
   @delete_limit 10_000
   @peer_metadata_id 7
   # Epoch size, in applied edits, for the bounded replay-protection seen-set
@@ -434,8 +435,9 @@ defmodule Syncordian.Peer do
   @spec perform_broadcast_peer(peer(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    # delay = 10..30
-    delay = 0..0
+    # Per-recipient network-jitter range. Defaults to no delay; tests/experiments can widen
+    # it (e.g. to force concurrent, same-interval authoring) without a global sleep.
+    delay = Application.get_env(:syncordian, :broadcast_delay, 0..0)
     perform_broadcast(peer_pid, message, delay)
   end
 
@@ -477,22 +479,37 @@ defmodule Syncordian.Peer do
     document = get_peer_document(peer)
     peer_id = get_peer_id(peer)
 
-    # Acknowledge the insertion back to the line's author. The response tag binds the
-    # line's stored signature — the value this receiver sealed locally, identical to the
-    # author's — and our peer id; the admission authenticator proves we hold the boundary
-    # secret, so the author can distinguish this genuine response from a forged one.
-    ack_tag = create_tag_ack(get_signature(line), peer_id)
-    ack_payload = {get_line_id(line), peer_id, ack_tag}
-    ack_alpha = create_admission(get_boundary_secret(peer), :ack, ack_payload)
+    # This peer now holds the line, so record its own projection in the response checklist
+    # before adding it (create_line_from_wire already set the author's projection).
+    line = update_line_commit_at(line, peer_id)
+    line_id = get_line_id(line)
 
-    send_confirmation_line_insertion(incoming_peer_id, ack_payload, ack_alpha)
+    # Acknowledge the insertion to the whole network, not just the author: acks are
+    # broadcast so every peer unions this acknowledgement into its own copy's checklist and
+    # the line can reach :settled at every replica (the acknowledgement case of def:apply).
+    # The response tag binds the line's stored signature — sealed locally, identical to the
+    # author's — and our peer id; the admission authenticator proves we hold the boundary
+    # secret, so a distrusted node cannot forge a response on our behalf.
+    ack_tag = create_tag_ack(get_signature(line), peer_id)
+    ack_payload = {line_id, peer_id, ack_tag}
+    ack_alpha = create_admission(get_boundary_secret(peer), :ack, ack_payload)
+    perform_broadcast_peer(peer, {:receive_confirmation_line_insertion, ack_payload, ack_alpha})
+
+    {document, settled?} =
+      add_line_to_document(line, document)
+      |> settle_line_if_complete(line_id)
 
     peer =
-      add_line_to_document(line, document)
+      document
       |> update_peer_document(peer)
       |> tick_projection_peer_clock(incoming_peer_id)
       |> tick_edit_count()
       |> record_seen(op_id)
+
+    peer =
+      if settled?,
+        do: get_metadata(peer) |> inc_settle_counter() |> update_metadata(peer),
+        else: peer
 
     # This apply is the only event that can make suspended operations deliverable: the
     # sender's progress-vector component advanced, and a new line is now present. Wake any
@@ -505,6 +522,12 @@ defmodule Syncordian.Peer do
         {:line_added, get_line_id(line)},
         :progress
       ])
+
+    # This apply may have completed an interleaving between two concurrently authored blocks
+    # that share a parent interval. Detection is replica-independent; if this peer is the
+    # lower-priority block's writer, it re-issues that block into a disjoint sub-interval
+    # (sec:formal-intention, theo:nonint).
+    peer = apply_interleaving_replacements(peer)
 
     peer_ud =
       if peer_id == @peer_metadata_id,
@@ -545,6 +568,118 @@ defmodule Syncordian.Peer do
         else: peer
 
     tick_peer_deleted_count(peer_up)
+  end
+
+  # ---- Interleaving re-placement (sec:formal-intention, theo:nonint) -------------------
+  # After materializing a remote insert, check whether two distinct-writer blocks now share
+  # a parent interval with overlapping positions (def:intention). Detection is
+  # replica-independent (a pure function of the converged document), but only the *writer* of
+  # the lower-priority block re-issues; every other replica converges through the ordinary
+  # inserts and retracting deletes that writer broadcasts. The model's "notify the
+  # originator" step is thus realized by each peer detecting locally, with no new message.
+  @spec apply_interleaving_replacements(peer()) :: peer()
+  defp apply_interleaving_replacements(peer) do
+    my_id = get_peer_id(peer)
+
+    get_peer_document(peer)
+    |> Interleaving.detect_replacements()
+    |> Enum.filter(fn replacement -> replacement.writer == my_id end)
+    |> Enum.reduce(peer, fn replacement, peer_acc ->
+      reissue_replacement(peer_acc, replacement)
+    end)
+  end
+
+  # Re-issues the lower-priority block this peer authored as a fresh contiguous chain inside
+  # the disjoint sub-interval (gap_left, gap_right), retracting the superseded lines. No
+  # existing line's position, signature, or identity is rewritten — the new lines are
+  # ordinary authored inserts and the retractions ordinary deletes — so the convergence and
+  # signature invariants are untouched (the re-placement is operation issuance, not state
+  # mutation, in the sense of sec:formal-intention).
+  @spec reissue_replacement(peer(), Syncordian.Interleaving.replacement()) :: peer()
+  defp reissue_replacement(peer, replacement) do
+    %{moving_lines: moving_lines, gap_left: gap_left, gap_right: gap_right} = replacement
+
+    peer =
+      get_metadata(peer)
+      |> inc_conflict_detected_counter()
+      |> update_metadata(peer)
+
+    {peer, _last_left} =
+      Enum.reduce(moving_lines, {peer, gap_left}, fn old_line, {peer_acc, left_parent} ->
+        reissue_one_line(peer_acc, old_line, left_parent, gap_right)
+      end)
+
+    peer
+  end
+
+  # Re-issues a single superseded line: (1) a fresh authored insert with the same content
+  # between `left_parent` and `right_parent` — new op_id, a new position drawn inside the
+  # disjoint gap, and a freshly derived stored signature — broadcast like any insert; (2) a
+  # retracting delete of the old line, tombstoned locally and broadcast with its target-bound
+  # tag. The new line becomes the left parent of the next link, keeping the re-placed block
+  # contiguous.
+  @spec reissue_one_line(
+          peer(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Line_Object.line()
+        ) :: {peer(), Syncordian.Line_Object.line()}
+  defp reissue_one_line(peer, old_line, left_parent, right_parent) do
+    my_id = get_peer_id(peer)
+    content = get_content(old_line)
+
+    # (1) Fresh authored insert in the disjoint sub-interval.
+    {op_id, peer} = next_op_id(peer)
+    new_line = create_line_between_two_lines(content, left_parent, right_parent, my_id, op_id)
+
+    insert_tag =
+      create_tag_insert(
+        get_signature(left_parent),
+        content,
+        get_signature(right_parent),
+        my_id
+      )
+
+    peer =
+      new_line
+      |> add_line_to_document(get_peer_document(peer))
+      |> update_peer_document(peer)
+      |> tick_individual_peer_clock()
+      |> tick_edit_count()
+      |> record_seen(op_id)
+
+    current_vector_clock = get_peer_vector_clock(peer)
+
+    send(
+      get_peer_pid(peer),
+      {:send_insert_broadcast,
+       {get_line_id(new_line), content, my_id, insert_tag, current_vector_clock, op_id}}
+    )
+
+    peer =
+      get_metadata(peer)
+      |> inc_replacement_issued_counter()
+      |> update_metadata(peer)
+
+    # (2) Retract the superseded line: tombstone locally, broadcast the target-bound delete.
+    {del_op_id, peer} = next_op_id(peer)
+    document = get_peer_document(peer)
+    old_index = get_document_index_by_line_id(document, get_line_id(old_line))
+    delete_tag = create_tag_delete(get_signature(old_line))
+
+    peer =
+      document
+      |> update_document_line_status(old_index, :tombstone)
+      |> update_peer_document(peer)
+      |> tick_edit_count()
+      |> record_seen(del_op_id)
+
+    send(
+      get_peer_pid(peer),
+      {:send_delete_broadcast, {get_line_id(old_line), delete_tag, del_op_id}}
+    )
+
+    {peer, new_line}
   end
 
   ########################################################################################
@@ -645,12 +780,18 @@ defmodule Syncordian.Peer do
               git_index_translated
             )
 
+          # Mint the op_id before creating the line so it records its own authored identity
+          # (op_id) and its authored parents' op_ids — the immutable links the interleaving
+          # detector walks to reconstruct edit blocks (def:editblock).
+          {op_id, peer} = next_op_id(peer)
+
           new_line =
             create_line_between_two_lines(
               content,
               left_parent,
               right_parent,
-              peer_id
+              peer_id,
+              op_id
             )
 
           # The line's stored signature never travels: the broadcast carries the insert
@@ -670,9 +811,8 @@ defmodule Syncordian.Peer do
             |> update_peer_document(peer)
             |> tick_individual_peer_clock
             |> tick_edit_count()
+            |> record_seen(op_id)
 
-          {op_id, peer} = next_op_id(peer)
-          peer = record_seen(peer, op_id)
           current_vector_clock = get_peer_vector_clock(peer)
 
           send(
@@ -859,15 +999,22 @@ defmodule Syncordian.Peer do
                       true ->
                         # The wire tag verified against these parents: seal the stored
                         # signature computed from the same pair (:doc domain).
+                        # The wire tag verified against this pair, so by the unique-verifier
+                        # property it is the authored parent pair: seal the locally computed
+                        # stored signature together with the line's op_id and its parents'
+                        # op_ids, reconstructable identically at every replica.
                         sealed_line =
-                          seal_line_signature(
+                          seal_line_authored(
                             provisional_line,
                             create_signature_doc(
                               get_signature(left_parent),
                               content,
                               get_signature(right_parent),
                               incoming_peer_id
-                            )
+                            ),
+                            op_id,
+                            get_line_op_id(left_parent),
+                            get_line_op_id(right_parent)
                           )
 
                         get_metadata(peer)
@@ -906,15 +1053,21 @@ defmodule Syncordian.Peer do
                       true ->
                         # The windowed search located the authored parent pair: seal the
                         # stored signature from it, exactly as on the direct path.
+                        # Same seal as the direct path: the windowed search located the
+                        # authored pair (unique verifier), so its op_ids are this line's
+                        # authored parents.
                         sealed_line =
-                          seal_line_signature(
+                          seal_line_authored(
                             provisional_line,
                             create_signature_doc(
                               get_signature(stash_left_parent),
                               content,
                               get_signature(stash_right_parent),
                               incoming_peer_id
-                            )
+                            ),
+                            op_id,
+                            get_line_op_id(stash_left_parent),
+                            get_line_op_id(stash_right_parent)
                           )
 
                         get_metadata(peer)
@@ -956,23 +1109,44 @@ defmodule Syncordian.Peer do
           document = get_peer_document(peer)
           acked_line = get_document_line_by_line_id(document, inserted_line_id)
 
-          authentic? =
-            acked_line != nil and
-              check_tag_ack(ack_tag, get_signature(acked_line), acker_peer_id)
+          cond do
+            acked_line == nil ->
+              # Acks are broadcast, so one can outrun the insert it acknowledges. The target
+              # line is not present here yet: suspend on its arrival rather than drop, so the
+              # checklist still fills once the insert is delivered (the ack deliverability
+              # rule of def:deliverable). Released by the {:line_added, _} wake on apply.
+              peer
+              |> suspend_operation(
+                {:receive_confirmation_line_insertion, ack_payload, alpha},
+                {:line, inserted_line_id},
+                &inc_requeue_counter/1
+              )
+              |> loop
 
-          if authentic? do
-            document
-            |> update_document_line_commit_at(inserted_line_id, acker_peer_id)
-            |> update_peer_document(peer)
-            |> loop
-          else
-            # Admitted but stale or mismatched: the tag is bound to a different line or
-            # peer (defense in depth behind admission); drop without advancing the
-            # checklist.
-            get_metadata(peer)
-            |> inc_ack_rejected_counter
-            |> update_metadata(peer)
-            |> loop
+            check_tag_ack(ack_tag, get_signature(acked_line), acker_peer_id) ->
+              # Genuine response: union the acking peer into this line's checklist, then
+              # settle the line if every trusted peer has now acknowledged it.
+              document =
+                update_document_line_commit_at(document, inserted_line_id, acker_peer_id)
+
+              {document, settled?} = settle_line_if_complete(document, inserted_line_id)
+              peer = update_peer_document(document, peer)
+
+              peer =
+                if settled?,
+                  do: get_metadata(peer) |> inc_settle_counter() |> update_metadata(peer),
+                  else: peer
+
+              loop(peer)
+
+            true ->
+              # Admitted but stale or mismatched: the tag is bound to a different line or
+              # peer (defense in depth behind admission); drop without advancing the
+              # checklist.
+              get_metadata(peer)
+              |> inc_ack_rejected_counter
+              |> update_metadata(peer)
+              |> loop
           end
         end
 

@@ -180,6 +180,29 @@ defmodule Syncordian.Document do
     |> update_document_line_by_line(document)
   end
 
+  @doc """
+    After an acknowledgement is recorded, settle the given line iff every trusted peer has
+    now acknowledged it: when its `commit_at` is all-true and it is still `:aura`, join in
+    `:settled` (the acknowledgement case of `def:apply` in the formal model). This is
+    lattice-correct — only `:aura` lines are promoted, so a `:tombstone` is never demoted
+    (`:tombstone ⊔ :settled = :tombstone`). Returns `{document, settled?}`, the boolean
+    reporting whether a promotion happened (used for the `settle_counter` metadata).
+  """
+  @spec settle_line_if_complete(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Basic_Types.line_id()
+        ) :: {Syncordian.Basic_Types.document(), boolean()}
+  def settle_line_if_complete(document, line_id) do
+    line = get_document_line_by_line_id(document, line_id)
+
+    if line != nil and get_line_status(line) == :aura and Enum.all?(get_commit_at(line)) do
+      settled_line = set_line_status(line, :settled)
+      {update_document_line_by_line(settled_line, document), true}
+    else
+      {document, false}
+    end
+  end
+
   @spec update_document_line_by_line(
           Syncordian.Line_Object.line(),
           Syncordian.Basic_Types.document()

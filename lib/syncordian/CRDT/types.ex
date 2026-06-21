@@ -14,8 +14,10 @@ defmodule Syncordian.Basic_Types do
 
         - :settled: The line was received but all the peers.
 
-        - :conflict: The line was stash due to a clock inconsistency, and will be reinserted
-            in the document when the stash is resolved.
+        - :conflict: The line belongs to the lower-priority block of an interleaving and is
+            being re-placed: it is superseded by a freshly re-issued line in a disjoint
+            sub-interval and becomes a tombstone once the retracting delete applies
+            (`Syncordian.Interleaving`, `sec:formal-intention`).
   """
   @type status :: :tombstone | :aura | :settled | :conflict | nil
 

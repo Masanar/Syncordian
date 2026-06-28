@@ -1,4 +1,12 @@
 defmodule SyncordianWeb.Endpoint do
+  @moduledoc """
+  The Phoenix endpoint — the entry point for all HTTP/WebSocket traffic.
+
+  Wires together the LiveView socket, signed session cookie, static asset
+  serving, code reloading (in dev) and the plug pipeline that ultimately
+  dispatches to `SyncordianWeb.Router`. Configured in `config/*.exs` (dev binds
+  `http://127.0.0.1:4000`) and started by `Syncordian.Application`.
+  """
   use Phoenix.Endpoint, otp_app: :syncordian
 
   # The session will be stored in the cookie and signed,

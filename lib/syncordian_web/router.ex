@@ -1,4 +1,13 @@
 defmodule SyncordianWeb.Router do
+  @moduledoc """
+  Application routes.
+
+  The `:browser` pipeline serves four LiveView pages: `/` (`About`), `/node`
+  (`Node`, single-peer raw dump), `/supervisor` (`Supervisor`, experiment control
+  panel) and `/readmelog` (`ReadmeLog`, the test git log). In development
+  (`:dev_routes`) it also mounts the Phoenix LiveDashboard at `/dev/dashboard` and
+  the Swoosh mailbox preview at `/dev/mailbox`.
+  """
   use SyncordianWeb, :router
 
   pipeline :browser do
@@ -15,13 +24,13 @@ defmodule SyncordianWeb.Router do
   end
 
   scope "/", SyncordianWeb do
-  pipe_through :browser
+    pipe_through :browser
 
-  live "/", About, :home, as: :about
-  live "/node", Node
-  live "/supervisor", Supervisor
-  live "/readmelog", ReadmeLog
-end
+    live "/", About, :home, as: :about
+    live "/node", Node
+    live "/supervisor", Supervisor
+    live "/readmelog", ReadmeLog
+  end
 
   # Other scopes may use custom stacks.
   # scope "/api", SyncordianWeb do

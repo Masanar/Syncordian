@@ -1,4 +1,14 @@
 defmodule SyncordianWeb.Node do
+  @moduledoc """
+  LiveView that dumps a single peer's raw document, tombstones included (route `/node`).
+
+  Pick a peer id and **Refresh** to ask that peer (looked up in `:global`) for its
+  current document via `{:request_live_view_document, self()}`; the peer replies
+  with `{:receive_live_view_document, document, handler_function}` and the lines
+  are rendered as-is — unlike `/supervisor`'s converged dump, nothing is filtered,
+  so deleted/tombstoned and sentinel lines remain visible. Useful for inspecting
+  the internal state of one replica.
+  """
   use SyncordianWeb, :live_view
   require Syncordian.Line_Object
 

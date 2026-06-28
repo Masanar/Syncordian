@@ -151,10 +151,16 @@ defmodule Syncordian.Interleaving do
 
   # Follows the authored chain from `current`, accumulating lines. `seen` guards against a
   # pathological cycle (never expected: the authored chain is linear).
-  @spec unfold_chain(Syncordian.Line_Object.line(), map(), [Syncordian.Line_Object.line()], MapSet.t()) ::
+  @spec unfold_chain(
+          Syncordian.Line_Object.line(),
+          map(),
+          [Syncordian.Line_Object.line()],
+          MapSet.t()
+        ) ::
           [Syncordian.Line_Object.line()]
   defp unfold_chain(current, succ_index, acc, seen) do
-    key = {get_line_peer_id(current), get_line_parent_right_op_id(current), get_line_op_id(current)}
+    key =
+      {get_line_peer_id(current), get_line_parent_right_op_id(current), get_line_op_id(current)}
 
     case Map.get(succ_index, key) do
       nil ->
@@ -224,7 +230,8 @@ defmodule Syncordian.Interleaving do
     not (PathId.less?(a_max, b_min) or PathId.less?(b_max, a_min))
   end
 
-  @spec block_span(block()) :: {Syncordian.Basic_Types.line_id(), Syncordian.Basic_Types.line_id()}
+  @spec block_span(block()) ::
+          {Syncordian.Basic_Types.line_id(), Syncordian.Basic_Types.line_id()}
   defp block_span(block) do
     {get_line_id(List.first(block.lines)), get_line_id(List.last(block.lines))}
   end

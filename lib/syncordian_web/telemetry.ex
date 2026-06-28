@@ -1,4 +1,12 @@
 defmodule SyncordianWeb.Telemetry do
+  @moduledoc """
+  Telemetry supervisor and metric definitions.
+
+  Started as part of the application's supervision tree, it runs a
+  `telemetry_poller` for periodic VM measurements and declares the metrics
+  (`Telemetry.Metrics`) surfaced by the LiveDashboard at `/dev/dashboard`.
+  Standard Phoenix scaffold; not specific to the CRDT experiment.
+  """
   use Supervisor
   import Telemetry.Metrics
 

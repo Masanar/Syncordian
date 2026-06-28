@@ -9,7 +9,7 @@ insertions, deletions, and update operations in share documents. Our scheme with
 Byzantine nodes, providing immunity against Sybil attacks and ensuring strong eventual
 consistency. Moreover, the presented algorithm naturally avoids interleavings when
 synchronizing nodes. To evaluate Syncordian we use collaborative editing document taken
-from github with over 700 concurrent edit operations contributed by 25 network peers. With
+from github with over 700 concurrent edit operations contributed by 30 network peers. With
 this evaluation we validate Syncordian is effective in maintaining document consistency
 across all peers, even in the presence of Byzantine nodes. Moreover, we evaluate the
 performance of the Syncordian with respect to memory consumption, network load, and
@@ -29,56 +29,246 @@ The table below shows the results for the percentage of interleavings that occur
 
 ## Prerequisites
 
-Before running the project, make sure you have the following installed:
+The project pins Elixir `~> 1.18.3` in `mix.exs`. The verified, working
+toolchain is:
 
-- Erlang:  [Erlang/OTP 27](https://www.erlang.org/downloads/27)
-- Elixir: [Install Elixir v.17.0](https://elixir-lang.org/install.html)
+- **Erlang/OTP 28** (e.g. `28.5`)
+- **Elixir 1.18.4** (built for OTP 28, i.e. `1.18.4-otp-28`)
 
-## Installation
+> #### Toolchain note {: .warning}
+>
+> A newer default Elixir (e.g. 1.19.x) does **not** satisfy the `~> 1.18.3`
+> constraint and `mix` will refuse to compile. If your machine defaults to a
+> newer version (or you manage versions with `asdf`/`mise`), prefix every `mix`
+> command with the pinned versions:
+>
+> ```bash
+> ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 mix <task>
+> ```
+>
+> Check what you have with `elixir --version`. There is no `.tool-versions` file
+> in the repo, so the version is governed solely by the `mix.exs` constraint.
 
-1. Clone the repository:
+All Elixir dependencies are vendored in `deps/` and pre-compiled in `_build/`,
+and the esbuild/tailwind binaries are cached under `_build/`, so the project
+builds and runs **fully offline** — no `mix deps.get` or network access required.
+
+## Installation & setup
 
 ```bash
-git clone git@github.com:Masanar/Syncordian.git 
-cd syncordian
+git clone git@github.com:Masanar/Syncordian.git
+cd Syncordian/code
+
+# First time only: fetch deps and build the JS/CSS assets.
+mix setup            # = deps.get + assets.setup + assets.build
+
+# The experiment scripts write here; create it once.
 mkdir -p debug/documents
 ```
 
-2. Install the project dependencies:
+(Remember the `ASDF_*` prefix from the note above if your default Elixir is newer
+than 1.18.)
+
+## Running the web UI
+
+There is no separate compile step — `mix phx.server` builds and serves the app:
 
 ```bash
-mix phx.server
+mix phx.server                 # or: iex -S mix phx.server
 ```
 
-Once the server starts, you can visit your application at <http://localhost:4000>.
+Then open <http://localhost:4000>. The dev endpoint binds loopback only
+(`127.0.0.1:4000`); to expose it on your LAN, set the endpoint IP to `{0,0,0,0}`
+in `config/dev.exs`.
 
-## Features
+### LiveView pages
 
-Syncordian is designed to be a peer-to-peer collaborative editing tool that uses CRDT to
-ensure strong eventual consistency across nodes, even in the presence of Byzantine faults.
+| Route         | Module                     | What it does |
+| ------------- | -------------------------- | ------------ |
+| `/`           | `SyncordianWeb.About`      | Static about page. |
+| `/supervisor` | `SyncordianWeb.Supervisor` | **Experiment control panel** — pick a CRDT and Byzantine node count, launch the network, replay commits, dump documents, collect metadata. |
+| `/node`       | `SyncordianWeb.Node`       | Raw document dump (including tombstones/sentinels) for a single peer. |
+| `/readmelog`  | `SyncordianWeb.ReadmeLog`  | Visual view of the test git-commit log that drives the experiment. |
 
-## Project Structure
+In development, `/dev/dashboard` (Phoenix LiveDashboard) and `/dev/mailbox`
+(Swoosh mailbox preview) are also mounted.
 
-- lib/: This folder contains the Elixir modules, including the CRDT logic.
-- lib/syncordian/: This folder contains the backend implementation of the CRDT logic for
-  Syncordian
-- lib/syncordian_web/: This folder contains the Phoenix LiveView pages and components.
+## Driving an experiment
 
-## LiveView Pages
+### From the UI (`/supervisor`)
 
-[Syncordian web page](http://localhost:4000) includes several LiveView pages:
+1. Open <http://localhost:4000/supervisor>.
+2. Pick a CRDT module (`:syncordian`, `:fugue`, `:logoot`; `:treedoc` is an
+   incomplete stub) and a Byzantine node count.
+3. **Launch** — spawns one peer per author in the test git log (30 author peers
+   from the Oh My Zsh README history) plus the chosen number of Byzantine peers,
+   all registered via `:global`.
+4. **Next commit** / **All commits** — replays commits one at a time or in a loop.
+5. **Write current peers document** — dumps every peer's materialized document to
+   `debug/documents/<crdt>/document_peer_N` (or `tree_peer_N` for Fugue).
 
-- /node: Displays the raw content (including tombstones) of the local document of any
-  node.
-- /supervisor: Interacts with the supervisor and its controlled processes. This page
-allows to start the supervisor, run commits one by one, send all commits automatically or
-write the current document (no tombstones) of all nodes as text files to the directory
-/debug/documents. Once you write the document you may want to compere them against the
-actual version of the document, the directory /debug/README_versions contains all the 71
-documents versions for all the 71 commits.
-- /readmelog: Provides the logs of the 71 commits for the text, just a visual tool to
-check each the behavior of each commit.
-- /about: An short about page with some information about the project.
+### Headless (no browser)
+
+The same evaluation can be driven from scripts with `mix run --no-start`
+(`--no-start` avoids booting the Phoenix/esbuild app, which is unnecessary and
+crashes a script run):
+
+```bash
+# Full paper experiment: replay all commits across 30 peers, then verify that
+# every peer's document is byte-identical. Optional arg = Byzantine peer count.
+mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
+mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine
+
+# Fast smoke tests:
+mix run --no-start scripts/three_peer_smoke.exs              # 3-peer convergence
+mix run --no-start scripts/interleaving_smoke.exs            # non-interleaving theorem
+
+# Mix task entry point (drives Syncordian.Supervisor.init/2):
+mix syncordian.eval
+```
+
+### Checking convergence
+
+After dumping documents, assert that all peers converged byte-for-byte:
+
+```bash
+cd code
+scripts/identical.sh
+```
+
+## Visualizing results
+
+The plotting scripts need Python with `matplotlib` (and `numpy`):
+
+```bash
+pip install -r scripts/requirements.txt          # add --break-system-packages on
+                                                 # PEP 668 / Debian-managed Python
+python3 scripts/data_visualization.py            # metrics vs commit / byzantine count
+python3 scripts/heap_size_visualization.py       # writes figures/heap_size_plot.pdf
+```
+
+`data_visualization.py` reads JSON from `debug/metadata/`; `heap_size_visualization.py`
+reads per-edit heap sizes from `debug/metadata/individual_peer/` and writes a PDF
+to `figures/`.
+
+## Testing
+
+```bash
+mix test                                   # all tests
+mix test test/syncordian/path_id_test.exs  # a single file
+mix test test/syncordian/path_id_test.exs:42  # a single test by line
+```
+
+Code is formatted with `mix format` (config in `.formatter.exs`).
+
+## API documentation
+
+Browsable HTML docs are generated with [ExDoc](https://hexdocs.pm/ex_doc):
+
+```bash
+mix docs           # regenerates the site under doc/
+```
+
+Open `doc/index.html` in a browser — the site is self-contained and works
+offline. Modules are grouped by sub-system (Syncordian core, Fugue, Logoot,
+Treedoc, shared infrastructure, experiment driver, web).
+
+## Architecture & module dependencies
+
+The four CRDT peer modules (`Syncordian.Peer`, `Syncordian.CRDT.Fugue.Peer`,
+`Syncordian.CRDT.Logoot.Peer`, `Syncordian.CRDT.Treedoc.Peer`) share the same
+callable contract so `Syncordian.Supervisor` can drive them polymorphically:
+
+```text
+start(peer_id, network_size) :: pid
+insert(pid, content, index, test_index, global_position, current_delete_ops)
+delete_line(pid, index, test_index, global_position, current_delete_ops)
+save_content(pid)
+get_module_name() :: String.t()
+```
+
+Project layout:
+
+- `lib/syncordian/` — CRDT backend and the experiment driver.
+  - `CRDT/syncordian/` — the Syncordian CRDT (peer, document, line, path id,
+    Byzantine signatures, interleaving handling, pending/seen-op buffers).
+  - `CRDT/fugue/`, `CRDT/logoot/`, `CRDT/treedoc/` — the comparison CRDTs.
+  - `CRDT/{utilities,metadata,vector_clock,types}.ex` — shared infrastructure.
+  - `supervisor/` — `Syncordian.Supervisor` (hand-rolled receive loop) and the
+    `Syncordian.GitParser` that turns commit logs into edits.
+- `lib/syncordian_web/` — Phoenix LiveView UI.
+- `scripts/` — convergence (`identical.sh`), headless experiments (`*.exs`), and
+  the Python plotting scripts.
+
+### Module dependency graph
+
+A directed edge `A → B` means *module A depends on module B*. A rendered version
+(`docs/dependency_graph.svg` / `.png`, regenerate with
+`dot -Tsvg docs/dependency_graph.dot -o docs/dependency_graph.svg`) shows the same
+graph grouped by sub-system. Note the intentional `Peer ↔ Utilities` cycle:
+`Utilities` is both a helper library and the CRDT-agnostic dispatcher that routes
+to every peer implementation.
+
+```mermaid
+flowchart LR
+  subgraph Entry["Entry points"]
+    App[Syncordian.Application]
+    Eval[Mix.Tasks.Syncordian.Eval]
+    WSup[SyncordianWeb.Supervisor]
+    WNode[SyncordianWeb.Node]
+  end
+  subgraph Driver["Experiment driver"]
+    Sup[Syncordian.Supervisor]
+    GP[Syncordian.GitParser]
+  end
+  subgraph Core["Syncordian CRDT"]
+    Peer[Syncordian.Peer]
+    Doc[Syncordian.Document]
+    Line[Syncordian.Line]
+    LObj[Syncordian.Line_Object]
+    PathId[Syncordian.PathId]
+    Byz[Syncordian.Byzantine]
+    BPeer[Syncordian.ByzantinePeer]
+    Intl[Syncordian.Interleaving]
+    Pend[Syncordian.PendingOps]
+    Seen[Syncordian.SeenOps]
+    Info[Syncordian.Info]
+  end
+  subgraph Infra["Shared infrastructure"]
+    Util[Syncordian.Utilities]
+    Meta[Syncordian.Metadata]
+    VC[Syncordian.Vector_Clock]
+    Types[Syncordian.Basic_Types]
+  end
+  subgraph Fugue["Fugue"]
+    FP[Fugue.Peer] --> FT[Fugue.Tree] --> FN[Fugue.Node]
+    FP --> FI[Fugue.Info]
+  end
+  subgraph Logoot["Logoot"]
+    LP[Logoot.Peer] --> LS[Logoot.Sequence]
+    LP --> LA[Logoot.Agent]
+    LP --> LI[Logoot.Info]
+  end
+  subgraph Treedoc["Treedoc (stub)"]
+    TP[Treedoc.Peer] --> TB[Treedoc.Bst] --> TN[Treedoc.Node]
+  end
+
+  App --> Sup
+  Eval --> Sup
+  WSup --> Sup
+  WNode --> LObj
+  Sup --> Meta & GP & Util & BPeer & Peer
+  Peer --> Meta & Info & Line & Doc & Byz & LObj & Util & VC & Pend & Seen & Intl
+  Doc --> LObj & Line & VC & Byz & PathId
+  Line --> Byz & PathId & Pend
+  Byz --> LObj
+  Intl --> LObj & PathId
+  Util --> Peer & FP & LP & TP & Types
+  Meta --> Util & Byz & Intl & Seen
+  FP --> Util & Meta
+  LP --> Util & Meta
+  TP --> Util & Meta
+```
 
 ## Credits
 
@@ -89,7 +279,7 @@ check each the behavior of each commit.
 
 The MIT License (MIT)
 
-Copyright (c) 2015 Chris Kibble
+Copyright (c) Mateo Sanabria Ardila, Nicolás Cardozo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the "Software"), to deal in the Software

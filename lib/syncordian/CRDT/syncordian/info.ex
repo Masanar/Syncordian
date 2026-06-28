@@ -1,4 +1,17 @@
 defmodule Syncordian.Info do
+  @moduledoc """
+  Rendering and persistence helpers for a Syncordian peer's document.
+
+  Converts the in-memory document (a list of `Syncordian.Line_Object` lines) to
+  text and writes it to disk for inspection and convergence checks. The materializing
+  variants drop the Infimum/Supremum sentinel lines, tombstones, and `:conflict`
+  lines (whose content has been carried to a freshly re-issued line during
+  interleaving re-placement), so what's written is exactly the user-visible
+  document. A separate raw variant dumps every line verbatim for debugging.
+
+  Output goes to `debug/documents/syncordian/document_peer_<id>`; run
+  `scripts/identical.sh` afterwards to assert all peers converged byte-for-byte.
+  """
   # use TypeCheck
   import Syncordian.Utilities
   import Syncordian.Line_Object
@@ -14,7 +27,10 @@ defmodule Syncordian.Info do
         ) ::
           :ok
   def save_document_content(document, peer_id) do
-    File.write!("debug/documents/syncordian/document_peer_#{peer_id}", string_document_content(document))
+    File.write!(
+      "debug/documents/syncordian/document_peer_#{peer_id}",
+      string_document_content(document)
+    )
   end
 
   @doc """

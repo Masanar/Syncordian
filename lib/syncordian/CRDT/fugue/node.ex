@@ -36,7 +36,12 @@ defmodule Syncordian.CRDT.Fugue.Node do
         }
 
   @spec node_to_string(t) :: String.t()
-  def node_to_string(%__MODULE__{id: {peer_id, number}, value: value, parent: {parent_id, index}, side: side}) do
+  def node_to_string(%__MODULE__{
+        id: {peer_id, number},
+        value: value,
+        parent: {parent_id, index},
+        side: side
+      }) do
     "Node ID: #{peer_id} - #{number}
     Value: #{value}
     Parent: #{parent_id} - #{index}

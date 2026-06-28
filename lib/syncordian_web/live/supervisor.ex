@@ -1,4 +1,17 @@
 defmodule SyncordianWeb.Supervisor do
+  @moduledoc """
+  LiveView control panel for driving an experiment (route `/supervisor`).
+
+  This is the main bridge between the browser and the experiment engine. From here
+  you pick a CRDT module and a Byzantine node count, **Launch** (which spawns one
+  peer per author in the test git log plus the Byzantine peers), then replay
+  commits one at a time or all at once, dump every peer's document to disk, and
+  collect metadata. Each button sends a message
+  (`{:send_next_commit, ...}`, `{:send_all_commits, ...}`,
+  `{:write_current_peers_document}`, `{:collect_metadata_from_peers}`, `{:kill}`)
+  to the globally-registered `Syncordian.Supervisor` process, whose helper
+  functions are imported here. Selection state is kept in the Phoenix LiveSession.
+  """
   use SyncordianWeb, :live_view
   import Syncordian.Supervisor
 

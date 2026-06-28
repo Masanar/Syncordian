@@ -98,9 +98,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
     if atom in @valid_crdts do
       atom
     else
-      Mix.raise(
-        "unknown --crdt #{inspect(s)}; expected one of #{Enum.join(@valid_crdts, ", ")}"
-      )
+      Mix.raise("unknown --crdt #{inspect(s)}; expected one of #{Enum.join(@valid_crdts, ", ")}")
     end
   end
 
@@ -168,6 +166,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
 
   defp run_identical(crdt) do
     dir = Path.join(["debug", "documents", to_string(crdt)])
+
     files =
       File.ls!(dir)
       |> Enum.reject(&(&1 == ".gitignore"))
@@ -193,7 +192,10 @@ defmodule Mix.Tasks.Syncordian.Eval do
         IO.puts("\n[eval] CONVERGED: all #{length(files)} peer documents identical to #{head}")
 
       _ ->
-        IO.puts("\n[eval] DIVERGED: #{length(mismatches)} of #{length(rest)} peers differ from #{head}:")
+        IO.puts(
+          "\n[eval] DIVERGED: #{length(mismatches)} of #{length(rest)} peers differ from #{head}:"
+        )
+
         Enum.each(mismatches, &IO.puts("  - " <> &1))
         Mix.raise("convergence check failed")
     end

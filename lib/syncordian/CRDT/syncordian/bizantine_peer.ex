@@ -1,4 +1,28 @@
 defmodule Syncordian.ByzantinePeer do
+  @moduledoc """
+  Adversary simulator used to stress Syncordian's Byzantine fault tolerance.
+
+  A Byzantine peer is spawned alongside the honest author peers (with synthetic,
+  non-colliding ids — see `Syncordian.Supervisor`) and registered in `:global`, so
+  it receives every broadcast. Its `byzantine_peer_loop/1` models an **outsider
+  attacker that does not hold the network's boundary secret**: on observing an
+  honest insert/delete it occasionally (`send?/0`) re-broadcasts the message with a
+  forged wire/authorization tag while leaving the stale admission authenticator
+  untouched. Because it cannot recompute a valid authenticator over the mutated
+  payload, honest receivers reject the forgery at admission
+  (`Syncordian.Byzantine.check_admission/4`, tallied in
+  `admission_rejected_counter`) — never applying or buffering it. Replaying the
+  stale authenticator is the attacker's strongest available move; garbling it too
+  would be strictly weaker.
+
+  Forged sends are counted via `Syncordian.Metadata`'s
+  `inc_byzantine_insert_counter/1` / `inc_byzantine_delete_counter/1` so a run can
+  report attack volume against successful tampering (which should be zero).
+
+  > #### Spelling note {: .info}
+  > The file and lower-level identifiers use the legacy spelling `bizantine`; the
+  > module and user-facing strings say "Byzantine". Keep both in sync if renaming.
+  """
   require Record
   import Syncordian.Metadata
   import Syncordian.Utilities
@@ -61,6 +85,11 @@ defmodule Syncordian.ByzantinePeer do
     )
   end
 
+  @doc """
+  Spawns a Byzantine peer, registers it in `:global` under `peer_id`, and returns
+  the result of seeding it with its own pid. Called by the supervisor once per
+  requested Byzantine node.
+  """
   @spec start_byzantine_peer(Syncordian.Basic_Types.peer_id()) :: pid
   def start_byzantine_peer(peer_id) do
     IO.puts("Starting byzantine peer with id: #{peer_id}")
@@ -71,6 +100,14 @@ defmodule Syncordian.ByzantinePeer do
 
   defp send?(), do: Enum.random(0..10) == 0
 
+  @doc """
+  Receive loop for a Byzantine peer.
+
+  Listens for honest insert/delete broadcasts and, with ~1/11 probability,
+  re-broadcasts a tampered copy (forged tag, stale admission authenticator) to
+  exercise the honest peers' admission checks; also answers the supervisor's
+  metadata requests. Runs as the spawned process entry point — not called directly.
+  """
   def byzantine_peer_loop(byzantine_peer) do
     receive do
       {:receive_delete_broadcast, {line_deleted_id, delete_tag, op_id}, alpha} ->

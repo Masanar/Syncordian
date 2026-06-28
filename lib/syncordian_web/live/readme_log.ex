@@ -1,4 +1,11 @@
 defmodule SyncordianWeb.ReadmeLog do
+  @moduledoc """
+  LiveView that displays the test git log used to drive experiments (route `/readmelog`).
+
+  Reads the Oh My Zsh README commit-history fixture from
+  `test/git_log/ohmyzsh_README_full_git_log` and renders it, so you can see the
+  sequence of commits whose insert/delete edits are replayed against the peers.
+  """
   use SyncordianWeb, :live_view
 
   def mount(_params, _session, socket) do

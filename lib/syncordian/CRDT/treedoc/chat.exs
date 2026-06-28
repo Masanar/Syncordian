@@ -1,5 +1,4 @@
 defmodule Chat do
-
   def insert({pos_id, msg}) do
     # IO.puts(msg)
     Agent.update(Tree, fn state -> CRDT.insert(state, {pos_id, msg}) end)
@@ -11,11 +10,11 @@ defmodule Chat do
   end
 
   def print_all_messages() do
-    Agent.get(Tree, &(&1)) |> CRDT.print_all_messages()
+    Agent.get(Tree, & &1) |> CRDT.print_all_messages()
   end
 
   def print_actual() do
-    Agent.get(Tree, &(&1)) |> CRDT.print_actual()
+    Agent.get(Tree, & &1) |> CRDT.print_actual()
   end
 end
 
@@ -41,12 +40,15 @@ defmodule CRDT do
     pos_id = String.split(pos_id, "_")
     id = Enum.at(pos_id, 0)
     {id, _} = Integer.parse(id)
+
     BST.update(tree, %{id: id, status: false}, fn a, b ->
-      %{a | status: b.status} end)
+      %{a | status: b.status}
+    end)
   end
 
   def print_all_messages(tree) do
     messages = BST.to_list(tree)
+
     Enum.each(messages, fn map ->
       IO.puts(map.msg)
     end)
@@ -54,7 +56,7 @@ defmodule CRDT do
 
   def print_actual(tree) do
     BST.to_list(tree)
-      |> Enum.filter(fn map -> map.status == true end)
-      |> Enum.each(fn map -> IO.puts(map.msg) end)
+    |> Enum.filter(fn map -> map.status == true end)
+    |> Enum.each(fn map -> IO.puts(map.msg) end)
   end
 end

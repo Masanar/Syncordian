@@ -47,6 +47,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   @spec get_document_byte_size(peer_fugue()) :: integer()
   def get_document_byte_size(peer) do
     nodes = get_peer_document(peer) |> Tree.get_tree_nodes()
+
     inspect(nodes, limit: :infinity, printable_limit: :infinity)
     |> byte_size
   end
@@ -518,10 +519,11 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         raw_tree_content =
           document
           |> helper_raw.()
-          # |> Enum.map(fn {id, {node, left, right}} ->
-          #   "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
-          # end)
-          # |> Enum.join("\n")
+
+        # |> Enum.map(fn {id, {node, left, right}} ->
+        #   "Node ID: #{inspect(id)}\nNode: #{inspect(node)}\nLeft: #{inspect(left)}\nRight: #{inspect(right)}\n"
+        # end)
+        # |> Enum.join("\n")
 
         file_path = "debug/documents/fugue/raw/"
         File.write(file_path <> "tree", raw_tree_content)
@@ -534,8 +536,6 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         IO.puts("Peer Fugue receive a wrong message")
         IO.inspect(wrong_message)
         loop(peer)
-
     end
-
   end
 end

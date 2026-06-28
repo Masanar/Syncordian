@@ -1,5 +1,24 @@
 defmodule Syncordian.CRDT.Treedoc.Peer do
+  @moduledoc """
+  Treedoc CRDT peer — one of the three baselines Syncordian is compared against.
 
+  Treedoc stores the document as a binary tree (`Syncordian.CRDT.Treedoc.Bst` of
+  `Syncordian.CRDT.Treedoc.Node`s) in which each line's position identifier is the
+  path from the root to its node; the in-order traversal yields the document, and
+  concurrent inserts land at distinct paths so replicas converge.
+
+  > #### Incomplete implementation {: .warning}
+  >
+  > This peer is a work-in-progress stub: `loop/1` currently only receives
+  > `:delete_line` (and merely inspects the index), and the module does **not**
+  > implement `get_module_name/0`, so it does not yet satisfy the full shared peer
+  > contract that `Syncordian.Supervisor` expects. Several accessor `@doc`s below
+  > still carry copy-pasted "Fugue" wording from the template. The Fugue and
+  > Logoot baselines are the complete, runnable comparisons.
+
+  Like the other peers, it is a process running `loop/1`, registered in `:global`,
+  and broadcasts through `Syncordian.Utilities.perform_broadcast/3`.
+  """
   import Syncordian.Metadata
   import Syncordian.Utilities
   alias Syncordian.CRDT.Treedoc.{Bst, Node}
@@ -62,7 +81,6 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
   """
   @spec get_peer_document(peer_treedoc()) :: Syncordian.CRDT.Fugue.Tree.t()
   def get_peer_document(%__MODULE__{document: document}), do: document
-
 
   ########################################################################################
 
@@ -169,5 +187,4 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
         loop(peer)
     end
   end
-
 end

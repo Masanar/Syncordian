@@ -1,0 +1,9 @@
+# Python dependencies for the Syncordian visualization scripts
+# (data_visualization.py, heap_size_visualization.py).
+#
+# Install with:  pip install -r scripts/requirements.txt
+#
+# Only matplotlib (and its transitive numpy dependency) is third-party;
+# json/os/re used by the scripts are part of the Python standard library.
+matplotlib>=3.5
+numpy>=1.21

@@ -1,4 +1,25 @@
 defmodule Syncordian.CRDT.Logoot.Peer do
+  @moduledoc """
+  Logoot CRDT peer — one of the three baselines Syncordian is compared against.
+
+  Logoot represents the document as a `Syncordian.CRDT.Logoot.Sequence` of
+  position-identified atoms, where each identifier is a list of `(int, peer)`
+  components drawn from a dense, totally-ordered space; a new line's identifier is
+  allocated strictly between its neighbours, so concurrent inserts commute and the
+  replicas converge without coordination. Per-peer state (sequence, clock, id) is
+  held in a `Syncordian.CRDT.Logoot.Agent`.
+
+  Like every CRDT in this project, the peer is a hand-rolled process running
+  `loop/1` and registered in the `:global` registry, and it exposes the shared
+  peer contract so `Syncordian.Supervisor` can drive it polymorphically:
+  `start/2`, `insert/6`, `delete_line/5`, `save_content/1`, `get_module_name/0`
+  (see `Syncordian.Utilities.identify_peer_module/1`). Network messages are
+  delivered through `Syncordian.Utilities.perform_broadcast/3`; there is no real
+  network.
+
+  The numerous `get_*` / `update_*` / `set_*` functions are thin accessors over
+  the peer struct and its embedded agent — their `@spec`s describe them fully.
+  """
   import Syncordian.Metadata
   alias Syncordian.Utilities
   alias Syncordian.CRDT.Logoot.{Agent, Sequence, Info}
@@ -20,6 +41,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
   @type peer_logoot :: t
   @peer_metadata_id 7
 
+  @doc "Returns the CRDT's short name, used by the supervisor to label output and dispatch."
   @spec get_module_name() :: String.t()
   def get_module_name(), do: "logoot"
 
@@ -258,7 +280,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         sequence = get_peer_sequence(peer)
 
         {atom_ident, _term} =
-              Sequence.get_sequence_atom_by_index(sequence, index)
+          Sequence.get_sequence_atom_by_index(sequence, index)
 
         case Sequence.get_and_insert_after(sequence, atom_ident, content, agent) do
           {:ok, {new_sequence_atom, new_agent}} ->

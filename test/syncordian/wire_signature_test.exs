@@ -27,6 +27,7 @@ defmodule Syncordian.WireSignatureTest do
   defp author_side(content) do
     infimum = create_infimum_line(0, @network_size)
     supremum = create_supremum_line(0, @network_size)
+
     authored_line =
       create_line_between_two_lines(content, infimum, supremum, @author_peer, {@author_peer, 1})
 
@@ -172,8 +173,15 @@ defmodule Syncordian.WireSignatureTest do
 
     test "lines differing in one character of content yield different delete tags" do
       {line_a, _, infimum, supremum} = author_side("content a")
+
       line_b =
-        create_line_between_two_lines("content b", infimum, supremum, @author_peer, {@author_peer, 1})
+        create_line_between_two_lines(
+          "content b",
+          infimum,
+          supremum,
+          @author_peer,
+          {@author_peer, 1}
+        )
 
       tag_a = Byzantine.create_tag_delete(get_signature(line_a))
       refute Byzantine.check_tag_delete(tag_a, line_b)

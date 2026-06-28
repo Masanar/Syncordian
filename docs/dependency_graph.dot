@@ -1,0 +1,195 @@
+// Syncordian module dependency graph.
+//
+// Directed edge A -> B means "module A depends on module B" (via import / alias /
+// use / direct call). Standard library and Phoenix internals are omitted.
+//
+// Regenerate the rendered images with:
+//   dot -Tsvg docs/dependency_graph.dot -o docs/dependency_graph.svg
+//   dot -Tpng docs/dependency_graph.dot -o docs/dependency_graph.png
+//
+// Colors group modules by sub-system. Note the intentional Peer <-> Utilities
+// cycle: Utilities is both a low-level helper library and the CRDT-agnostic
+// dispatcher that routes to every *.Peer implementation.
+
+digraph syncordian {
+  rankdir = LR;
+  graph [splines = true, nodesep = 0.35, ranksep = 1.0, fontname = "Helvetica"];
+  node  [shape = box, style = "rounded,filled", fontname = "Helvetica", fontsize = 10];
+  edge  [color = "#888888", arrowsize = 0.7];
+
+  // ---- Entry points ---------------------------------------------------------
+  subgraph cluster_entry {
+    label = "Entry points / Application";
+    color = "#cccccc";
+    node [fillcolor = "#fde2c4"];
+    Application       [label = "Syncordian.Application"];
+    Eval              [label = "Mix.Tasks.Syncordian.Eval"];
+    Web_Supervisor    [label = "SyncordianWeb.Supervisor (LV)"];
+    Web_Node          [label = "SyncordianWeb.Node (LV)"];
+    Endpoint          [label = "SyncordianWeb.Endpoint"];
+    WebTelemetry      [label = "SyncordianWeb.Telemetry"];
+  }
+
+  // ---- Experiment driver ----------------------------------------------------
+  subgraph cluster_driver {
+    label = "Experiment driver";
+    color = "#cccccc";
+    node [fillcolor = "#cfe8fc"];
+    Supervisor        [label = "Syncordian.Supervisor"];
+    GitParser         [label = "Syncordian.GitParser"];
+  }
+
+  // ---- Syncordian CRDT core -------------------------------------------------
+  subgraph cluster_core {
+    label = "Syncordian CRDT";
+    color = "#cccccc";
+    node [fillcolor = "#d7f0d2"];
+    Peer              [label = "Syncordian.Peer"];
+    Document          [label = "Syncordian.Document"];
+    Line              [label = "Syncordian.Line"];
+    LineObject        [label = "Syncordian.Line_Object"];
+    PathId            [label = "Syncordian.PathId"];
+    Byzantine         [label = "Syncordian.Byzantine"];
+    ByzantinePeer     [label = "Syncordian.ByzantinePeer"];
+    Interleaving      [label = "Syncordian.Interleaving"];
+    PendingOps        [label = "Syncordian.PendingOps"];
+    SeenOps           [label = "Syncordian.SeenOps"];
+    Info              [label = "Syncordian.Info"];
+  }
+
+  // ---- Shared infrastructure ------------------------------------------------
+  subgraph cluster_infra {
+    label = "Shared infrastructure";
+    color = "#cccccc";
+    node [fillcolor = "#eedcf7"];
+    Utilities         [label = "Syncordian.Utilities"];
+    Metadata          [label = "Syncordian.Metadata"];
+    VectorClock       [label = "Syncordian.Vector_Clock"];
+    BasicTypes        [label = "Syncordian.Basic_Types"];
+  }
+
+  // ---- Fugue ----------------------------------------------------------------
+  subgraph cluster_fugue {
+    label = "Fugue CRDT";
+    color = "#cccccc";
+    node [fillcolor = "#fcdede"];
+    FuguePeer         [label = "Fugue.Peer"];
+    FugueTree         [label = "Fugue.Tree"];
+    FugueNode         [label = "Fugue.Node"];
+    FugueInfo         [label = "Fugue.Info"];
+  }
+
+  // ---- Logoot ---------------------------------------------------------------
+  subgraph cluster_logoot {
+    label = "Logoot CRDT";
+    color = "#cccccc";
+    node [fillcolor = "#fcf3c4"];
+    LogootPeer        [label = "Logoot.Peer"];
+    LogootSequence    [label = "Logoot.Sequence"];
+    LogootAgent       [label = "Logoot.Agent"];
+    LogootInfo        [label = "Logoot.Info"];
+  }
+
+  // ---- Treedoc --------------------------------------------------------------
+  subgraph cluster_treedoc {
+    label = "Treedoc CRDT (stub)";
+    color = "#cccccc";
+    node [fillcolor = "#d4f1f1"];
+    TreedocPeer       [label = "Treedoc.Peer"];
+    TreedocBst        [label = "Treedoc.Bst"];
+    TreedocNode       [label = "Treedoc.Node"];
+  }
+
+  // ---- Edges: entry / application -------------------------------------------
+  Application -> Supervisor;
+  Application -> Endpoint;
+  Application -> WebTelemetry;
+  Eval -> Supervisor;
+  Web_Supervisor -> Supervisor;
+  Web_Node -> LineObject;
+
+  // ---- Edges: driver --------------------------------------------------------
+  Supervisor -> Metadata;
+  Supervisor -> GitParser;
+  Supervisor -> Utilities;
+  Supervisor -> ByzantinePeer;
+  Supervisor -> Peer;
+
+  // ---- Edges: Syncordian core ----------------------------------------------
+  Peer -> Metadata;
+  Peer -> Info;
+  Peer -> Line;
+  Peer -> Document;
+  Peer -> Byzantine;
+  Peer -> LineObject;
+  Peer -> Utilities;
+  Peer -> VectorClock;
+  Peer -> PendingOps;
+  Peer -> SeenOps;
+  Peer -> Interleaving;
+
+  Document -> LineObject;
+  Document -> Line;
+  Document -> VectorClock;
+  Document -> Byzantine;
+  Document -> Utilities;
+  Document -> BasicTypes;
+  Document -> PathId;
+
+  Line -> Utilities;
+  Line -> Byzantine;
+  Line -> LineObject;
+  Line -> PathId;
+  Line -> PendingOps;
+  LineObject -> Utilities;
+  LineObject -> PathId;
+
+  Byzantine -> LineObject;
+  Interleaving -> LineObject;
+  Interleaving -> PathId;
+  Info -> Utilities;
+  Info -> LineObject;
+  ByzantinePeer -> Metadata;
+  ByzantinePeer -> Utilities;
+
+  // ---- Edges: shared infrastructure ----------------------------------------
+  // Utilities is the CRDT dispatcher -> depends on every *.Peer (cycle w/ Peer).
+  Utilities -> Peer;
+  Utilities -> FuguePeer;
+  Utilities -> LogootPeer;
+  Utilities -> TreedocPeer;
+  Utilities -> BasicTypes;
+  Metadata -> Utilities;
+  Metadata -> Byzantine;
+  Metadata -> Interleaving;
+  Metadata -> SeenOps;
+
+  // ---- Edges: Fugue ---------------------------------------------------------
+  FuguePeer -> Metadata;
+  FuguePeer -> Utilities;
+  FuguePeer -> FugueTree;
+  FuguePeer -> FugueInfo;
+  FuguePeer -> FugueNode;
+  FugueTree -> FugueNode;
+  FugueTree -> Utilities;
+  FugueNode -> BasicTypes;
+
+  // ---- Edges: Logoot --------------------------------------------------------
+  LogootPeer -> Metadata;
+  LogootPeer -> Utilities;
+  LogootPeer -> LogootAgent;
+  LogootPeer -> LogootSequence;
+  LogootPeer -> LogootInfo;
+  LogootSequence -> BasicTypes;
+  LogootSequence -> LogootAgent;
+  LogootAgent -> LogootSequence;
+  LogootInfo -> LogootSequence;
+
+  // ---- Edges: Treedoc -------------------------------------------------------
+  TreedocPeer -> Metadata;
+  TreedocPeer -> Utilities;
+  TreedocPeer -> TreedocBst;
+  TreedocPeer -> TreedocNode;
+  TreedocBst -> TreedocNode;
+  TreedocNode -> BasicTypes;
+}

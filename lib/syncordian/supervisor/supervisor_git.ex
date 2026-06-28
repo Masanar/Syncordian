@@ -52,7 +52,6 @@ defmodule Syncordian.Supervisor do
             peer_module: module()
           )
 
-
   @spec get_peer_module(supervisor()) :: module()
   defp get_peer_module(supervisor), do: supervisor(supervisor, :peer_module)
 
@@ -93,13 +92,16 @@ defmodule Syncordian.Supervisor do
           metadata_peer_count: current_metadata_peer_count + 1
         )
       end
+
     new_supervisor
   end
 
   @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
   defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
 
-  defp update_metadata(supervisor), do: supervisor(supervisor, metadata: Syncordian.Metadata.metadata())
+  defp update_metadata(supervisor),
+    do: supervisor(supervisor, metadata: Syncordian.Metadata.metadata())
+
   @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
   defp update_metadata(metadata, supervisor) do
     inc_metadata_peer_count(supervisor)
@@ -210,6 +212,7 @@ defmodule Syncordian.Supervisor do
     Enum.map(1..29, fn x ->
       peer_module.save_content(Enum.at(pid_list_author_peers, x))
     end)
+
     :ok
   end
 
@@ -255,7 +258,8 @@ defmodule Syncordian.Supervisor do
     values =
       authors_list
       |> Enum.reduce({0, [], %{}}, fn author_id, {acc, add_pid, map_ids} ->
-        {acc + 1, [peer_module.start(acc, network_size) | add_pid], Map.put(map_ids, author_id, acc)}
+        {acc + 1, [peer_module.start(acc, network_size) | add_pid],
+         Map.put(map_ids, author_id, acc)}
       end)
 
     {elem(values, 1) |> Enum.reverse(), elem(values, 2)}
@@ -337,18 +341,35 @@ defmodule Syncordian.Supervisor do
     pid
   end
 
+  @doc """
+  Main receive loop of the supervisor process (the spawned entry point).
+
+  Holds the experiment state record and reacts to messages from the
+  `/supervisor` LiveView and from peers:
+
+    * `{:send_next_commit, ...}` — parse and dispatch the next commit's edits
+    * `{:send_all_commits, ...}` — replay every remaining commit in a loop
+    * `{:write_current_peers_document}` — tell each peer to dump its document
+    * `{:collect_metadata_from_peers}` / `{:receive_metadata_from_peer, ...}` —
+      request and accumulate per-peer metadata
+    * `{:kill}` — tear the network down
+
+  Not called directly; run via `spawn/3` from `init/2`.
+  """
   def supervisor_loop(supervisor) do
     receive do
       {:write_current_peers_document} ->
         peer_module = get_peer_module(supervisor)
+
         supervisor
         |> get_pid_list()
         |> save_current_documents(peer_module)
+
         supervisor_loop(supervisor)
 
       {:send_all_commits, live_view_pid, byzantine_nodes} ->
         peer_module = get_peer_module(supervisor)
-        supervisor_counter =  supervisor |> get_commit_counter()
+        supervisor_counter = supervisor |> get_commit_counter()
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
@@ -380,7 +401,7 @@ defmodule Syncordian.Supervisor do
           IO.puts("All commits processed")
           send(self(), {:write_current_peers_document})
           # TODO: repetid code!
-          pid_individual =  supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
+          pid_individual = supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
           send(pid_individual, {:write_raw_document})
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
@@ -388,7 +409,7 @@ defmodule Syncordian.Supervisor do
 
       {:send_next_commit, live_view_pid, byzantine_nodes} ->
         peer_module = get_peer_module(supervisor)
-        supervisor_counter =  supervisor |> get_commit_counter()
+        supervisor_counter = supervisor |> get_commit_counter()
         list_of_commits = supervisor(supervisor, :list_of_commits)
         length_of_commits = length(list_of_commits)
 
@@ -436,8 +457,9 @@ defmodule Syncordian.Supervisor do
         |> supervisor_loop
 
       {:print_supervisor_metadata} ->
-        peer_str =  "#{get_peer_module_string(supervisor)}/"
+        peer_str = "#{get_peer_module_string(supervisor)}/"
         commit_counter = supervisor |> get_commit_counter()
+
         get_metadata(supervisor)
         |> save_metadata(
           supervisor(supervisor, :byzantine_nodes),

@@ -297,6 +297,9 @@ defmodule Syncordian.GitParser do
     |> Stream.map(&parse_line_to_map/1)
   end
 
+  @doc """
+  Returns the commit hashes from a git log fixture, oldest first, as a list.
+  """
   def get_list_of_commits(file_name) do
     Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
@@ -306,12 +309,21 @@ defmodule Syncordian.GitParser do
     |> Enum.reverse()
   end
 
+  @doc """
+  Groups the parsed log entries into a map keyed by commit hash.
+  """
   def group_by_commit(parsed_log) do
     parsed_log
     |> Enum.to_list()
     |> Enum.group_by(&Map.get(&1, :commit_hash))
   end
 
+  @doc """
+  Groups the parsed log by author, returning `{author_group_map, authors_list}`.
+
+  The supervisor uses `authors_list` to decide how many author peers to spawn (one
+  per distinct author in the log).
+  """
   def group_by_author(parsed_log) do
     authors_group_map =
       parsed_log

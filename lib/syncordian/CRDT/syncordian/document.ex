@@ -1,4 +1,22 @@
 defmodule Syncordian.Document do
+  @moduledoc """
+  Operations over a Syncordian document — the ordered list of lines a peer holds.
+
+  A document is a `[Syncordian.Line_Object.line()]` kept sorted by each line's
+  totally-ordered `Syncordian.PathId`, bracketed by an Infimum sentinel at the
+  head and a Supremum sentinel at the tail so that every real insert has a
+  left and right neighbour. This module provides the read/locate side of that
+  structure: finding the index at which an incoming broadcast line should be
+  spliced (`get_document_new_index_by_incoming_line_id/2`), locating existing
+  lines by id, and the related traversal helpers; the sentinels guarantee the
+  walks terminate.
+
+  It composes the lower-level pieces — `Syncordian.Line` / `Syncordian.Line_Object`
+  for line construction and access, `Syncordian.PathId` for position comparison,
+  `Syncordian.Vector_Clock` for causality, and `Syncordian.Byzantine` for
+  signatures. `Syncordian.Peer` calls into it while applying local edits and
+  incoming operations.
+  """
   # use TypeCheck
   import Syncordian.Line_Object
   import Syncordian.Line
@@ -271,8 +289,7 @@ defmodule Syncordian.Document do
           incoming_peer_vc :: Syncordian.Basic_Types.vector_clock(),
           insert_tag :: Syncordian.Basic_Types.signature()
         ) ::
-          {boolean(),
-           {Syncordian.Line_Object.line() | nil, Syncordian.Line_Object.line() | nil}}
+          {boolean(), {Syncordian.Line_Object.line() | nil, Syncordian.Line_Object.line() | nil}}
   def stash_document_lines_insert(
         document,
         incoming_line,
@@ -289,8 +306,7 @@ defmodule Syncordian.Document do
 
     window_search_result =
       window_stash_check_signature(
-        {document_length, window_size, window_center, new_document, incoming_line,
-         insert_tag}
+        {document_length, window_size, window_center, new_document, incoming_line, insert_tag}
       )
 
     case window_search_result do
@@ -329,8 +345,7 @@ defmodule Syncordian.Document do
         ) :: {boolean(), {integer(), integer()}}
   defp window_stash_check_signature(
          fix_parameter =
-           {document_length, window_size, window_center, document, incoming_line,
-            insert_tag},
+           {document_length, window_size, window_center, document, incoming_line, insert_tag},
          left_shift \\ -1,
          right_shift \\ 1
        ) do

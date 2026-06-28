@@ -1,4 +1,24 @@
 defmodule Syncordian.Metadata do
+  @moduledoc """
+  Per-peer experiment instrumentation.
+
+  Every peer carries a `metadata` record (defined here with `Record.defrecord/2`)
+  that accumulates counters describing what happened to it during a run: how many
+  inserts/deletes were valid, stashed, requeued or rejected; how many forged
+  Byzantine operations were observed; how many lines settled or were re-placed to
+  resolve an interleaving; plus live VM stats (heap size, message-queue length).
+
+  The counters are bumped from `Syncordian.Peer` / `Syncordian.ByzantinePeer` as
+  operations flow through, then collected by `Syncordian.Supervisor` after every
+  commit. `merge_metadata/2` field-wise sums two records (used to aggregate all
+  peers into one network-wide snapshot), and the `save_metadata*` functions write
+  the snapshots as JSON under `debug/metadata/` for the Python plotting scripts in
+  `scripts/` to consume.
+
+  Access fields with `metadata(rec, :field)` and update with
+  `metadata(rec, field: value)`; the `inc_*` helpers each return a new record with
+  one counter incremented.
+  """
   require Record
   import Syncordian.Utilities
 
@@ -131,6 +151,13 @@ defmodule Syncordian.Metadata do
     )
   end
 
+  @doc """
+  Field-wise sums two metadata records into one.
+
+  Used by the supervisor to aggregate the per-peer records collected after a
+  commit into a single network-wide snapshot. Every counter in the result is the
+  sum of the corresponding counters in `metadata1` and `metadata2`.
+  """
   @spec merge_metadata(metadata(), metadata()) :: metadata()
   def merge_metadata(metadata1, metadata2) do
     metadata(
@@ -186,8 +213,7 @@ defmodule Syncordian.Metadata do
       message_queue_length:
         metadata(metadata1, :message_queue_length) +
           metadata(metadata2, :message_queue_length),
-      settle_counter:
-        metadata(metadata1, :settle_counter) + metadata(metadata2, :settle_counter),
+      settle_counter: metadata(metadata1, :settle_counter) + metadata(metadata2, :settle_counter),
       conflict_detected_counter:
         metadata(metadata1, :conflict_detected_counter) +
           metadata(metadata2, :conflict_detected_counter),
@@ -197,6 +223,13 @@ defmodule Syncordian.Metadata do
     )
   end
 
+  @doc """
+  Records the peer process's current memory footprint.
+
+  Stores `bytes` as the heap size and reads the live message-queue length of
+  `peer_pid` via `Syncordian.Utilities.process_memory_info/1`. Called before each
+  metadata snapshot so heap growth and backlog can be plotted over the run.
+  """
   @spec update_memory_info(metadata(), Syncordian.Basic_Types.peer_id(), integer()) :: metadata()
   def update_memory_info(metadata, peer_pid, bytes) do
     [_heap_size, message_queue_len] = peer_pid |> process_memory_info()
@@ -279,6 +312,7 @@ defmodule Syncordian.Metadata do
         delete_rejected_counter: metadata(metadata, :delete_rejected_counter) + 1
       )
 
+  @doc "Counts inserts that failed to be stashed for later retry (stash buffer full / invalid)."
   @spec inc_insert_stash_fail_counter(metadata()) :: metadata()
   def inc_insert_stash_fail_counter(metadata),
     do:
@@ -286,6 +320,7 @@ defmodule Syncordian.Metadata do
         insert_stash_fail_counter: metadata(metadata, :insert_stash_fail_counter) + 1
       )
 
+  @doc "Counts deletes dropped because they hit the per-operation requeue limit."
   @spec inc_delete_requeue_limit_counter(metadata()) :: metadata()
   def inc_delete_requeue_limit_counter(metadata),
     do:
@@ -294,6 +329,7 @@ defmodule Syncordian.Metadata do
         delete_requeue_limit: metadata(metadata, :delete_requeue_limit) + 1
       )
 
+  @doc "Counts deletes that verified and were applied to a present target line."
   @spec inc_delete_valid_counter(metadata()) :: metadata()
   def inc_delete_valid_counter(metadata),
     do:
@@ -301,6 +337,7 @@ defmodule Syncordian.Metadata do
         delete_valid_counter: metadata(metadata, :delete_valid_counter) + 1
       )
 
+  @doc "Counts deletes stashed for later retry because their target line is not yet present."
   @spec inc_delete_stash_counter(metadata()) :: metadata()
   def inc_delete_stash_counter(metadata),
     do:
@@ -308,6 +345,7 @@ defmodule Syncordian.Metadata do
         delete_stash_counter: metadata(metadata, :delete_stash_counter) + 1
       )
 
+  @doc "Counts operations put back on the queue to be retried after their dependency arrives."
   @spec inc_requeue_counter(metadata()) :: metadata()
   def inc_requeue_counter(metadata),
     do:
@@ -315,6 +353,7 @@ defmodule Syncordian.Metadata do
         requeue_counter: metadata(metadata, :requeue_counter) + 1
       )
 
+  @doc "Counts inserts whose target gap spanned more than one position (non-adjacent insertion)."
   @spec inc_insert_distance_greater_than_one(metadata()) :: metadata()
   def inc_insert_distance_greater_than_one(metadata),
     do:
@@ -323,6 +362,7 @@ defmodule Syncordian.Metadata do
           metadata(metadata, :insert_distance_greater_than_one) + 1
       )
 
+  @doc "Counts insert requests this peer issued (a line broadcast awaiting acknowledgement)."
   @spec inc_insert_request_counter(metadata()) :: metadata()
   def inc_insert_request_counter(metadata),
     do:
@@ -330,6 +370,7 @@ defmodule Syncordian.Metadata do
         insert_request_counter: metadata(metadata, :insert_request_counter) + 1
       )
 
+  @doc "Counts insert requests dropped because they exceeded the retry/request limit."
   @spec inc_insert_request_limit_counter(metadata()) :: metadata()
   def inc_insert_request_limit_counter(metadata),
     do:
@@ -341,6 +382,7 @@ defmodule Syncordian.Metadata do
           ) + 1
       )
 
+  @doc "Counts inserts stashed for later retry because a preceding line is not yet present."
   @spec inc_insert_stash_counter(metadata()) :: metadata()
   def inc_insert_stash_counter(metadata),
     do:
@@ -348,6 +390,7 @@ defmodule Syncordian.Metadata do
         insert_stash_counter: metadata(metadata, :insert_stash_counter) + 1
       )
 
+  @doc "Counts inserts that verified and were applied to the document."
   @spec inc_insert_valid_counter(metadata()) :: metadata()
   def inc_insert_valid_counter(metadata),
     do:

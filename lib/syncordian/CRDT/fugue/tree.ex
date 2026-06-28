@@ -150,6 +150,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   def node_i_position_from_values(tree, position) do
     list = traverse(tree)
     len = length(list)
+
     cond do
       position == 0 and len == 1 ->
         List.first(list)
@@ -222,7 +223,13 @@ defmodule Syncordian.CRDT.Fugue.Tree do
           integer()
         ) :: integer()
   def translate_git_index_to_fugue_index(list, target, tombstones, index) do
-    Utilities.do_translate_index(list, target, tombstones, index, &Node.is_tombstone_ignoring_root?/1)
+    Utilities.do_translate_index(
+      list,
+      target,
+      tombstones,
+      index,
+      &Node.is_tombstone_ignoring_root?/1
+    )
   end
 
   ########################### CRDT Functions ##################################
@@ -286,7 +293,7 @@ defmodule Syncordian.CRDT.Fugue.Tree do
         left_values = recursion.(left)
 
         node_value =
-          if not(Node.is_tombstone?(node)) or include_tombstones,
+          if not Node.is_tombstone?(node) or include_tombstones,
             do: [node],
             else: []
 
@@ -336,15 +343,18 @@ defmodule Syncordian.CRDT.Fugue.Tree do
       cond do
         position == 0 ->
           Node.root()
+
         len == position ->
           List.last(traverse(tree))
+
         true ->
           node_i_position_from_values(tree, position - 1)
       end
-      # THIS IS IS WAS THE SPECIFICATION SAYS, you have to check the function node_i_position_from_values!!!!!!!!!!!!!1
-      # if position == 0,
-      #   do: Node.root(),
-      #   else: node_i_position_from_values(tree, position - 1)
+
+    # THIS IS IS WAS THE SPECIFICATION SAYS, you have to check the function node_i_position_from_values!!!!!!!!!!!!!1
+    # if position == 0,
+    #   do: Node.root(),
+    #   else: node_i_position_from_values(tree, position - 1)
 
     left_origin_id = Node.get_id(left_origin)
 
@@ -357,7 +367,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
 
     right_origin = Enum.at(full_traversal, left_origin_index + 1)
 
-
     right_origin_id =
       if right_origin,
         do: Node.get_id(right_origin),
@@ -367,18 +376,21 @@ defmodule Syncordian.CRDT.Fugue.Tree do
         else: left_origin_id
 
     # Aqui se pregunta si left_origin es el padre de alguien
-    return_node = case right_child_exists?(tree, left_origin_id) do
-      false ->
-        Node.new(id, value, left_origin_id, Node.get_right_value())
+    return_node =
+      case right_child_exists?(tree, left_origin_id) do
+        false ->
+          Node.new(id, value, left_origin_id, Node.get_right_value())
 
-      true ->
-        case right_origin_id == left_origin_id do
-          true ->
-            Node.new(id, value, left_origin_id, Node.get_right_value())
-          false ->
-            Node.new(id, value, right_origin_id, Node.get_left_value())
-        end
-    end
+        true ->
+          case right_origin_id == left_origin_id do
+            true ->
+              Node.new(id, value, left_origin_id, Node.get_right_value())
+
+            false ->
+              Node.new(id, value, right_origin_id, Node.get_left_value())
+          end
+      end
+
     # HERE IMPROVE CODE QUALITY
     # if replica_id == 17 and counter < 3 do
     #   IO.puts("Counter: #{counter}")

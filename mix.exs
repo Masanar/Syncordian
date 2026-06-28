@@ -9,7 +9,10 @@ defmodule Syncordian.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      name: "Syncordian",
+      source_url: "https://github.com/Masanar/Syncordian",
+      docs: docs()
     ]
   end
 
@@ -56,7 +59,74 @@ defmodule Syncordian.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.2"},
-      {:phoenix_live_session, "~> 0.1"}
+      {:phoenix_live_session, "~> 0.1"},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+    ]
+  end
+
+  # ExDoc configuration. Run `mix docs` to generate a self-contained, browsable
+  # HTML documentation site under `doc/` (open `doc/index.html`). Modules are
+  # grouped by sub-system so the four CRDT implementations stay visually
+  # separated from the shared infrastructure and the Phoenix web layer.
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"],
+      groups_for_modules: [
+        "Syncordian CRDT": [
+          Syncordian.Peer,
+          Syncordian.Document,
+          Syncordian.Line,
+          Syncordian.Line_Object,
+          Syncordian.PathId,
+          Syncordian.Byzantine,
+          Syncordian.ByzantinePeer,
+          Syncordian.Interleaving,
+          Syncordian.PendingOps,
+          Syncordian.SeenOps,
+          Syncordian.Info
+        ],
+        "Fugue CRDT": [
+          Syncordian.CRDT.Fugue.Peer,
+          Syncordian.CRDT.Fugue.Tree,
+          Syncordian.CRDT.Fugue.Node,
+          Syncordian.CRDT.Fugue.Info
+        ],
+        "Logoot CRDT": [
+          Syncordian.CRDT.Logoot.Peer,
+          Syncordian.CRDT.Logoot.Sequence,
+          Syncordian.CRDT.Logoot.Agent,
+          Syncordian.CRDT.Logoot.Info
+        ],
+        "Treedoc CRDT": [
+          Syncordian.CRDT.Treedoc.Peer,
+          Syncordian.CRDT.Treedoc.Bst,
+          Syncordian.CRDT.Treedoc.Node
+        ],
+        "Shared infrastructure": [
+          Syncordian.Basic_Types,
+          Syncordian.Utilities,
+          Syncordian.Metadata,
+          Syncordian.Vector_Clock
+        ],
+        "Experiment driver": [
+          Syncordian.Supervisor,
+          Syncordian.GitParser,
+          Mix.Tasks.Syncordian.Eval
+        ],
+        "Web (Phoenix / LiveView)": [
+          SyncordianWeb,
+          SyncordianWeb.Endpoint,
+          SyncordianWeb.Router,
+          SyncordianWeb.Telemetry,
+          SyncordianWeb.About,
+          SyncordianWeb.Node,
+          SyncordianWeb.Supervisor,
+          SyncordianWeb.ReadmeLog,
+          SyncordianWeb.CoreComponents,
+          SyncordianWeb.Layouts
+        ]
+      ]
     ]
   end
 

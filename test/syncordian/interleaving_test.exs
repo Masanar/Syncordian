@@ -30,6 +30,7 @@ defmodule Syncordian.InterleavingTest do
   defp doc(lines) do
     infimum = create_infimum_line(0, 3)
     supremum = create_supremum_line(0, 3)
+
     Enum.sort([infimum, supremum | lines], fn a, b ->
       PathId.compare(get_line_id(a), get_line_id(b)) != :gt
     end)

@@ -8,7 +8,12 @@
 import Config
 
 config :syncordian,
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  # Cloned git repo to replay in the /supervisor experiment, and which single file's
+  # history to use. Path is relative to the mix working directory (code/). Override at
+  # runtime with SYNCORDIAN_REPO_PATH / SYNCORDIAN_TRACKED_FILE (see Syncordian.GitLog).
+  git_repo_path: "../../repos/ohmyzsh",
+  git_tracked_file: "README.md"
 
 # Configures the endpoint
 config :syncordian, SyncordianWeb.Endpoint,

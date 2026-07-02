@@ -209,7 +209,7 @@ defmodule Syncordian.Supervisor do
   # end
   @spec save_current_documents(list(), module()) :: :ok
   defp save_current_documents(pid_list_author_peers, peer_module) do
-    Enum.map(1..29, fn x ->
+    Enum.map(0..(length(pid_list_author_peers) - 1), fn x ->
       peer_module.save_content(Enum.at(pid_list_author_peers, x))
     end)
 
@@ -292,13 +292,12 @@ defmodule Syncordian.Supervisor do
     # Delete the all the files of the debug directory
     # delete_contents("debug/documents")
 
-    # Before the document with the commit history was name test (I did not deleted it)
-    # now it is ohmyzsh_README_git_log
-    git_log_file_name = "ohmyzsh_README_git_log"
-
-    # Load the git log and the list of commits of the test files
-    parsed_git_log = parser_git_log(git_log_file_name)
-    list_of_commits = get_list_of_commits(git_log_file_name)
+    # Read the commit history live from the cloned git repository (see Syncordian.GitLog),
+    # instead of a static fixture. Fetch the log once and feed both derivations, so a single
+    # `git log` invocation drives the whole run.
+    log_lines = Syncordian.GitLog.log_lines()
+    parsed_git_log = parse_lines(log_lines)
+    list_of_commits = commits_from_lines(log_lines)
 
     # # Prepare the data to save as JSON
     # commit_info =

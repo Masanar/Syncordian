@@ -51,14 +51,17 @@ defmodule Syncordian.GitParser do
 
   """
   def find_commit_hash(line_name) do
-    pattern_commit_hash = ~r/commit\s+(\w+)/
-    find_regex(line_name, pattern_commit_hash)
+    find_regex(line_name, commit_hash_pattern())
   end
 
   def is_commit_hash?(line_name) do
-    pattern_commit_hash = ~r/commit\s+(\w+)/
-    Regex.match?(pattern_commit_hash, line_name)
+    Regex.match?(commit_hash_pattern(), line_name)
   end
+
+  # A real `git log` commit-header line, anchored at column 0: `commit <hash>`. Anchoring
+  # (rather than a bare "commit" substring match) avoids mistaking diff/message content
+  # that merely mentions "commit" for a new commit boundary.
+  defp commit_hash_pattern, do: ~r/^commit ([0-9a-f]{7,40})\b/
 
   @doc """
   Finds the author ID in a given line.
@@ -100,20 +103,31 @@ defmodule Syncordian.GitParser do
 
   """
   def find_position_in_line(line) do
-    pattern_line_position = ~r/@@ -(\d+),(\d+) \+(\d+),(\d+) @@/
+    # The line/count part of a hunk header is optional in unified diffs: git omits `,N`
+    # when N == 1 (e.g. `@@ -5 +5,2 @@`). Treat a missing count as 1.
+    pattern_line_position = ~r/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/
 
-    case Regex.scan(pattern_line_position, line) do
-      [[_, num1, num2, num3, num4]] ->
-        {
-          {String.to_integer(num1), String.to_integer(num2)},
-          {String.to_integer(num3), String.to_integer(num4)},
-          max(String.to_integer(num2), String.to_integer(num4))
-        }
-
-      _ ->
+    case Regex.run(pattern_line_position, line, capture: :all_but_first) do
+      nil ->
         line
+
+      captures ->
+        [start_old, count_old, start_new, count_new] =
+          captures ++ List.duplicate("", 4 - length(captures))
+
+        old_count = count_or_one(count_old)
+        new_count = count_or_one(count_new)
+
+        {
+          {String.to_integer(start_old), old_count},
+          {String.to_integer(start_new), new_count},
+          max(old_count, new_count)
+        }
     end
   end
+
+  defp count_or_one(""), do: 1
+  defp count_or_one(count), do: String.to_integer(count)
 
   @doc """
   Drops irrelevant lines from a git log. In particular the ones from the date to the
@@ -231,6 +245,10 @@ defmodule Syncordian.GitParser do
     |> Enum.reverse()
   end
 
+  # A commit that touched the tracked file without producing a hunk (e.g. a pure mode
+  # change) has no positional changes; yield an empty list instead of crashing.
+  def parse_changes([]), do: []
+
   def parse_changes(changes) do
     reduce_function = fn line, acc ->
       case line do
@@ -269,17 +287,19 @@ defmodule Syncordian.GitParser do
   end
 
   @doc """
-  Parses a git log file and returns a list of relevant lines.
+  Parses a git log from any enumerable of lines (a file stream or the output of a live
+  `git log`) and returns a stream of commit maps.
   """
-  def parser_git_log(file_name) do
+  def parse_lines(lines) do
+    # Split into per-commit chunks on real commit-header lines. Leading noise before the
+    # first commit (flag still false) is discarded.
     chunk_fun = fn element, {flag, acc1} ->
-      contains? = String.contains?(element, "commit")
-
-      case {contains?, flag} do
+      case {is_commit_hash?(element), flag} do
         {true, false} -> {:cont, {true, [element | acc1]}}
         {false, true} -> {:cont, {true, [element | acc1]}}
         # New chunk starts
         {true, true} -> {:cont, Enum.reverse(acc1), {true, [element]}}
+        {false, false} -> {:cont, {false, acc1}}
       end
     end
 
@@ -289,8 +309,7 @@ defmodule Syncordian.GitParser do
       acc -> {:cont, Enum.reverse(acc), []}
     end
 
-    Path.join([File.cwd!(), "test/git_log", file_name])
-    |> File.stream!()
+    lines
     |> Stream.map(&String.trim_trailing/1)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
@@ -298,15 +317,36 @@ defmodule Syncordian.GitParser do
   end
 
   @doc """
-  Returns the commit hashes from a git log fixture, oldest first, as a list.
+  Convenience wrapper over `parse_lines/1` that reads a checked-in fixture under
+  `test/git_log/`. The live experiment uses `parse_lines/1` on `Syncordian.GitLog` output
+  instead; this remains for ad-hoc use against the fixtures.
   """
-  def get_list_of_commits(file_name) do
+  def parser_git_log(file_name) do
     Path.join([File.cwd!(), "test/git_log", file_name])
     |> File.stream!()
+    |> parse_lines()
+  end
+
+  @doc """
+  Returns the commit hashes from an enumerable of git-log lines, oldest first, as a list.
+  """
+  def commits_from_lines(lines) do
+    lines
     |> Stream.filter(&is_commit_hash?/1)
     |> Stream.map(&find_commit_hash/1)
     |> Enum.to_list()
     |> Enum.reverse()
+  end
+
+  @doc """
+  Convenience wrapper over `commits_from_lines/1` that reads a checked-in fixture under
+  `test/git_log/`. The live experiment uses `commits_from_lines/1` on `Syncordian.GitLog`
+  output instead; this remains for ad-hoc use against the fixtures.
+  """
+  def get_list_of_commits(file_name) do
+    Path.join([File.cwd!(), "test/git_log", file_name])
+    |> File.stream!()
+    |> commits_from_lines()
   end
 
   @doc """

@@ -34,11 +34,28 @@ defmodule Syncordian.GitLog do
 
     # Keep the default `medium` format: `drop_junk/1` keys off the `Author:` / `Date:`
     # lines. Keep the default 3-line context and no rename-following so the textual shape
-    # matches what the parser expects. `--no-merges` drops merge commits (which emit no
-    # patch and would otherwise crash the parser).
+    # matches what the parser expects.
+    #
+    # `--first-parent --diff-merges=first-parent` replays the file's exact MAINLINE
+    # evolution: one patch per mainline commit that changed the file, with merge commits
+    # contributing their diff against the first parent. This is what makes the replayed
+    # document byte-identical to the file at HEAD. The previous `--no-merges` form
+    # silently lost every change that reached the file through a merge (git's history
+    # simplification also drops side-branch commits from a path-filtered log), so the
+    # replayed document drifted from the real file with no error.
     case System.cmd(
            "git",
-           ["-C", repo, "log", "-p", "--no-merges", "--no-color", "--", file],
+           [
+             "-C",
+             repo,
+             "log",
+             "-p",
+             "--first-parent",
+             "--diff-merges=first-parent",
+             "--no-color",
+             "--",
+             file
+           ],
            stderr_to_stdout: false
          ) do
       {output, 0} ->

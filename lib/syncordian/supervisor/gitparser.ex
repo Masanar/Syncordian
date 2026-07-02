@@ -138,6 +138,12 @@ defmodule Syncordian.GitParser do
     reduce_function = fn line, {flag, acc} ->
       start? = String.contains?(line, "Date: ")
       end? = String.contains?(line, "@@ -")
+      # A merge commit's header carries a `Merge: p1 p2` line between the commit hash and
+      # the Author line (emitted under --diff-merges=first-parent). It must not survive
+      # into the chunk: parse_line_to_map/1 takes the chunk's second element as the
+      # author id. Anchored at column 0 — diff body lines always start with
+      # ' ', '+', '-', '@' or '\', so no content line can match.
+      merge_header? = not flag and String.starts_with?(line, "Merge: ")
       # In theory this should not happen simultaneously, only one at a time! (I think)
       line = find_commit_hash(line)
       line = find_author_id(line)
@@ -147,7 +153,7 @@ defmodule Syncordian.GitParser do
         {false, true, _} -> {:cont, {true, acc}}
         {true, _, false} -> {:cont, {true, acc}}
         {true, _, true} -> {:cont, {false, [line | acc]}}
-        {false, _, _} -> {:cont, {false, [line | acc]}}
+        {false, _, _} -> {:cont, {false, if(merge_header?, do: acc, else: [line | acc])}}
       end
     end
 
@@ -262,9 +268,17 @@ defmodule Syncordian.GitParser do
     end
 
     after_fun = fn
-      [_ | acc1] ->
-        # Is there always a " " (empty line) at the end of each set of changes
-        {:cont, Enum.reverse(acc1), []}
+      [last | acc1] = acc ->
+        # The final accumulated line of a commit's last hunk is normally the blank
+        # separator git prints before the next commit header (or trailing context) and is
+        # safe to drop. But a hunk that ends at EOF can end with a real `+`/`-` change —
+        # dropping that would silently lose the edit, so keep op lines.
+        op_line? =
+          is_binary(last) and (String.starts_with?(last, "+") or String.starts_with?(last, "-"))
+
+        if op_line?,
+          do: {:cont, Enum.reverse(acc), []},
+          else: {:cont, Enum.reverse(acc1), []}
 
       _ ->
         {:cont, []}
@@ -310,7 +324,10 @@ defmodule Syncordian.GitParser do
     end
 
     lines
-    |> Stream.map(&String.trim_trailing/1)
+    # Strip only the line terminator, never trailing spaces: tracked-file content can
+    # legitimately end in whitespace (e.g. Markdown tables), and eating it makes the
+    # replayed document diverge from the real file.
+    |> Stream.map(fn line -> line |> String.trim_trailing("\n") |> String.trim_trailing("\r") end)
     |> Stream.chunk_while({false, []}, chunk_fun, after_fun)
     |> Stream.map(&drop_junk/1)
     |> Stream.map(&parse_line_to_map/1)

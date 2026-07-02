@@ -213,6 +213,84 @@ defmodule Syncordian.GitParserTest do
     end
   end
 
+  describe "replay-fidelity regressions" do
+    test "an op line ending the last hunk at EOF is kept, not dropped as a separator" do
+      # A commit whose final hunk ends with a real change and no trailing context (an
+      # edit at end-of-file, last commit of the log). The old after_fun dropped it.
+      raw = [
+        "commit #{@hash_a}",
+        "Author: Alice Example <alice@example.com>",
+        "Date:   Mon Dec 4 16:06:50 2023 +0100",
+        "",
+        "    append at EOF",
+        "",
+        "diff --git a/README.md b/README.md",
+        "index 49998687..98743432 100644",
+        "--- a/README.md",
+        "+++ b/README.md",
+        "@@ -10,2 +10,3 @@",
+        " context one",
+        " context two",
+        "+added at EOF"
+      ]
+
+      [commit] = GP.parse_lines(raw) |> Enum.to_list()
+      [[op]] = commit.position_changes
+      assert op.op == :insert
+      assert op.content == "added at EOF"
+    end
+
+    test "a merge commit's 'Merge:' header line does not displace the author id" do
+      raw = [
+        "commit #{@hash_b}",
+        "Merge: 1234abcd 5678efab",
+        "Author: Bob Builder <bob@example.com>",
+        "Date:   Sun Dec 3 10:00:00 2023 +0100",
+        "",
+        "    Merge branch 'feature' (#42)",
+        "",
+        "diff --git a/README.md b/README.md",
+        "index aaaaaaaa..bbbbbbbb 100644",
+        "--- a/README.md",
+        "+++ b/README.md",
+        "@@ -5,2 +5,3 @@",
+        " keep",
+        "+from the merged branch",
+        " keep 2"
+      ]
+
+      [commit] = GP.parse_lines(raw) |> Enum.to_list()
+      assert commit.author_id == "Bob Builder"
+      [[op]] = commit.position_changes
+      assert op.content == "from the merged branch"
+    end
+
+    test "meaningful trailing whitespace in file content survives parsing" do
+      # e.g. Markdown table rows ending in a space: trimming it made the replayed
+      # document diverge from the real file.
+      raw = [
+        "commit #{@hash_c}",
+        "Author: Carol Coder <carol@example.com>",
+        "Date:   Sat Dec 2 09:00:00 2023 +0100",
+        "",
+        "    add table row",
+        "",
+        "diff --git a/README.md b/README.md",
+        "index cccccccc..dddddddd 100644",
+        "--- a/README.md",
+        "+++ b/README.md",
+        "@@ -5,2 +5,3 @@",
+        " keep",
+        "+| LCARS | ok | ",
+        " keep 2"
+      ]
+
+      [commit] = GP.parse_lines(raw) |> Enum.to_list()
+      [[op]] = commit.position_changes
+      assert op.content == "| LCARS | ok | "
+    end
+  end
+
   describe "supervisor invariant" do
     test "every hash from commits_from_lines is a key in the grouped parse map" do
       # `Syncordian.Supervisor.edit/5` does `Map.get(commit_group_map, commit_hash)`; if a

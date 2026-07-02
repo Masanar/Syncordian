@@ -430,8 +430,13 @@ defmodule Syncordian.Peer do
       |> update_memory_info(peer_pid, nodes_size)
       |> update_metadata(peer)
 
-    get_metadata(peer_up)
-    |> save_metadata_one_peer(current_edit, folder, file_prefix)
+    # The file write happens off the peer's critical path: this peer saves a metadata
+    # snapshot on EVERY edit it applies, and a synchronous write (tens of ms on a synced
+    # filesystem) made it lag thousands of messages behind the network — far enough to
+    # starve its own local edits out of their retry budget. The record is immutable, so
+    # handing it to a throwaway process is safe.
+    metadata_snapshot = get_metadata(peer_up)
+    spawn(fn -> save_metadata_one_peer(metadata_snapshot, current_edit, folder, file_prefix) end)
 
     peer_up
   end
@@ -753,21 +758,29 @@ defmodule Syncordian.Peer do
   # ---- Local edits (supervisor git replay) ---------------------------------------------
 
   # Re-queues a local edit whose referenced git index is not materialized yet, with a
-  # small delay (no hot-spin on the own mailbox) and a bounded retry budget; when the
-  # budget is exhausted the edit is abandoned and counted, mirroring the horizon backstop
-  # of the remote path (theo:nostarve). Returns to the loop either way.
+  # small delay (no hot-spin on the own mailbox) and a *progress-aware* retry budget:
+  # the attempt counter only advances while the peer applies no new edit between retries
+  # (tracked through its monotone edit count), and resets whenever the document moved.
+  # A slow replica that is still catching up on remote inserts therefore never abandons
+  # its own commit — the budget only expires when the peer has been fully quiescent for
+  # the whole window, i.e. the referenced index can never materialize. That stalled case
+  # is the horizon backstop of the remote path (theo:nostarve): the edit is abandoned
+  # and counted. Returns to the loop either way.
   @spec retry_or_drop_local_edit(
           peer(),
           atom(),
           list(),
-          non_neg_integer(),
+          {non_neg_integer(), integer()},
           (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
         ) :: any
-  defp retry_or_drop_local_edit(peer, tag, args, attempts, drop_counter) do
+  defp retry_or_drop_local_edit(peer, tag, args, {attempts, last_edit_count}, drop_counter) do
+    current_edit_count = get_edit_count(peer)
+    attempts = if current_edit_count == last_edit_count, do: attempts, else: 0
+
     if attempts >= @local_edit_retry_limit do
       debug_print(
         "retry_or_drop_local_edit",
-        "abandoning local edit after #{attempts} retries: #{inspect({tag, args})}"
+        "abandoning local edit after #{attempts} stalled retries: #{inspect({tag, args})}"
       )
 
       get_metadata(peer)
@@ -777,7 +790,7 @@ defmodule Syncordian.Peer do
     else
       Process.send_after(
         get_peer_pid(peer),
-        {tag, args, attempts + 1},
+        {tag, args, {attempts + 1, current_edit_count}},
         @local_edit_retry_delay_ms
       )
 
@@ -785,11 +798,11 @@ defmodule Syncordian.Peer do
     end
   end
 
-  @spec handle_local_delete(peer(), list(), non_neg_integer()) :: any
+  @spec handle_local_delete(peer(), list(), {non_neg_integer(), integer()}) :: any
   defp handle_local_delete(
          peer,
          [index_position, test_index, _global_position, _current_delete_ops],
-         attempts
+         retry_state
        ) do
     document = get_peer_document(peer)
     document_len = get_document_length(document)
@@ -814,7 +827,7 @@ defmodule Syncordian.Peer do
             peer,
             :delete_line,
             [index_position, test_index, 0, 0],
-            attempts,
+            retry_state,
             &inc_delete_requeue_limit_counter/1
           )
         else
@@ -854,11 +867,11 @@ defmodule Syncordian.Peer do
     end
   end
 
-  @spec handle_local_insert(peer(), list(), non_neg_integer()) :: any
+  @spec handle_local_insert(peer(), list(), {non_neg_integer(), integer()}) :: any
   defp handle_local_insert(
          peer,
          [content, _index_position, test_index, _global_position, _current_delete_ops],
-         attempts
+         retry_state
        ) do
     document = get_peer_document(peer)
     peer_id = get_peer_id(peer)
@@ -872,7 +885,7 @@ defmodule Syncordian.Peer do
         peer,
         :insert,
         [content, 0, test_index, 0, 0],
-        attempts,
+        retry_state,
         &inc_insert_request_limit_counter/1
       )
     else
@@ -945,19 +958,20 @@ defmodule Syncordian.Peer do
   def loop(peer) do
     receive do
       # ✅ Local delete from the supervisor's git replay. The bare form is the public
-      # interface; the 3-tuple form is a bounded delayed retry of the same edit.
+      # interface; the 3-tuple form is a delayed retry of the same edit carrying its
+      # progress-aware retry state (see retry_or_drop_local_edit/5).
       {:delete_line, args} when is_list(args) ->
-        handle_local_delete(peer, args, 0)
+        handle_local_delete(peer, args, {0, -1})
 
-      {:delete_line, args, attempts} ->
-        handle_local_delete(peer, args, attempts)
+      {:delete_line, args, retry_state} ->
+        handle_local_delete(peer, args, retry_state)
 
       # ✅ Local insert from the supervisor's git replay, same retry scheme.
       {:insert, args} when is_list(args) ->
-        handle_local_insert(peer, args, 0)
+        handle_local_insert(peer, args, {0, -1})
 
-      {:insert, args, attempts} ->
-        handle_local_insert(peer, args, attempts)
+      {:insert, args, retry_state} ->
+        handle_local_insert(peer, args, retry_state)
 
       # ✅ Attaches the admission authenticator α, keyed by the boundary secret, over the
       # full insert payload — binding every field it carries, op_id included.

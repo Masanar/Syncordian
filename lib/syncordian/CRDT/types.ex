@@ -6,20 +6,19 @@ defmodule Syncordian.Basic_Types do
   #   use TypeCheck
 
   @typedoc """
-    Type that represents the status of a Syncordian document line, those are: -
-        :tombstone: The line was deleted by the peer, but still exists in the document.
+    Status of a Syncordian document line — the join-semilattice chain of the formal model
+    (`:aura` ⊏ `:settled` ⊏ `:tombstone`, all changes inflationary joins):
 
-        - :aura:
-            - The line has not been received but the whole network.
+        - :aura: inserted but not yet acknowledged by every trusted peer.
 
-        - :settled: The line was received but all the peers.
+        - :settled: acknowledged by the whole network (its response checklist completed).
 
-        - :conflict: The line belongs to the lower-priority block of an interleaving and is
-            being re-placed: it is superseded by a freshly re-issued line in a disjoint
-            sub-interval and becomes a tombstone once the retracting delete applies
-            (`Syncordian.Interleaving`, `sec:formal-intention`).
+        - :tombstone: deleted; kept in the document (neighbor signatures still chain
+            through it) but user-invisible. Absorbing: a tombstone is never demoted.
+            Lines superseded during an interleaving re-placement are retracted with an
+            ordinary delete, i.e. they become tombstones too (`Syncordian.Interleaving`).
   """
-  @type status :: :tombstone | :aura | :settled | :conflict | nil
+  @type status :: :tombstone | :aura | :settled | nil
 
   @typedoc """
       Type that represents the content of a Syncordian document line

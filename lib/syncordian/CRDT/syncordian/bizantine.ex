@@ -48,11 +48,16 @@ defmodule Syncordian.Byzantine do
     authenticator covers the full payload, it also binds the `op_id` of inserts and
     deletes; tampering with any field invalidates it.
 
-    In this simulation κ⊥/κ⊤ are the constant sentinel signatures of the infimum and
-    supremum lines (`Syncordian.Line_Object.create_infimum_line/2` /
-    `create_supremum_line/2`), standing in for per-document random secrets drawn at the
-    document's inception; possession of the pair *is* the admission capability. Their
-    distribution and rotation are an out-of-band concern, discussed in the paper.
+    The pair κ⊥/κ⊤ is drawn **at the document's inception** as two independent random
+    values (`generate_boundary_secret/0`, called by the supervisor at launch) and handed
+    to admitted peers out-of-band — here, via `:persistent_term`
+    (`install_boundary_secret!/1` / `boundary_secret/0`), which models the out-of-band
+    channel: honest peers read it when they build their initial document, while the
+    Byzantine simulator (`Syncordian.ByzantinePeer`) never does, per the outsider
+    adversary of `def:adversary`. Possession of the pair *is* the admission capability;
+    its rotation is an out-of-band concern, discussed in the paper. When no secret has
+    been installed (unit tests, ad-hoc peers) a fixed default pair is used so documents
+    remain deterministic.
 
     ## Encoding
 
@@ -71,6 +76,50 @@ defmodule Syncordian.Byzantine do
     blocks it.
   """
   import Syncordian.Line_Object
+
+  # Out-of-band channel for the boundary secret within this single-VM simulation. The
+  # supervisor installs a fresh random pair at launch; honest peers read it when creating
+  # their boundary sentinel lines. ByzantinePeer must never read this term — that is the
+  # outsider assumption of def:adversary, and what theo:outsider's rejection guarantee
+  # rests on.
+  @boundary_secret_key {:syncordian, :boundary_secret}
+  # Deterministic fallback used when no secret is installed (unit tests, ad-hoc peers).
+  @default_boundary_secret {"Infimum", "Supremum"}
+
+  @doc """
+    Draws a fresh document boundary secret {κ⊥, κ⊤}: two independent 256-bit random
+    values. Called once per document (experiment run) by the supervisor at launch,
+    before any peer is spawned.
+  """
+  @spec generate_boundary_secret() ::
+          {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
+  def generate_boundary_secret do
+    {random_secret(), random_secret()}
+  end
+
+  defp random_secret, do: :crypto.strong_rand_bytes(32) |> Base.encode16()
+
+  @doc """
+    Publishes the boundary secret to the admitted peers (the out-of-band distribution of
+    the model, realized as a `:persistent_term` within this VM). Idempotent per run.
+  """
+  @spec install_boundary_secret!(
+          {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
+        ) :: :ok
+  def install_boundary_secret!({infimum_secret, supremum_secret}) do
+    :persistent_term.put(@boundary_secret_key, {infimum_secret, supremum_secret})
+  end
+
+  @doc """
+    The boundary secret {κ⊥, κ⊤} as seen by an admitted peer: the installed per-run pair,
+    or the deterministic default when none was installed. Only honest peers may call this
+    — the Byzantine simulator models an outsider that does not hold the secret.
+  """
+  @spec boundary_secret() ::
+          {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
+  def boundary_secret do
+    :persistent_term.get(@boundary_secret_key, @default_boundary_secret)
+  end
 
   # Operation kinds whose messages carry an admission authenticator.
   @wire_kinds [:ins, :del, :ack]

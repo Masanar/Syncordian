@@ -315,6 +315,14 @@ defmodule Syncordian.Supervisor do
 
     commit_group_map = group_by_commit(parsed_git_log)
 
+    # Draw this run's document boundary secret {κ⊥, κ⊤} and distribute it out-of-band
+    # (via :persistent_term) BEFORE any trusted peer is spawned: peers bake the secret
+    # into their boundary sentinel signatures at start, and it keys every admission
+    # authenticator. Byzantine peers never read it — that is the outsider-adversary
+    # assumption (def:adversary) their rejection guarantee (theo:outsider) rests on.
+    Syncordian.Byzantine.generate_boundary_secret()
+    |> Syncordian.Byzantine.install_boundary_secret!()
+
     # Instance all the 30 peers independent  the number of commits in the test file
     {_, authors_list} = group_by_author(parsed_git_log)
 

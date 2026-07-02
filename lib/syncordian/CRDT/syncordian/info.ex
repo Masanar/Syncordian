@@ -4,10 +4,10 @@ defmodule Syncordian.Info do
 
   Converts the in-memory document (a list of `Syncordian.Line_Object` lines) to
   text and writes it to disk for inspection and convergence checks. The materializing
-  variants drop the Infimum/Supremum sentinel lines, tombstones, and `:conflict`
-  lines (whose content has been carried to a freshly re-issued line during
-  interleaving re-placement), so what's written is exactly the user-visible
-  document. A separate raw variant dumps every line verbatim for debugging.
+  variants drop the Infimum/Supremum sentinel lines and tombstones (including lines
+  superseded and retracted during interleaving re-placement), so what's written is
+  exactly the user-visible document. A separate raw variant dumps every line verbatim
+  for debugging.
 
   Output goes to `debug/documents/syncordian/document_peer_<id>`; run
   `scripts/identical.sh` afterwards to assert all peers converged byte-for-byte.
@@ -44,10 +44,9 @@ defmodule Syncordian.Info do
       |> remove_first_and_last
       |> Enum.reduce("", fn current_line, acc ->
         case get_line_status(current_line) do
-          # Tombstoned lines are deleted; :conflict lines are superseded mid-re-placement
-          # (their content is carried by the freshly re-issued line). Neither is present.
+          # Tombstoned lines are deleted (this includes originals superseded and
+          # retracted during interleaving re-placement) — not user-visible.
           :tombstone -> acc
-          :conflict -> acc
           _ -> acc <> get_content(current_line) <> "\n"
         end
       end)

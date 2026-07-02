@@ -37,6 +37,13 @@ defmodule Syncordian.Peer do
   # operation, while the live buffer stays bounded by @dependency_wait_horizon * peers.
   # This replaces the previous unjustified @max_insertion_attempts constant.
   @dependency_wait_horizon 5_000
+  # Local edits arriving from the supervisor reference git indices that may not be
+  # materialized in this replica yet (the referenced line's insert is still in flight from
+  # another peer). Such an edit is re-queued with a small delay — instead of hot-spinning
+  # on the peer's own mailbox — and abandoned after a bounded number of retries, the local
+  # analogue of the remote path's @dependency_wait_horizon backstop (theo:nostarve).
+  @local_edit_retry_limit 2_000
+  @local_edit_retry_delay_ms 10
   Record.defrecord(:peer,
     peer_id: None,
     document: None,
@@ -146,9 +153,10 @@ defmodule Syncordian.Peer do
   # the document's permanent first and last lines, shared among admitted peers and never
   # put on the wire. It keys the admission authenticator α that every broadcast message
   # (insert, delete, response) carries and that every receiver checks before anything
-  # else (Syncordian.Byzantine.create_admission/3). In this simulation the pair is the
-  # constant sentinel signatures, standing in for per-document random secrets drawn at
-  # inception; lB and lE are always present, so the lookup never fails.
+  # else (Syncordian.Byzantine.create_admission/3). The pair is drawn at random per run
+  # by the supervisor and distributed out-of-band to admitted peers
+  # (Syncordian.Byzantine.boundary_secret/0), which is how the sentinel signatures were
+  # initialized; lB and lE are always present, so the lookup never fails.
   @spec get_boundary_secret(peer()) ::
           {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
   defp get_boundary_secret(peer) do
@@ -484,20 +492,43 @@ defmodule Syncordian.Peer do
     line = update_line_commit_at(line, peer_id)
     line_id = get_line_id(line)
 
+    case add_line_to_document(line, document) do
+      :duplicate ->
+        # A redelivery of a line already present (a replay old enough to have been
+        # evicted from the bounded seen-set). Per the receipt rule it must be a clean
+        # drop: no ack, no clock tick, no edit count, no seen-set record — any of those
+        # side effects would perturb the replicas the replay reaches.
+        reject_replay(peer)
+
+      {:ok, document} ->
+        add_applied_line_and_loop(peer, document, line, line_id, incoming_peer_id, op_id)
+    end
+  end
+
+  @spec add_applied_line_and_loop(
+          peer(),
+          Syncordian.Basic_Types.document(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Basic_Types.line_id(),
+          Syncordian.Basic_Types.peer_id(),
+          Syncordian.Basic_Types.op_id()
+        ) :: any
+  defp add_applied_line_and_loop(peer, document, line, line_id, incoming_peer_id, op_id) do
+    peer_id = get_peer_id(peer)
+
     # Acknowledge the insertion to the whole network, not just the author: acks are
     # broadcast so every peer unions this acknowledgement into its own copy's checklist and
     # the line can reach :settled at every replica (the acknowledgement case of def:apply).
     # The response tag binds the line's stored signature — sealed locally, identical to the
     # author's — and our peer id; the admission authenticator proves we hold the boundary
-    # secret, so a distrusted node cannot forge a response on our behalf.
+    # secret, so a distrusted node cannot forge a response on our behalf. Broadcast only
+    # after the add succeeded, so a duplicate delivery never emits a fresh ack.
     ack_tag = create_tag_ack(get_signature(line), peer_id)
     ack_payload = {line_id, peer_id, ack_tag}
     ack_alpha = create_admission(get_boundary_secret(peer), :ack, ack_payload)
     perform_broadcast_peer(peer, {:receive_confirmation_line_insertion, ack_payload, ack_alpha})
 
-    {document, settled?} =
-      add_line_to_document(line, document)
-      |> settle_line_if_complete(line_id)
+    {document, settled?} = settle_line_if_complete(document, line_id)
 
     peer =
       document
@@ -545,8 +576,32 @@ defmodule Syncordian.Peer do
         ) :: any
   defp delete_valid_line_to_document_and_loop(peer, document, line_deleted_id, op_id) do
     peer_id = get_peer_id(peer)
-    index_position = get_document_index_by_line_id(document, line_deleted_id)
 
+    # The caller located the target by id in this same document, so the index is present;
+    # the nil guard is defense-in-depth against a bad id ever reaching this point — it
+    # must not fall through to tombstoning an arbitrary line.
+    case get_document_index_by_line_id(document, line_deleted_id) do
+      nil ->
+        debug_print(
+          "delete_valid_line_to_document_and_loop",
+          "target line id vanished between lookup and apply"
+        )
+
+        loop(peer)
+
+      index_position ->
+        do_delete_valid_line(peer, document, index_position, op_id, peer_id)
+    end
+  end
+
+  @spec do_delete_valid_line(
+          peer(),
+          Syncordian.Basic_Types.document(),
+          integer(),
+          Syncordian.Basic_Types.op_id(),
+          Syncordian.Basic_Types.peer_id()
+        ) :: any
+  defp do_delete_valid_line(peer, document, index_position, op_id, peer_id) do
     peer =
       document
       |> update_document_line_status(index_position, :tombstone)
@@ -640,9 +695,13 @@ defmodule Syncordian.Peer do
         my_id
       )
 
+    # The op_id is fresh, so the add cannot find a duplicate identity; a position-level
+    # collision with a distinct line is ordered by the identity tiebreak inside
+    # compare_lines/2 and still inserts.
+    {:ok, document} = add_line_to_document(new_line, get_peer_document(peer))
+
     peer =
-      new_line
-      |> add_line_to_document(get_peer_document(peer))
+      document
       |> update_peer_document(peer)
       |> tick_individual_peer_clock()
       |> tick_edit_count()
@@ -664,15 +723,24 @@ defmodule Syncordian.Peer do
     # (2) Retract the superseded line: tombstone locally, broadcast the target-bound delete.
     {del_op_id, peer} = next_op_id(peer)
     document = get_peer_document(peer)
-    old_index = get_document_index_by_line_id(document, get_line_id(old_line))
     delete_tag = create_tag_delete(get_signature(old_line))
 
     peer =
-      document
-      |> update_document_line_status(old_index, :tombstone)
-      |> update_peer_document(peer)
-      |> tick_edit_count()
-      |> record_seen(del_op_id)
+      case get_document_index_by_line_id(document, get_line_id(old_line)) do
+        nil ->
+          # Defense-in-depth: the superseded line came from this document moments ago;
+          # if it is somehow gone there is nothing to retract locally, and broadcasting
+          # the delete is still correct (receivers tombstone by target id).
+          debug_print("reissue_one_line", "superseded line no longer present")
+          peer
+
+        old_index ->
+          document
+          |> update_document_line_status(old_index, :tombstone)
+          |> update_peer_document(peer)
+          |> tick_edit_count()
+          |> record_seen(del_op_id)
+      end
 
     send(
       get_peer_pid(peer),
@@ -682,11 +750,192 @@ defmodule Syncordian.Peer do
     {peer, new_line}
   end
 
-  ########################################################################################
+  # ---- Local edits (supervisor git replay) ---------------------------------------------
 
-  # TODO: I think that all the functions defined above could be moved into a different
-  # modules, the peer module should only contain the loop function and the functions that
-  # are used to interact with the loop function. But I am not sure about this.
+  # Re-queues a local edit whose referenced git index is not materialized yet, with a
+  # small delay (no hot-spin on the own mailbox) and a bounded retry budget; when the
+  # budget is exhausted the edit is abandoned and counted, mirroring the horizon backstop
+  # of the remote path (theo:nostarve). Returns to the loop either way.
+  @spec retry_or_drop_local_edit(
+          peer(),
+          atom(),
+          list(),
+          non_neg_integer(),
+          (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
+        ) :: any
+  defp retry_or_drop_local_edit(peer, tag, args, attempts, drop_counter) do
+    if attempts >= @local_edit_retry_limit do
+      debug_print(
+        "retry_or_drop_local_edit",
+        "abandoning local edit after #{attempts} retries: #{inspect({tag, args})}"
+      )
+
+      get_metadata(peer)
+      |> drop_counter.()
+      |> update_metadata(peer)
+      |> loop()
+    else
+      Process.send_after(
+        get_peer_pid(peer),
+        {tag, args, attempts + 1},
+        @local_edit_retry_delay_ms
+      )
+
+      loop(peer)
+    end
+  end
+
+  @spec handle_local_delete(peer(), list(), non_neg_integer()) :: any
+  defp handle_local_delete(
+         peer,
+         [index_position, test_index, _global_position, _current_delete_ops],
+         attempts
+       ) do
+    document = get_peer_document(peer)
+    document_len = get_document_length(document)
+
+    case document_len - 1 <= index_position or document_len < 0 do
+      true ->
+        IO.puts("The to delete line does not exist! ")
+        IO.puts("Index position: #{index_position} ")
+        IO.puts("Document length: #{document_len}")
+        loop(peer)
+
+      _ ->
+        peer_id = get_peer_id(peer)
+
+        git_index_translated =
+          translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+
+        if git_index_translated == -1 do
+          # The referenced line has not materialized in this replica yet (its insert is
+          # still in flight): retry later, bounded.
+          retry_or_drop_local_edit(
+            peer,
+            :delete_line,
+            [index_position, test_index, 0, 0],
+            attempts,
+            &inc_delete_requeue_limit_counter/1
+          )
+        else
+          peer =
+            document
+            |> update_document_line_status(git_index_translated, :tombstone)
+            |> update_document_line_peer_id(git_index_translated, peer_id)
+            |> update_peer_document(peer)
+            |> tick_edit_count()
+
+          peer =
+            if peer_id == @peer_metadata_id,
+              do: save_peer_metadata_edit(peer),
+              else: peer
+
+          line_deleted =
+            get_document_line_by_index(document, git_index_translated)
+
+          line_deleted_id = line_deleted |> get_line_id
+
+          # The delete authorization tag binds the target line's stored signature
+          # (an intrinsic property of the target), not its neighbors — so receivers
+          # validate it by direct lookup, with no windowed search. Deletes carry no
+          # vector clock: their deliverability depends only on the target's
+          # presence, which transitively inherits the target insert's clock gating.
+          delete_tag = create_tag_delete(get_signature(line_deleted))
+          {op_id, peer} = next_op_id(peer)
+          peer = record_seen(peer, op_id)
+
+          send(
+            get_peer_pid(peer),
+            {:send_delete_broadcast, {line_deleted_id, delete_tag, op_id}}
+          )
+
+          tick_peer_deleted_count(peer)
+        end
+    end
+  end
+
+  @spec handle_local_insert(peer(), list(), non_neg_integer()) :: any
+  defp handle_local_insert(
+         peer,
+         [content, _index_position, test_index, _global_position, _current_delete_ops],
+         attempts
+       ) do
+    document = get_peer_document(peer)
+    peer_id = get_peer_id(peer)
+
+    git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+
+    if git_index_translated == -1 do
+      # The insertion point's neighborhood has not materialized in this replica yet:
+      # retry later, bounded.
+      retry_or_drop_local_edit(
+        peer,
+        :insert,
+        [content, 0, test_index, 0, 0],
+        attempts,
+        &inc_insert_request_limit_counter/1
+      )
+    else
+      [left_parent, right_parent] =
+        get_parents_by_index(
+          document,
+          git_index_translated
+        )
+
+      # Mint the op_id before creating the line so it records its own authored identity
+      # (op_id) and its authored parents' op_ids — the immutable links the interleaving
+      # detector walks to reconstruct edit blocks (def:editblock).
+      {op_id, peer} = next_op_id(peer)
+
+      new_line =
+        create_line_between_two_lines(
+          content,
+          left_parent,
+          right_parent,
+          peer_id,
+          op_id
+        )
+
+      # The line's stored signature never travels: the broadcast carries the insert
+      # wire tag instead (same fields, :ins domain), and each receiver re-derives
+      # the stored signature locally from the parent pair that verifies the tag.
+      insert_tag =
+        create_tag_insert(
+          get_signature(left_parent),
+          content,
+          get_signature(right_parent),
+          peer_id
+        )
+
+      # The op_id is freshly minted, so the identity-tiebroken add cannot report a
+      # duplicate for a local insert.
+      {:ok, document} = add_line_to_document(new_line, document)
+
+      peer =
+        document
+        |> update_peer_document(peer)
+        |> tick_individual_peer_clock
+        |> tick_edit_count()
+        |> record_seen(op_id)
+
+      current_vector_clock = get_peer_vector_clock(peer)
+
+      send(
+        get_peer_pid(peer),
+        {:send_insert_broadcast,
+         {get_line_id(new_line), content, peer_id, insert_tag, current_vector_clock, op_id}}
+      )
+
+      peer =
+        if peer_id == @peer_metadata_id,
+          do: save_peer_metadata_edit(peer),
+          else: peer
+
+      loop(peer)
+    end
+  end
+
+  ########################################################################################
 
   @doc """
     This function is the main loop of the peer, it receives messages and calls the
@@ -695,139 +944,20 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      # ✅
-      {:delete_line, [index_position, test_index, _global_position, _current_delete_ops]} ->
-        document = get_peer_document(peer)
-        document_len = get_document_length(document)
+      # ✅ Local delete from the supervisor's git replay. The bare form is the public
+      # interface; the 3-tuple form is a bounded delayed retry of the same edit.
+      {:delete_line, args} when is_list(args) ->
+        handle_local_delete(peer, args, 0)
 
-        case document_len - 1 <= index_position or document_len < 0 do
-          true ->
-            IO.puts("The to delete line does not exist! ")
-            IO.puts("Index position: #{index_position} ")
-            IO.puts("Document length: #{document_len}")
-            loop(peer)
+      {:delete_line, args, attempts} ->
+        handle_local_delete(peer, args, attempts)
 
-          _ ->
-            peer_id = get_peer_id(peer)
+      # ✅ Local insert from the supervisor's git replay, same retry scheme.
+      {:insert, args} when is_list(args) ->
+        handle_local_insert(peer, args, 0)
 
-            git_index_translated =
-              translate_git_index_to_syncordian_index(document, test_index, 0, 0)
-
-            if git_index_translated == -1 do
-              # Due byzantine peers or network issues the line was not inserted in the
-              # document of the peer, need to requeue the local delete operation.
-              # IO.puts("Line delete line was not found in the document with index: #{test_index}")
-              get_peer_pid(peer) |> send({:delete_line, [index_position, test_index, 0, 0]})
-              loop(peer)
-            else
-              peer =
-                document
-                |> update_document_line_status(git_index_translated, :tombstone)
-                |> update_document_line_peer_id(git_index_translated, peer_id)
-                |> update_peer_document(peer)
-                |> tick_edit_count()
-
-              peer =
-                if peer_id == @peer_metadata_id,
-                  do: save_peer_metadata_edit(peer),
-                  else: peer
-
-              line_deleted =
-                get_document_line_by_index(document, git_index_translated)
-
-              line_deleted_id = line_deleted |> get_line_id
-
-              # The delete authorization tag binds the target line's stored signature
-              # (an intrinsic property of the target), not its neighbors — so receivers
-              # validate it by direct lookup, with no windowed search. Deletes carry no
-              # vector clock: their deliverability depends only on the target's
-              # presence, which transitively inherits the target insert's clock gating.
-              delete_tag = create_tag_delete(get_signature(line_deleted))
-              {op_id, peer} = next_op_id(peer)
-              peer = record_seen(peer, op_id)
-
-              send(
-                get_peer_pid(peer),
-                {:send_delete_broadcast, {line_deleted_id, delete_tag, op_id}}
-              )
-
-              tick_peer_deleted_count(peer)
-            end
-        end
-
-      # TODO: Delete the test_index, the global_position and current_delete_ops
-      # ✅
-      {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]} ->
-        document = get_peer_document(peer)
-        peer_id = get_peer_id(peer)
-
-        git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
-
-        if git_index_translated == -1 do
-          # Due byzantine peers or network issues the line was not inserted in the
-          # document of the peer, need to requeue the local delete operation.
-          IO.puts(
-            "Un insert llego al peer #{peer_id} con el indice: #{test_index} pero el indice trad es #{git_index_translated}"
-          )
-
-          get_peer_pid(peer) |> send({:insert, [content, 0, test_index, 0, 0]})
-
-          loop(peer)
-        else
-          [left_parent, right_parent] =
-            get_parents_by_index(
-              document,
-              git_index_translated
-            )
-
-          # Mint the op_id before creating the line so it records its own authored identity
-          # (op_id) and its authored parents' op_ids — the immutable links the interleaving
-          # detector walks to reconstruct edit blocks (def:editblock).
-          {op_id, peer} = next_op_id(peer)
-
-          new_line =
-            create_line_between_two_lines(
-              content,
-              left_parent,
-              right_parent,
-              peer_id,
-              op_id
-            )
-
-          # The line's stored signature never travels: the broadcast carries the insert
-          # wire tag instead (same fields, :ins domain), and each receiver re-derives
-          # the stored signature locally from the parent pair that verifies the tag.
-          insert_tag =
-            create_tag_insert(
-              get_signature(left_parent),
-              content,
-              get_signature(right_parent),
-              peer_id
-            )
-
-          peer =
-            new_line
-            |> add_line_to_document(document)
-            |> update_peer_document(peer)
-            |> tick_individual_peer_clock
-            |> tick_edit_count()
-            |> record_seen(op_id)
-
-          current_vector_clock = get_peer_vector_clock(peer)
-
-          send(
-            get_peer_pid(peer),
-            {:send_insert_broadcast,
-             {get_line_id(new_line), content, peer_id, insert_tag, current_vector_clock, op_id}}
-          )
-
-          peer =
-            if peer_id == @peer_metadata_id,
-              do: save_peer_metadata_edit(peer),
-              else: peer
-
-          loop(peer)
-        end
+      {:insert, args, attempts} ->
+        handle_local_insert(peer, args, attempts)
 
       # ✅ Attaches the admission authenticator α, keyed by the boundary secret, over the
       # full insert payload — binding every field it carries, op_id included.

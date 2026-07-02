@@ -58,7 +58,11 @@ defmodule Syncordian.Document do
         ) :: integer
 
   defp get_document_new_index_by_incoming_line_id_aux(_, [], _) do
-    IO.puts("There is an error: incoming line_id sorted past the document supremum")
+    Syncordian.Utilities.debug_print(
+      "get_document_new_index_by_incoming_line_id_aux",
+      "incoming line_id sorted past the document supremum"
+    )
+
     1
   end
 
@@ -73,14 +77,15 @@ defmodule Syncordian.Document do
 
   @doc """
     Given the document and the line_id this function return the index of the corresponding
-    line in the document.
+    line in the document, or nil when no line carries that id. Callers must handle nil —
+    silently falling back to an arbitrary index would let a bad id target the wrong line.
   """
   @spec get_document_index_by_line_id(
           document :: Syncordian.Basic_Types.document(),
           line_id :: Syncordian.Basic_Types.line_id()
-        ) :: integer()
+        ) :: integer() | nil
   def get_document_index_by_line_id(document, line_id) do
-    Enum.find_index(document, fn line -> get_line_id(line) == line_id end) || 1
+    Enum.find_index(document, fn line -> get_line_id(line) == line_id end)
   end
 
   @doc """
@@ -93,26 +98,9 @@ defmodule Syncordian.Document do
         ) ::
           Syncordian.Line_Object.line()
   def get_document_line_by_line_id(document, line_id) do
-    # TODO: check if this functions takes into account that the first and last elements of
-    # the document are the infimum and supremum lines.
+    # The walk includes the infimum/supremum sentinels; their sentinel PathIds never
+    # equal a real line_id, so they can only be found when explicitly asked for.
     Enum.find(document, fn line -> get_line_id(line) == line_id end)
-  end
-
-  @doc """
-    Given a line of the document, this function returns both parents of the line.
-  """
-  @spec get_document_line_fathers(
-          Syncordian.Basic_Types.document(),
-          Syncordian.Line_Object.line()
-        ) ::
-          [Syncordian.Line_Object.line()]
-  def get_document_line_fathers(_, nil), do: [nil, nil]
-
-  def get_document_line_fathers(document, line) do
-    index = get_document_index_by_line_id(document, get_line_id(line))
-    left_parent = get_document_line_by_index(document, index - 1)
-    right_parent = get_document_line_by_index(document, index + 1)
-    [left_parent, right_parent]
   end
 
   @doc """
@@ -150,12 +138,6 @@ defmodule Syncordian.Document do
     end
   end
 
-  # def update_document_line_status(document, index, new_value) do
-  #   line = get_document_line_by_index(document, index)
-  #   updated_line = set_line_status(line, new_value)
-  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
-  # end
-
   @doc """
     This function returns the length of the document
   """
@@ -163,21 +145,28 @@ defmodule Syncordian.Document do
   def get_document_length(document), do: length(document)
 
   @doc """
-      This function insert a line into the document in the right position
+    Inserts a line into the document at its ⋖-position (PathId order, identity tiebreak —
+    `Syncordian.Line.compare_lines/2`). Returns `{:ok, document}` on success, or
+    `:duplicate` when the *same* line (same authored identity) is already present — the
+    signature of a redelivered/replayed insert that survived past the bounded seen-set.
+    Callers must treat `:duplicate` as a no-op and skip every apply side effect (ack
+    broadcast, clock tick, seen-set record); see the receipt rule of the formal model.
   """
   @spec add_line_to_document(Syncordian.Line_Object.line(), Syncordian.Basic_Types.document()) ::
-          Syncordian.Basic_Types.document()
-  def add_line_to_document(line, document = [head | tail]) do
+          {:ok, Syncordian.Basic_Types.document()} | :duplicate
+  def add_line_to_document(line, [head | tail]) do
     case compare_lines(line, head) do
       1 ->
-        [head | add_line_to_document(line, tail)]
+        case add_line_to_document(line, tail) do
+          {:ok, new_tail} -> {:ok, [head | new_tail]}
+          :duplicate -> :duplicate
+        end
 
       0 ->
-        IO.puts("Line Error")
-        document
+        :duplicate
 
       -1 ->
-        [line | document]
+        {:ok, [line, head | tail]}
     end
   end
 
@@ -239,12 +228,6 @@ defmodule Syncordian.Document do
     end
   end
 
-  # def update_document_line_by_line(updated_line, document) do
-  #   line_id = get_line_id(updated_line)
-  #   index = get_document_index_by_line_id(document, line_id)
-  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
-  # end
-
   @doc """
     Given a document and a index, this function change the status of the line at the given
     index, returning the updated document.
@@ -263,12 +246,6 @@ defmodule Syncordian.Document do
   def update_document_line_peer_id([head | tail], index, new_peer_id) when index > 0 do
     [head | update_document_line_peer_id(tail, index - 1, new_peer_id)]
   end
-
-  # def update_document_line_peer_id(document, index, new_peer_id) do
-  #   line = get_document_line_by_index(document, index)
-  #   updated_line = set_line_peer_id(line, new_peer_id)
-  #   Enum.concat(Enum.take(document, index), [updated_line | Enum.drop(document, index + 1)])
-  # end
 
   @doc """
     Windowed parent search for an out-of-order (stashed) insert. The receiver knows the

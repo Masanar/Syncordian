@@ -31,15 +31,26 @@ defmodule Syncordian.PathId do
   This module is pure and side-effect-free aside from `:rand.uniform/1` inside
   `between/3`. It does not depend on the rest of the codebase.
 
-  ## Tiebreaker exhaustion
+  ## Totality (dense order, def:positions)
 
-  The `(digit, peer_id)` segment encoding has a structural limit: when the same peer
-  needs to allocate strictly between `:infimum` (or any `[…, {0, p}]`-prefix) and
-  `{:path, […, {0, peer_id}]}`, no path exists — the only paths strictly less than
-  `[…, {0, peer_id}]` differ at the tiebreaker, requiring a peer id strictly smaller
-  than `peer_id`. `between/3` raises `ArgumentError` in this case. This matches the
-  classic Logoot/LSEQ assumption that site ids are drawn from a wide enough pool that
-  repeated adversarial leftmost inserts by the *same* site are statistically negligible.
+  The formal model requires the position order to be dense: `between/3` must succeed for
+  *every* pair `left < right`. The `(digit, peer_id)` lexicographic encoding has one
+  structurally tight corner: right = `prefix ++ [{0, p}]` where the allocating peer's
+  tiebreak id cannot undercut `p`. Two measures make allocation total anyway:
+
+    * Minted segments store the allocating peer's id **shifted by one** (`peer_id + 1`),
+      reserving `0` as a virtual-minimum tiebreak id that no real peer owns. Every
+      tiebreak wall `{0, p}` written by the allocator therefore has `p >= 1`, so an id
+      strictly below it always exists.
+    * In the tight corner the allocator descends with the reserved id: it emits
+      `prefix ++ [{0, p - 1}, {digit, own_shifted_id}]`, strictly between the bounds,
+      with the final segment still carrying the minting peer's identity.
+
+  Two distinct peers can never mint the same path (the last segment carries their
+  distinct shifted ids). The same peer minting twice between the same bounds can, with
+  probability `1/base()` per level, collide with itself; document order stays sound
+  because `Syncordian.Line.compare_lines/2` breaks equal positions by the lines'
+  authored identity (the ⋖ tiebreak of the formal model).
   """
 
   alias Syncordian.Basic_Types
@@ -141,7 +152,9 @@ defmodule Syncordian.PathId do
   def between(left, right, peer_id) do
     case compare(left, right) do
       :lt ->
-        do_between(normalize(left), normalize(right), peer_id, [])
+        # Segments store the shifted id (peer_id + 1); 0 is the reserved
+        # virtual-minimum tiebreak id that keeps allocation total (see module doc).
+        do_between(normalize(left), normalize(right), peer_id + 1, [])
 
       _ ->
         raise ArgumentError,
@@ -178,11 +191,12 @@ defmodule Syncordian.PathId do
         do_between({:bound, :low}, {:segs, r_rest}, peer_id, [{0, r_peer} | prefix])
 
       true ->
-        # Right is the lexicographic minimum reachable for this prefix-depth and our
-        # peer_id can't undercut it. Any extension we make would sort *above* right
-        # (since a longer path with this prefix is greater than the prefix itself).
-        raise ArgumentError,
-              "between/3: cannot allocate strictly below right; right is the minimum path reachable for peer_id=#{inspect(peer_id)}"
+        # Tight corner: our shifted id cannot undercut {0, r_peer} at this level and
+        # right has no further segments to descend along. Emit the reserved-id fallback
+        # {0, r_peer - 1} (r_peer >= 1 for every allocator-minted wall, so this exists
+        # and no real peer owns it) and finish one level deeper with our own id —
+        # strictly between the bounds, identity preserved in the last segment.
+        fallback_below(prefix, r_peer, peer_id)
     end
   end
 
@@ -221,8 +235,8 @@ defmodule Syncordian.PathId do
         do_between({:segs, []}, {:segs, r_rest}, peer_id, [{0, r_peer} | prefix])
 
       true ->
-        raise ArgumentError,
-              "between/3: cannot allocate strictly between left=prefix-path and right=prefix++[{0,r_peer}] when peer_id (#{inspect(peer_id)}) >= r_peer (#{inspect(r_peer)})"
+        # Same tight corner as the {:bound, :low} case above.
+        fallback_below(prefix, r_peer, peer_id)
     end
   end
 
@@ -278,6 +292,16 @@ defmodule Syncordian.PathId do
   end
 
   defp finish(prefix, segment), do: {:path, Enum.reverse([segment | prefix])}
+
+  # Total-allocation fallback for the tight corner (see "Totality" in the module doc):
+  # right = reverse(prefix) ++ [{0, r_peer}] and our shifted id cannot undercut r_peer.
+  # reverse(prefix) ++ [{0, r_peer - 1}, {d, sid}] is strictly greater than every left
+  # bound compatible with this corner (any proper prefix of right) and strictly less
+  # than right at the {0, r_peer - 1} segment.
+  defp fallback_below(prefix, r_peer, shifted_id) do
+    digit = pick_digit(0, @base - 1)
+    {:path, Enum.reverse([{digit, shifted_id}, {0, r_peer - 1} | prefix])}
+  end
 
   # Pick a digit uniformly in `[lo, hi]`. Used only inside the allocator.
   defp pick_digit(lo, hi) when lo == hi, do: lo

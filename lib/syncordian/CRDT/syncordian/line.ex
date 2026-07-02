@@ -115,19 +115,6 @@ defmodule Syncordian.Line_Object do
     do: line(line, :parent_right_op_id)
 
   @doc """
-    Attaches the locally computed stored signature σ to a remotely received line —
-    called exactly once per line, after the insert wire tag verified against the
-    accepted parent pair. This is the only signature write outside line creation:
-    stored signatures are immutable identifiers, never recomputed on neighbor drift and
-    never received from the wire (every replica derives the identical value from the
-    same accepted parents — see `Syncordian.Byzantine.create_signature_doc/4`).
-  """
-  @spec seal_line_signature(line(), Syncordian.Basic_Types.signature()) :: line()
-  def seal_line_signature(line, signature) do
-    line(line, signature: signature)
-  end
-
-  @doc """
     Seals a remotely received line's authored identity in one step: its stored signature
     (computed locally from the accepted parent pair) together with its op_id and the op_ids
     of its authored parents (that same accepted pair, which up to a hash collision is the
@@ -155,7 +142,7 @@ defmodule Syncordian.Line_Object do
     Builds the local line record for a remotely received insert. Only the public fields
     travel on the wire (position, content, author); the stored signature is *not* among
     them — the receiver computes it from the accepted parents and attaches it with
-    `seal_line_signature/2`. The response checklist is initialized exactly as the author
+    `seal_line_authored/5`. The response checklist is initialized exactly as the author
     initialized its own copy: all false except the author's own entry.
   """
   @spec create_line_from_wire(
@@ -198,41 +185,48 @@ defmodule Syncordian.Line_Object do
 
   @doc """
     This function creates the infimum line for the given peer id
-    that is the absolute first line within peer's document
+    that is the absolute first line within peer's document. Its stored signature is κ⊥,
+    the first half of the document's boundary secret (`Syncordian.Byzantine.boundary_secret/0`)
+    — the root of every stored-signature chain and half of the admission key.
   """
   @spec create_infimum_line(
           Syncordian.Basic_Types.peer_id(),
           network_size :: integer
         ) :: Syncordian.Line_Object.line()
-  def create_infimum_line(peer_id, network_size),
-    do:
-      line(
-        line_id: PathId.infimum(),
-        content: "Infimum",
-        signature: "Infimum",
-        status: :settled,
-        peer_id: peer_id,
-        commit_at: List.duplicate(true, network_size)
-      )
+  def create_infimum_line(peer_id, network_size) do
+    {infimum_secret, _} = Syncordian.Byzantine.boundary_secret()
+
+    line(
+      line_id: PathId.infimum(),
+      content: "Infimum",
+      signature: infimum_secret,
+      status: :settled,
+      peer_id: peer_id,
+      commit_at: List.duplicate(true, network_size)
+    )
+  end
 
   @doc """
     This function creates the supremum line for the given peer id
-    that is the absolute last line within peer's document
+    that is the absolute last line within peer's document. Its stored signature is κ⊤,
+    the second half of the document's boundary secret.
   """
   @spec create_supremum_line(
           Syncordian.Basic_Types.peer_id(),
           network_size :: integer
         ) :: Syncordian.Line_Object.line()
-  def create_supremum_line(peer_id, network_size),
-    do:
-      line(
-        line_id: PathId.supremum(),
-        content: "Supremum",
-        signature: "Supremum",
-        status: :settled,
-        peer_id: peer_id,
-        commit_at: List.duplicate(true, network_size)
-      )
+  def create_supremum_line(peer_id, network_size) do
+    {_, supremum_secret} = Syncordian.Byzantine.boundary_secret()
+
+    line(
+      line_id: PathId.supremum(),
+      content: "Supremum",
+      signature: supremum_secret,
+      status: :settled,
+      peer_id: peer_id,
+      commit_at: List.duplicate(true, network_size)
+    )
+  end
 
   @doc """
     Update the commit_at list of the line with in the received peer id projection, setting
@@ -244,8 +238,9 @@ defmodule Syncordian.Line_Object do
         ) ::
           Syncordian.Line_Object.line()
   def update_line_commit_at(line, received_peer_id) do
-    # TODO: if all the peers have committed the line, then the line should be marked as
-    # settled
+    # Settling when the checklist completes is the caller's concern:
+    # Syncordian.Document.settle_line_if_complete/2 joins :aura into :settled once every
+    # entry is true, right after the checklist update.
     commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
     line(line, commit_at: commit_at)
   end
@@ -272,13 +267,10 @@ defmodule Syncordian.Line do
 
   @doc """
     Given two lines, left_parent and right_parent, this function creates a new line
-    between them taken into account the parent's ids to calculate the new line id
-    and the parent's content to create the line signature.
-    There are two cases to consider:
-      - If there is 'room' between the parent's ids, then the new line id is calculated
-       create_line_b randomly between the parent's ids and the signature is created using
-        the parent's content and the peer id.
-      - If there is no 'room' between the parent's ids, then...
+    between them: its position is allocated strictly between the parents' PathIds
+    (`Syncordian.PathId.between/3`, total — a fresh position always exists), and its
+    stored signature σ is derived from the parents' stored signatures, the content, and
+    the authoring peer id (`Syncordian.Byzantine.create_signature_doc/4`).
   """
   @spec create_line_between_two_lines(
           content :: Syncordian.Basic_Types.content(),
@@ -323,10 +315,14 @@ defmodule Syncordian.Line do
   end
 
   @doc """
-    Given two lines this function defines the order between them, based on the
-    line_id field of the lines compared via the PathId total order. It returns:
+    Given two lines this function defines the replica-independent total order ⋖ of the
+    formal model: primarily the PathId position order, with position ties broken by the
+    lines' authored identity — the `{writer, seq}` op_id (formalism def of ⋖: order by
+    position, ties by identity). Distinct lines therefore never compare equal; 0 is
+    returned only for the *same* line (same op_id), which callers treat as a duplicate
+    delivery. It returns:
       - 1 if the first line is greater than the second line
-      - 0 if the first line is equal to the second line
+      - 0 if the first line is the same line as the second line
       - -1 if the first line is less than the second line
   """
   @spec compare_lines(
@@ -336,8 +332,26 @@ defmodule Syncordian.Line do
   def compare_lines(line1, line2) do
     case PathId.compare(get_line_id(line1), get_line_id(line2)) do
       :gt -> 1
-      :eq -> 0
       :lt -> -1
+      :eq -> compare_lines_identity(line1, line2)
+    end
+  end
+
+  # Identity tiebreak for equal positions: op_ids are {writer, seq} tuples, so Erlang
+  # term order on them is exactly the lexicographic (writer, seq) order the model uses.
+  # The boundary sentinels carry a nil op_id but hold unique sentinel positions, so they
+  # never reach this tiebreak against a real line; nil-vs-nil can only be the two
+  # sentinels compared against themselves.
+  defp compare_lines_identity(line1, line2) do
+    op_id1 = get_line_op_id(line1)
+    op_id2 = get_line_op_id(line2)
+
+    cond do
+      op_id1 == op_id2 -> 0
+      op_id1 == nil -> -1
+      op_id2 == nil -> 1
+      op_id1 < op_id2 -> -1
+      true -> 1
     end
   end
 

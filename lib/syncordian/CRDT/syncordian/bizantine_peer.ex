@@ -5,11 +5,14 @@ defmodule Syncordian.ByzantinePeer do
   A Byzantine peer is spawned alongside the honest author peers (with synthetic,
   non-colliding ids — see `Syncordian.Supervisor`) and registered in `:global`, so
   it receives every broadcast. Its `byzantine_peer_loop/1` models an **outsider
-  attacker that does not hold the network's boundary secret**: on observing an
-  honest insert/delete it occasionally (`send?/0`) re-broadcasts the message with a
-  forged wire/authorization tag while leaving the stale admission authenticator
-  untouched. Because it cannot recompute a valid authenticator over the mutated
-  payload, honest receivers reject the forgery at admission
+  attacker that does not hold the network's boundary secret**: the per-run random
+  pair the supervisor distributes out-of-band to admitted peers
+  (`Syncordian.Byzantine.boundary_secret/0`) — this module must never read that
+  term; doing so would break the outsider assumption of `def:adversary`. On
+  observing an honest insert/delete it occasionally (`send?/0`) re-broadcasts the
+  message with a forged wire/authorization tag while leaving the stale admission
+  authenticator untouched. Because it cannot recompute a valid authenticator over
+  the mutated payload, honest receivers reject the forgery at admission
   (`Syncordian.Byzantine.check_admission/4`, tallied in
   `admission_rejected_counter`) — never applying or buffering it. Replaying the
   stale authenticator is the attacker's strongest available move; garbling it too

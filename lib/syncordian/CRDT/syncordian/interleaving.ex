@@ -68,9 +68,9 @@ defmodule Syncordian.Interleaving do
 
   @doc """
   True iff the line is a block member candidate: a non-sentinel line that is currently
-  present in the document (`:aura` or `:settled`). Tombstoned and `:conflict` lines are
-  excluded — the former are gone, the latter are mid-re-placement — so neither participates
-  in interleaving detection (`def:intention` quantifies over *live* lines).
+  present in the document (`:aura` or `:settled`). Tombstoned lines — including the
+  superseded originals retracted during a re-placement — are excluded, so they do not
+  participate in interleaving detection (`def:intention` quantifies over *live* lines).
   """
   @spec live_block_line?(Syncordian.Line_Object.line()) :: boolean()
   def live_block_line?(line) do
@@ -183,6 +183,13 @@ defmodule Syncordian.Interleaving do
   # re-placement for each block that is interleaved by a higher-priority (smaller peer id)
   # block of a distinct writer. The moved block is re-packed strictly left of every
   # higher-priority block it overlaps.
+  #
+  # Note a deliberate, conservative deviation from the formal model's wording: the model
+  # re-issues only the *conflicting suffix* of the lower-priority block, while we move the
+  # whole block. Moving the whole block is a superset of the suffix move that keeps the
+  # re-issued chain contiguous inside one disjoint gap, so interleaving-freedom
+  # (def:intention: no foreign live line strictly between two block lines, authored order
+  # preserved) still holds at quiescence, at the cost of a few extra re-issued lines.
   @spec group_replacements([block()], Syncordian.Basic_Types.document()) :: [replacement()]
   defp group_replacements(group, document) do
     writers = group |> Enum.map(& &1.writer) |> Enum.uniq()
@@ -202,7 +209,7 @@ defmodule Syncordian.Interleaving do
 
           _ ->
             gap_right = min_position_line(higher)
-            gap_left = nearest_left_non_member(document, gap_right, block.lines)
+            gap_left = gap_right && nearest_left_non_member(document, gap_right, block.lines)
 
             if gap_left == nil do
               []
@@ -236,14 +243,14 @@ defmodule Syncordian.Interleaving do
     {get_line_id(List.first(block.lines)), get_line_id(List.last(block.lines))}
   end
 
-  # The minimum-position line over all the given blocks' lines.
-  @spec min_position_line([block()]) :: Syncordian.Line_Object.line()
+  # The minimum-position line over all the given blocks' lines; nil when the blocks carry
+  # no lines (not expected — every reconstructed block holds at least its head — but a
+  # crash inside the peer loop would be worse than skipping the group).
+  @spec min_position_line([block()]) :: Syncordian.Line_Object.line() | nil
   defp min_position_line(blocks) do
     blocks
     |> Enum.flat_map(& &1.lines)
-    |> Enum.reduce(fn line, acc ->
-      if PathId.less?(get_line_id(line), get_line_id(acc)), do: line, else: acc
-    end)
+    |> Enum.min_by(&get_line_id/1, PathId, fn -> nil end)
   end
 
   # The closest line strictly to the left of `gap_right` in the sorted document that is not

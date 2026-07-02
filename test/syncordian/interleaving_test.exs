@@ -170,11 +170,11 @@ defmodule Syncordian.InterleavingTest do
       assert get_line_id(r.gap_right) == get_line_id(a1)
     end
 
-    test "marking the moving block's lines non-live (e.g. :conflict) makes detection idempotent" do
+    test "retracting the moving block's lines (tombstones) makes detection idempotent" do
       a1 = mk_line(10, 1, {1, 1}, @l_op, @r_op)
       a2 = mk_line(30, 1, {1, 2}, {1, 1}, @r_op)
-      b1 = mk_line(20, 2, {2, 1}, @l_op, @r_op, :conflict)
-      b2 = mk_line(40, 2, {2, 2}, {2, 1}, @r_op, :conflict)
+      b1 = mk_line(20, 2, {2, 1}, @l_op, @r_op, :tombstone)
+      b2 = mk_line(40, 2, {2, 2}, {2, 1}, @r_op, :tombstone)
 
       document = doc([anchor_l(), anchor_r(), a1, b1, a2, b2])
       assert Interleaving.detect_replacements(document) == []

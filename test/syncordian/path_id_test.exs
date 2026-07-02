@@ -118,57 +118,71 @@ defmodule Syncordian.PathIdTest do
       end
     end
 
-    test "subdivision survives far longer than a float-PID would" do
-      # Regression bar: this stress loop randomly halves the interval and asserts
-      # that the path-id allocator returns a strictly-between path on each call.
-      # The (digit, peer_id) encoding eventually saturates at the leftmost boundary
-      # (see "Tiebreaker exhaustion" in the PathId moduledoc) and `between/3`
-      # raises `ArgumentError`; we treat the first raise as a graceful stop and
-      # assert that the allocator survived a large number of iterations first —
-      # comfortably more than the ~50 levels of subdivision a 64-bit float can
-      # represent.
+    test "allocation is total: random-halving subdivision never fails (def:positions)" do
+      # The formal model requires the position order to be dense: between/3 must succeed
+      # for EVERY pair left < right. This stress loop randomly halves the interval —
+      # always descending toward the boundary the old encoding saturated at — and
+      # asserts a strictly-between path on every one of 10_000 calls, with no rescue:
+      # a raise is a test failure.
       :rand.seed(:exsplus, {99, 99, 99})
 
-      result =
-        Enum.reduce_while(1..10_000, {0, P.infimum(), P.supremum()}, fn _i, {count, l, r} ->
-          try do
-            mid = P.between(l, r, :rand.uniform(1_000_000))
+      Enum.reduce(1..10_000, {P.infimum(), P.supremum()}, fn _i, {l, r} ->
+        mid = P.between(l, r, :rand.uniform(1_000_000))
 
-            cond do
-              not P.less?(l, mid) ->
-                {:halt, {:invariant_violated, count, :left, l, mid}}
+        assert P.less?(l, mid),
+               "between/3 not strictly greater than left: #{inspect({l, mid})}"
 
-              not P.less?(mid, r) ->
-                {:halt, {:invariant_violated, count, :right, mid, r}}
+        assert P.less?(mid, r),
+               "between/3 not strictly less than right: #{inspect({mid, r})}"
 
-              true ->
-                next =
-                  if rem(:rand.uniform(1000), 2) == 0,
-                    do: {count + 1, l, mid},
-                    else: {count + 1, mid, r}
+        if rem(:rand.uniform(1000), 2) == 0, do: {l, mid}, else: {mid, r}
+      end)
+    end
 
-                {:cont, next}
-            end
-          rescue
-            ArgumentError -> {:halt, {:saturated, count}}
-          end
-        end)
+    test "tight corner: right ending in a {0, p} wall the peer id cannot undercut" do
+      # Historically the ArgumentError corner: right = prefix ++ [{0, p}] with an
+      # allocating peer whose tiebreak id cannot go below p. The reserved-id fallback
+      # (see "Totality" in the moduledoc) must still allocate strictly between.
+      left = {:path, [{3, 1}]}
+      right = {:path, [{3, 1}, {0, 1}]}
 
-      iterations =
-        case result do
-          {:saturated, n} -> n
-          {count, _l, _r} -> count
-          {:invariant_violated, _, _, _, _} -> 0
-        end
+      for peer <- [0, 1, 5, 1_000] do
+        new = P.between(left, right, peer)
+        assert P.less?(left, new), "peer #{peer}: #{inspect(new)} not above left"
+        assert P.less?(new, right), "peer #{peer}: #{inspect(new)} not below right"
+      end
+    end
 
-      refute match?({:invariant_violated, _, _, _, _}, result),
-             "between/3 returned a non-strictly-between path: #{inspect(result)}"
+    test "tight corner from the infimum against a minimal wall" do
+      # Even a wall built with the reserved minimum id 0 (never allocator-minted, but
+      # constructible) keeps allocation total.
+      right = {:path, [{0, 0}]}
 
-      # A 64-bit float can subdivide ~52 times before mantissa precision is exhausted.
-      # We require the path-id allocator to comfortably exceed that under this
-      # adversarial random-halving pattern.
-      assert iterations >= 100,
-             "expected >=100 successful subdivisions before saturation; got #{iterations} (result=#{inspect(result)})"
+      for peer <- [0, 7] do
+        new = P.between(P.infimum(), right, peer)
+        assert P.less?(P.infimum(), new)
+        assert P.less?(new, right), "peer #{peer}: #{inspect(new)} not below #{inspect(right)}"
+      end
+    end
+
+    test "repeated leftmost inserts by the same peer never exhaust the order" do
+      # The adversarial pattern that motivated the fallback: one peer keeps inserting
+      # at the very front, so each allocation's right bound is its own previous mint.
+      :rand.seed(:exsplus, {42, 42, 42})
+
+      Enum.reduce(1..500, P.supremum(), fn _i, right ->
+        new = P.between(P.infimum(), right, 3)
+        assert P.less?(P.infimum(), new)
+        assert P.less?(new, right)
+        new
+      end)
+    end
+
+    test "minted segments never use the reserved tiebreak id 0" do
+      :rand.seed(:exsplus, {5, 5, 5})
+      new = P.between(P.infimum(), P.supremum(), 0)
+      {:path, [{_digit, sid}]} = new
+      assert sid == 1
     end
   end
 

@@ -187,6 +187,7 @@ defmodule Syncordian.Supervisor do
   # function.
   defp edit(
          commit_hash,
+         parent_hash,
          commit_group_map,
          map_peer_id_authors,
          pid_list_author_peers,
@@ -197,16 +198,78 @@ defmodule Syncordian.Supervisor do
     position_changes = Map.get(commit_group, :position_changes)
     peer_id = Map.get(map_peer_id_authors, author_id)
     peer_pid = Enum.at(pid_list_author_peers, peer_id)
+
+    # Replay-fidelity barrier vs. plain pacing. A commit's git indices are only
+    # meaningful against the exact file state the commit was authored on, and a
+    # length-based readiness check is not enough: the author's replica can reach the
+    # required LIVE-LINE COUNT while still missing lines in the middle (remote inserts
+    # arrive independently), which silently retargets deletes/anchors inserts one line
+    # off — and the author then broadcasts that corruption consistently to everyone.
+    # So for Syncordian, BEFORE dispatching a commit, the supervisor holds it until the
+    # authoring peer's materialized document byte-matches the parent state
+    # (`git show <parent>:<file>`); the replay then paces itself to real network latency
+    # instead of a fixed sleep. The other CRDTs have no barrier probe, so they keep the
+    # legacy fixed delay (after dispatch, as before).
+    if peer_module == Syncordian.Peer and parent_hash != nil do
+      await_author_materialization(peer_pid, parent_hash, author_id)
+    end
+
     parse_edits(position_changes, peer_pid, peer_module)
-    # delay = len_position_changes(position_changes) * 100 + 1000 + 1000 * byzantine_nodes
-    delay = 4000
-    Process.sleep(delay)
+
+    if peer_module == Syncordian.Peer do
+      Process.sleep(commit_dispatch_delay_ms())
+    else
+      Process.sleep(4000)
+    end
+
     author_id
   end
 
-  # defp len_position_changes(position_changes) do
-  #   Enum.reduce(position_changes, 0, fn x, acc -> acc + length(x) end)
-  # end
+  # Optional extra pacing on top of the materialization barrier (room for Byzantine
+  # traffic and broadcast jitter to interleave between commits); also the delay before
+  # the next {:send_all_commits} self-send.
+  defp commit_dispatch_delay_ms,
+    do: Application.get_env(:syncordian, :commit_dispatch_delay_ms, 100)
+
+  # Polls the authoring peer until its materialized document hashes equal to the tracked
+  # file at `commit_hash`. Bounded: after ~60s of mismatch the replay proceeds with a
+  # loud warning (the convergence check will catch the divergence at the end).
+  @spec await_author_materialization(pid(), String.t(), String.t()) :: :ok
+  defp await_author_materialization(peer_pid, commit_hash, author_id) do
+    expected = :erlang.md5(Syncordian.GitLog.file_at(commit_hash))
+    deadline = System.monotonic_time(:millisecond) + 60_000
+    poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline)
+  end
+
+  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline) do
+    ref = make_ref()
+    send(peer_pid, {:request_content_hash, self(), ref})
+
+    got =
+      receive do
+        {:content_hash, ^ref, hash} -> hash
+      after
+        1_000 -> :timeout
+      end
+
+    cond do
+      got == expected ->
+        :ok
+
+      System.monotonic_time(:millisecond) > deadline ->
+        IO.puts(
+          "WARNING: author #{author_id} did not materialize commit " <>
+            "#{String.slice(commit_hash, 0, 10)} within 60s — replay may diverge"
+        )
+
+        :ok
+
+      true ->
+        Process.sleep(50)
+        poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline)
+    end
+  end
+
   @spec save_current_documents(list(), module()) :: :ok
   defp save_current_documents(pid_list_author_peers, peer_module) do
     Enum.map(0..(length(pid_list_author_peers) - 1), fn x ->
@@ -222,10 +285,12 @@ defmodule Syncordian.Supervisor do
     map_peer_id_authors = supervisor(supervisor, :map_peer_id_authors)
     pid_list_author_peers = get_pid_list(supervisor)
     commit_hash = Enum.at(list_of_commits, commit_count)
+    parent_hash = if commit_count > 0, do: Enum.at(list_of_commits, commit_count - 1)
 
     author_id =
       edit(
         commit_hash,
+        parent_hash,
         commit_group_map,
         map_peer_id_authors,
         pid_list_author_peers,
@@ -396,7 +461,12 @@ defmodule Syncordian.Supervisor do
           send(self(), {:restart_metadata})
           Process.send_after(self(), {:collect_metadata_from_peers}, 10)
           Process.send_after(self(), {:print_supervisor_metadata}, 1000)
-          Process.send_after(self(), {:send_all_commits, live_view_pid, byzantine_nodes}, 2000)
+
+          Process.send_after(
+            self(),
+            {:send_all_commits, live_view_pid, byzantine_nodes},
+            commit_dispatch_delay_ms()
+          )
 
           supervisor_loop(
             supervisor(supervisor,

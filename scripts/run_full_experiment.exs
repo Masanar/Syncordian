@@ -41,7 +41,7 @@ defmodule FullExperiment do
     # which fans out save_content/1 to all peers. Allow time for: (a) any in-flight
     # broadcasts from the last commit to settle into stash/document, (b) save_content
     # to actually write each file.
-    settle_ms = 30_000
+    settle_ms = 10_000
     IO.puts("Settling network for #{div(settle_ms, 1000)}s before reading dumps…")
     Process.sleep(settle_ms)
 
@@ -49,7 +49,7 @@ defmodule FullExperiment do
     # because they were still processing broadcasts at that moment.
     IO.puts("Re-issuing {:write_current_peers_document} as a belt-and-braces…")
     send(sup_pid, {:write_current_peers_document})
-    Process.sleep(5_000)
+    Process.sleep(2_000)
 
     files = Path.wildcard(Path.join(out_dir, "document_peer_*")) |> Enum.sort()
     IO.puts("Dumped #{length(files)} peer documents:")

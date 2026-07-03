@@ -66,6 +66,24 @@ defmodule Syncordian.GitLog do
     end
   end
 
+  @doc """
+  The tracked file's exact content at the given commit (`git show <commit>:<file>`),
+  i.e. the state a byte-faithful replay must reproduce right after that commit.
+  """
+  @spec file_at(String.t()) :: String.t()
+  def file_at(commit_hash) do
+    repo = repo_path()
+    file = tracked_file()
+
+    case System.cmd("git", ["-C", repo, "show", "#{commit_hash}:#{file}"], stderr_to_stdout: true) do
+      {output, 0} ->
+        output
+
+      {output, status} ->
+        raise "git show failed (exit #{status}) for #{commit_hash}:#{file}:\n#{output}"
+    end
+  end
+
   @doc "Resolved repo path (env override > config > built-in default)."
   @spec repo_path() :: String.t()
   def repo_path do

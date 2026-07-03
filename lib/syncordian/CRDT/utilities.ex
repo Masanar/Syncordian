@@ -123,11 +123,21 @@ defmodule Syncordian.Utilities do
   end
 
   @doc """
-    Terminates all the processes
+    Terminates all the processes.
+
+    The caller (the supervisor) is killed LAST: it is itself in the registry, and
+    exiting mid-enumeration aborted the sweep, leaving every peer after it alive —
+    surviving Byzantine peers then kept broadcasting on their timers forever.
   """
   def kill do
     :global.registered_names()
-    |> Enum.map(fn x -> :global.whereis_name(x) |> Process.exit(:kill) end)
+    |> Enum.sort_by(&(&1 == :supervisor))
+    |> Enum.each(fn name ->
+      case :global.whereis_name(name) do
+        :undefined -> :ok
+        pid -> Process.exit(pid, :kill)
+      end
+    end)
   end
 
   @doc """

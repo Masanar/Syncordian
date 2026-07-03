@@ -49,6 +49,13 @@ last_commit =
 
 {expected, 0} = System.cmd("git", ["-C", repo, "show", "#{last_commit}:#{file}"])
 
+# The line-based document cannot represent a missing final newline (each live line is
+# materialized with a trailing "\n"), so normalize a no-final-newline git state.
+expected =
+  if expected != "" and not String.ends_with?(expected, "\n"),
+    do: expected <> "\n",
+    else: expected
+
 if reference_content == expected do
   IO.puts(
     "OK  converged document == #{file} at #{String.slice(last_commit, 0, 10)} " <>

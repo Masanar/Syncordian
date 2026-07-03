@@ -355,11 +355,9 @@ defmodule Syncordian.Document do
     both lookups are total.
 
     This is deliberately distinct from `get_parents_by_index/2`, whose index is a
-    *translated git index* with empirically calibrated append/tail cases (its
-    `distance == 2` branch returns `{document[i], document[i+1]}`). Feeding a splice index
-    into that function returns the wrong pair whenever the incoming line's right neighbor
-    sits at `len - 2`, making an honest insert's wire tag fail verification against the
-    mislocated pair.
+    *translated git index* (same parent shape today, but subject to the git-replay index
+    conventions documented there); keeping the two entry points separate keeps the splice
+    path independent of any replay-side index accounting.
   """
   @spec get_splice_parents(
           document :: Syncordian.Basic_Types.document(),
@@ -373,12 +371,16 @@ defmodule Syncordian.Document do
   end
 
   # Given a document and a position index, this function returns the previous and next
-  # parents of the given index. The line_pos_index_status is the status of the line in the
-  # original index i.e. the index with out the shift due to the previous tombstones.
+  # parents of the given index.
   #
   # NOTE: the index here is a *translated git index* (see attempt_local_edit in
-  # Syncordian.Peer); the branches below are calibrated against the git replay. For the
-  # splice index of an incoming broadcast line use get_splice_parents/2 instead.
+  # Syncordian.Peer) with uniform before-semantics: the new line always lands BETWEEN
+  # document[pos_index - 1] and document[pos_index], i.e. immediately before the line the
+  # translation resolved to (translate resolves an append past the last live line to the
+  # supremum, so the end-of-document case needs no special branch). Zero-old-count hunks
+  # (`@@ -0,0`, file creation) carry after-semantics in raw git indices; the supervisor
+  # shifts those by +1 at dispatch so this uniform rule holds. For the splice index of an
+  # incoming broadcast line use get_splice_parents/2 instead.
   @spec get_parents_by_index(
           document :: Syncordian.Basic_Types.document(),
           index :: Syncordian.Basic_Types.git_document_index()
@@ -389,45 +391,22 @@ defmodule Syncordian.Document do
 
   def get_parents_by_index(document, pos_index) do
     len = get_document_length(document)
-    distance = len - pos_index
 
-    case {distance > 0, distance} do
-      {true, 1} ->
-        # Case where the insert is at the end of the document after a tombstone that
-        # was made in the same edit see commit: 2198ff05e3b26532865f91a9ac1bac5fc673c05b
-        # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-        [
-          get_document_line_by_index(document, len - 2),
-          get_document_line_by_index(document, len - 1)
-        ]
+    if pos_index < len do
+      [
+        get_document_line_by_index(document, pos_index - 1),
+        get_document_line_by_index(document, pos_index)
+      ]
+    else
+      # This return is just to make the compiler (completeness) happy, if this ever
+      # happens the code has a huge error.
+      IO.puts("Error in the get_parents_by_index")
+      IO.puts("pos_index: #{pos_index}, len: #{len}")
 
-      {true, 2} ->
-        # Case where the insert behaves like an 'append' i.e. insert at the end
-        # see any insert of the first commit: 26a07b0ad87162805e69ce18c56627772a663aef
-        # [Enum.at(document, pos_index), Enum.at(document, pos_index + 1)]
-        [
-          get_document_line_by_index(document, pos_index),
-          get_document_line_by_index(document, pos_index + 1)
-        ]
-
-      {true, _} ->
-        # Case where the insert is within any line inside the document
-        # [Enum.at(document, pos_index - 1), Enum.at(document, pos_index)]
-        [
-          get_document_line_by_index(document, pos_index - 1),
-          get_document_line_by_index(document, pos_index)
-        ]
-
-      {_, _} ->
-        # This return is just to make the compiler (completeness) happy, if this ever
-        # happens the code has a huge error.
-        IO.puts("Error in the get_parents_by_index")
-        IO.puts("Distance: #{distance}, pos_index: #{pos_index}, len: #{len}")
-        # [Enum.at(document, len - 2), Enum.at(document, len - 1)]
-        [
-          get_document_line_by_index(document, len - 2),
-          get_document_line_by_index(document, len - 1)
-        ]
+      [
+        get_document_line_by_index(document, len - 2),
+        get_document_line_by_index(document, len - 1)
+      ]
     end
   end
 

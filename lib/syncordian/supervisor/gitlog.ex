@@ -17,7 +17,8 @@ defmodule Syncordian.GitLog do
   """
 
   @default_repo_path "../../repos/ohmyzsh"
-  @default_tracked_file "README.md"
+  # @default_tracked_file "oh-my-zsh.sh"
+  @default_tracked_file "plugins/git/git.plugin.zsh"
 
   @doc """
   Returns the `git log -p` output for the tracked file as a list of lines (newest commit

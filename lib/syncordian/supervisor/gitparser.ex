@@ -188,7 +188,14 @@ defmodule Syncordian.GitParser do
     (delete). The index_position is the index position line in the context lines plus the
     global position, in the case of the example the global position is 88.
   """
-  def parse_positional_change([{{global_position, _}, _, _} | context_lines]) do
+  def parse_positional_change([{{global_position, old_count}, _, _} | context_lines]) do
+    # A zero-old-count hunk (`@@ -0,0 +1,N`, i.e. file creation — with the default
+    # 3-line context every other hunk has old_count >= 1) anchors its indices on the
+    # line BEFORE the insertion point (git's "insert after old line k" convention),
+    # one earlier than the uniform before-semantics the Syncordian replay uses. Tag
+    # the ops so the supervisor can shift them by +1 at dispatch (Syncordian only).
+    zero_old = old_count == 0
+
     # TODO: the structure %{op:....} could be the type of this module, it does?
     context_lines
     |> Enum.reduce({global_position, 0, 0, []}, fn line,
@@ -207,7 +214,8 @@ defmodule Syncordian.GitParser do
                test_index: index_position - current_delete_ops,
                content: "",
                global_position: global_position,
-               current_delete_ops: current_delete_ops
+               current_delete_ops: current_delete_ops,
+               zero_old: zero_old
              }
              | acc
            ]}
@@ -223,7 +231,8 @@ defmodule Syncordian.GitParser do
                    test_index: index_position - current_delete_ops,
                    content: content,
                    global_position: global_position,
-                   current_delete_ops: current_delete_ops
+                   current_delete_ops: current_delete_ops,
+                   zero_old: zero_old
                  }
                  | acc
                ]}
@@ -237,7 +246,8 @@ defmodule Syncordian.GitParser do
                    test_index: index_position - current_delete_ops,
                    content: "\n",
                    global_position: global_position,
-                   current_delete_ops: current_delete_ops
+                   current_delete_ops: current_delete_ops,
+                   zero_old: zero_old
                  }
                  | acc
                ]}

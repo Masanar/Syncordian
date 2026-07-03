@@ -121,13 +121,23 @@ defmodule Syncordian.Supervisor do
     # If want to know why the acc is reduced by 1 in the case of a delete operation and
     # increase by 1 in the case of an insert operation, please read the comets of
     # the parse_edits function just below.
+    #
+    # Zero-old-count hunks (`@@ -0,0`, file creation) anchor their git indices one line
+    # early (after-semantics); Syncordian's get_parents_by_index uses uniform
+    # before-semantics, so shift those ops by +1 here. Confined to Syncordian so the
+    # other CRDTs keep receiving byte-identical op streams.
+    shift =
+      if peer_module == Syncordian.Peer and Map.get(edit, :zero_old, false),
+        do: 1,
+        else: 0
+
     case Map.get(edit, :op) do
       :insert ->
         peer_module.insert(
           peer_pid,
           Map.get(edit, :content),
-          Map.get(edit, :index) + acc,
-          Map.get(edit, :test_index) + acc,
+          Map.get(edit, :index) + acc + shift,
+          Map.get(edit, :test_index) + acc + shift,
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )
@@ -137,8 +147,8 @@ defmodule Syncordian.Supervisor do
       :delete ->
         peer_module.delete_line(
           peer_pid,
-          Map.get(edit, :index) + acc,
-          Map.get(edit, :test_index) + acc,
+          Map.get(edit, :index) + acc + shift,
+          Map.get(edit, :test_index) + acc + shift,
           Map.get(edit, :global_position),
           Map.get(edit, :current_delete_ops)
         )
@@ -241,7 +251,17 @@ defmodule Syncordian.Supervisor do
   # replay waits.
   @spec await_author_materialization(pid(), String.t(), String.t()) :: :ok
   defp await_author_materialization(peer_pid, commit_hash, author_id) do
-    expected = :erlang.md5(Syncordian.GitLog.file_at(commit_hash))
+    # The line-based document cannot represent a missing final newline (materialization
+    # appends "\n" to every live line), so normalize the expected side: a git state that
+    # ends without a trailing newline is compared as if it had one.
+    content = Syncordian.GitLog.file_at(commit_hash)
+
+    content =
+      if content != "" and not String.ends_with?(content, "\n"),
+        do: content <> "\n",
+        else: content
+
+    expected = :erlang.md5(content)
     warn_at = System.monotonic_time(:millisecond) + 60_000
     poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at)
   end
@@ -514,7 +534,7 @@ defmodule Syncordian.Supervisor do
           )
 
           # TODO: repetid code!
-          pid_individual = supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
+          pid_individual = supervisor |> get_pid_list() |> Enum.random()
           send(pid_individual, {:write_raw_document})
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)

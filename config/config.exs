@@ -13,7 +13,8 @@ config :syncordian,
   # history to use. Path is relative to the mix working directory (code/). Override at
   # runtime with SYNCORDIAN_REPO_PATH / SYNCORDIAN_TRACKED_FILE (see Syncordian.GitLog).
   git_repo_path: "../../repos/ohmyzsh",
-  git_tracked_file: "README.md"
+  # git_tracked_file: "oh-my-zsh.sh"
+  git_tracked_file: "plugins/git/git.plugin.zsh"
 
 # Configures the endpoint
 config :syncordian, SyncordianWeb.Endpoint,

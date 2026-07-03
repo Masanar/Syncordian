@@ -33,6 +33,15 @@
 #
 # Approximate wall time: ~3 min for the 71-commit OhMyZsh log (71 commits × ~2s
 # dispatch + settle time); scales with however many commits the configured repo/file has.
+#
+# Once the network reaches quiescence, the script also triggers a final metadata
+# collect + save — the same {:collect_metadata_from_peers} / {:print_supervisor_metadata}
+# pair the /supervisor LiveView's "Collect Metadata" / "Save Metadata" buttons send — so
+# every run leaves a fully-settled JSON snapshot under debug/metadata/supervisor/syncordian/
+# for scripts/data_visualization.py, on top of the per-commit snapshots and the per-edit
+# ones under debug/metadata/individual_peer/syncordian/ (for
+# scripts/heap_size_visualization.py) that get written automatically as the replay runs.
+#
 # After it completes, the script invokes scripts/identical.sh, which exits 0
 # iff every dumped peer document is byte-identical.
 
@@ -45,7 +54,6 @@ defmodule FullExperiment do
     Path.wildcard(Path.join(out_dir, "document_peer_*"))
     |> Enum.each(&File.rm!/1)
 
-    print_source_summary()
     if observer?, do: start_observer()
 
     IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=#{byzantine_count} …")
@@ -73,6 +81,9 @@ defmodule FullExperiment do
     files = Path.wildcard(Path.join(out_dir, "document_peer_*")) |> Enum.sort()
     IO.puts("Dumped #{length(files)} peer documents:")
     Enum.each(files, &IO.puts("  #{&1}"))
+
+    save_final_metadata(sup_pid)
+    print_source_summary()
 
     IO.puts("\nRunning scripts/identical.sh from code/ …")
     # identical.sh is written assuming CWD = code/scripts and FOLDER=../debug/documents,
@@ -196,7 +207,21 @@ defmodule FullExperiment do
     IO.puts("Author peers:     #{length(authors_list)}")
     IO.puts("Commits to replay: #{length(commits)}")
     IO.puts("Last commit hash: #{last_commit}")
-    IO.puts("  (verify manually with: git -C #{repo} show #{last_commit}:#{file})")
+  end
+
+  # Mirrors the /supervisor LiveView's "Collect Metadata" + "Save Metadata" buttons
+  # (`{:collect_metadata_from_peers}` then `{:print_supervisor_metadata}`), so a headless
+  # run gets the same final, fully-settled network-wide metadata JSON under
+  # `debug/metadata/supervisor/syncordian/` that those buttons produce from the UI —
+  # not just the earlier per-commit snapshots the supervisor's own replay loop already
+  # writes automatically while commits are still in flight. Individual-peer metadata
+  # (`debug/metadata/individual_peer/syncordian/`) needs no equivalent trigger: peers
+  # write one snapshot per edit as they apply it, with no separate collect/save step.
+  defp save_final_metadata(sup_pid) do
+    send(sup_pid, {:collect_metadata_from_peers})
+    Process.sleep(1_000)
+    send(sup_pid, {:print_supervisor_metadata})
+    Process.sleep(500)
   end
 
   defp wait_for_limit_reached do

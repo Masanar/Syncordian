@@ -111,6 +111,16 @@ slice of the experiment:
   dumps every peer's document, and checks byte-for-byte convergence inline.
   Wall time is ~3 min for the 71-commit OhMyZsh log.
 
+  Per-commit network-wide metadata snapshots (`debug/metadata/supervisor/syncordian/`,
+  input to `scripts/data_visualization.py`) and per-edit single-peer snapshots
+  (`debug/metadata/individual_peer/syncordian/`, input to
+  `scripts/heap_size_visualization.py`) get written automatically as the replay
+  runs. Once the network reaches quiescence, the script also triggers one final
+  metadata collect + save — the same `{:collect_metadata_from_peers}` /
+  `{:print_supervisor_metadata}` pair the `/supervisor` LiveView's "Collect
+  Metadata" / "Save Metadata" buttons send — so every headless run leaves a
+  fully-settled final JSON snapshot on disk too, without needing the UI.
+
   ```bash
   mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
   mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine

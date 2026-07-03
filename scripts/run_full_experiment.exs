@@ -7,8 +7,7 @@
 #
 # Run from `code/` as:
 #
-#     ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 \
-#       mix run --no-start scripts/run_full_experiment.exs
+#     mix run --no-start scripts/run_full_experiment.exs
 #
 # Approximate wall time: ~3 min (71 commits × ~2s dispatch + settle time).
 # After it completes, the script invokes scripts/identical.sh, which exits 0

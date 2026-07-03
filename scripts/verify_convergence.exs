@@ -13,8 +13,7 @@
 #
 # Run from `code/` after "Write current peers document":
 #
-#     ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 \
-#       mix run --no-start scripts/verify_convergence.exs
+#     mix run --no-start scripts/verify_convergence.exs
 
 docs_dir = "debug/documents/syncordian"
 raw_path = Path.join(docs_dir, "raw/document")

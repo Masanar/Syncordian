@@ -6,7 +6,7 @@
 #
 # Run from `code/` as:
 #
-#     ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 mix run scripts/three_peer_smoke.exs
+#     mix run scripts/three_peer_smoke.exs
 #
 # After it completes, run:
 #

@@ -11,7 +11,7 @@
 #
 # Run from `code/` as:
 #
-#     ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 mix run --no-start scripts/interleaving_smoke.exs
+#     mix run --no-start scripts/interleaving_smoke.exs
 
 alias Syncordian.Peer
 

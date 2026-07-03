@@ -15,18 +15,6 @@ across all peers, even in the presence of Byzantine nodes. Moreover, we evaluate
 performance of the Syncordian with respect to memory consumption, network load, and
 execution, demonstrating its usability in real world scenarios.
 
-## Additional Results
-### Interleaving evaluation results
-
-The table below shows the results for the percentage of interleavings that occur while building the shared document for the Oh my zsh readme file. In the table we shows the average percentage of interleavings, together with the final document for each peer, and the number of interleavings in each file
-
-| Implementation    | Average % of interleaving lines | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| -------- | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: 
-| Logoot  | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| Treedoc | % | peer 1 | peer 2 | peer 3 | peer 4 | peer 5 | peer 6 | peer 7 | peer 8 | peer 9 | peer 10 | peer 11 | peer 12 | peer 13 | peer 14 | peer 15 | peer 16 | peer 17 | peer 18 | peer 19 | peer 20 | peer 21 | peer 22 | peer 23 | peer 24 | peer 25 | peer 26 | peer 27 | peer 28 | peer 29 | peer 30 |
-| Fugue | 0% | [peer 1](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_1) <br> 0 interleavings | [peer 2](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_2) <br> 0 interleavings | [peer 3](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_3) <br> 0 interleavings | [peer 4](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_4) <br> 0 interleavings | [peer 5](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_5) <br> 0 interleavings | [peer 6](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_6) <br> 0 interleavings | [peer 7](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_7) <br> 0 interleavings | [peer 8](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_8) <br> 0 interleavings | [peer 9](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_9) <br> 0 interleavings | [peer 10](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_10) <br> 0 interleavings| [peer 11](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_11) <br> 0 interleavings | [peer 12](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_12) <br> 0 interleavings | [peer 13](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_13) <br> 0 interleavings | [peer 14](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_14) <br> 0 interleavings | [peer 15](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_15) <br> 0 interleavings | [peer 16](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_16) <br> 0 interleavings| peer [peer 17](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_17) <br> 0 interleavings | [peer 18](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_18) <br> 0 interleavings | [peer 19](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_19) <br> 0 interleavings | [peer 20](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_20) <br> 0 interleavings | [peer 21](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_21) <br> 0 interleavings | [peer 22](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_22) <br> 0 interleavings | [peer 23](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_23) <br> 0 interleavings | [peer 24](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_24) <br> 0 interleavings | [peer 25](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_25) <br> 0 interleavings | [peer 26](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_26) <br> 0 interleavings | [peer 27](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_27) <br> 0 interleavings | [peer 28](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_28) <br> 0 interleavings | [peer 29](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_29) <br> 0 interleavings | [peer 30](https://github.com/Masanar/Syncordian/tree/main/debug/documents/fugue/tree_peer_30) <br> 0 interleavings |
-| Syncordian | 0% | [peer 1](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_1) <br> 0 interleavings | [peer 2](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_2) <br> 0 interleavings | [peer 3](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_3) <br> 0 interleavings | [peer 4](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_4) <br> 0 interleavings | [peer 5](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_5) <br> 0 interleavings | [peer 6](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_6) <br> 0 interleavings | [peer 7](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_7) <br> 0 interleavings | [peer 8](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_8) <br> 0 interleavings | [peer 9](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_9) <br> 0 interleavings | [peer 10](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_10) <br> 0 interleavings| [peer 11](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_11) <br> 0 interleavings | [peer 12](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_12) <br> 0 interleavings | [peer 13](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_13) <br> 0 interleavings | [peer 14](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_14) <br> 0 interleavings | [peer 15](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_15) <br> 0 interleavings | [peer 16](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_16) <br> 0 interleavings| peer [peer 17](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_17) <br> 0 interleavings | [peer 18](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_18) <br> 0 interleavings | [peer 19](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_19) <br> 0 interleavings | [peer 20](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_20) <br> 0 interleavings | [peer 21](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_21) <br> 0 interleavings | [peer 22](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_22) <br> 0 interleavings | [peer 23](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_23) <br> 0 interleavings | [peer 24](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_24) <br> 0 interleavings | [peer 25](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_25) <br> 0 interleavings | [peer 26](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_26) <br> 0 interleavings | [peer 27](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_27) <br> 0 interleavings | [peer 28](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_28) <br> 0 interleavings | [peer 29](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_29) <br> 0 interleavings | [peer 30](https://github.com/Masanar/Syncordian/tree/main/debug/documents/syncordian/document_peer_30) <br> 0 interleavings |
-
 ## Prerequisites
 
 The project pins Elixir `~> 1.18.3` in `mix.exs`. The verified, working
@@ -35,19 +23,21 @@ toolchain is:
 - **Erlang/OTP 28** (e.g. `28.5`)
 - **Elixir 1.18.4** (built for OTP 28, i.e. `1.18.4-otp-28`)
 
-> #### Toolchain note {: .warning}
 >
 > A newer default Elixir (e.g. 1.19.x) does **not** satisfy the `~> 1.18.3`
 > constraint and `mix` will refuse to compile. If your machine defaults to a
-> newer version (or you manage versions with `asdf`/`mise`), prefix every `mix`
-> command with the pinned versions:
+> newer version (or you manage versions with `asdf`/`mise`), switch your
+> default rather than prefixing every command, e.g.:
 >
 > ```bash
-> ASDF_ELIXIR_VERSION=1.18.4-otp-28 ASDF_ERLANG_VERSION=28.5 mix <task>
+> asdf local elixir 1.18.4-otp-28 erlang 28.5
+> # or: mise use elixir@1.18.4-otp-28 erlang@28.5
 > ```
 >
 > Check what you have with `elixir --version`. There is no `.tool-versions` file
 > in the repo, so the version is governed solely by the `mix.exs` constraint.
+> The commands throughout this README assume `elixir`/`mix` on `PATH` already
+> resolve to the pinned toolchain.
 
 All Elixir dependencies are vendored in `deps/` and pre-compiled in `_build/`,
 and the esbuild/tailwind binaries are cached under `_build/`, so the project
@@ -65,9 +55,6 @@ mix setup            # = deps.get + assets.setup + assets.build
 # The experiment scripts write here; create it once.
 mkdir -p debug/documents
 ```
-
-(Remember the `ASDF_*` prefix from the note above if your default Elixir is newer
-than 1.18.)
 
 ## Running the web UI
 
@@ -111,25 +98,73 @@ In development, `/dev/dashboard` (Phoenix LiveDashboard) and `/dev/mailbox`
 
 The same evaluation can be driven from scripts with `mix run --no-start`
 (`--no-start` avoids booting the Phoenix/esbuild app, which is unnecessary and
-crashes a script run):
+crashes a script run). Each script under `code/scripts/` exercises a different
+slice of the experiment:
 
-```bash
-# Full paper experiment: replay all commits across 30 peers, then verify that
-# every peer's document is byte-identical. Optional arg = Byzantine peer count.
-mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
-mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine
+- **`run_full_experiment.exs`** — the full paper experiment. Replays all 71
+  commits of the OhMyZsh README git log across the 30 author peers (plus an
+  optional number of Byzantine peers), waits for the network to settle, dumps
+  every peer's document, and then checks byte-for-byte convergence inline.
+  Wall time is ~3 min for the 71-commit replay.
 
-# Fast smoke tests:
-mix run --no-start scripts/three_peer_smoke.exs              # 3-peer convergence
-mix run --no-start scripts/interleaving_smoke.exs            # non-interleaving theorem
+  ```bash
+  mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
+  mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine
+  ```
 
-# Mix task entry point (drives Syncordian.Supervisor.init/2):
-mix syncordian.eval
-```
+- **`three_peer_smoke.exs`** — a fast, git-log-free smoke test. Spawns 3 peers,
+  issues a handful of manual inserts and one delete, settles, and dumps each
+  peer's document so you can diff peer 0 against peers 1 and 2. Useful as a
+  quick sanity check after touching the core CRDT (PathId, vector clocks) without
+  waiting for a full replay.
+
+  ```bash
+  mix run scripts/three_peer_smoke.exs
+  ```
+
+- **`interleaving_smoke.exs`** — targets the non-interleaving theorem
+  specifically. Forces two peers to author overlapping edit blocks concurrently
+  into the same interval (widening the broadcast delay so neither sees the
+  other until both blocks are fully authored), then asserts both that the
+  network converges and that each author's block stays contiguous (no
+  interleaved lines).
+
+  ```bash
+  mix run --no-start scripts/interleaving_smoke.exs
+  ```
+
+- **`verify_convergence.exs`** — the canonical post-hoc check, meant to run
+  after "Write current peers document" (from the UI or from
+  `run_full_experiment.exs`). Unlike `identical.sh`, it derives the expected
+  final document dynamically from the same live git source the experiment
+  replayed (`Syncordian.GitLog` / `Syncordian.GitParser`), so it stays correct
+  regardless of which clone or tracked file the run used. It checks, in order:
+  (1) all peer documents are byte-identical to each other; (2) the converged
+  document is byte-identical to the tracked file at the last replayed mainline
+  commit (`git show <commit>:<file>`); (3) if a raw dump exists, no line is
+  still `:aura` (i.e. every line settled to a final status at quiescence).
+
+  ```bash
+  mix run --no-start scripts/verify_convergence.exs
+  ```
+
+- Mix task entry point (drives `Syncordian.Supervisor.init/2` directly):
+
+  ```bash
+  mix syncordian.eval
+  ```
+
+Two small shell helpers round out the `scripts/` directory but aren't part of
+the CRDT evaluation itself — they inspect the git history that drives the
+replay: `analyze-commits.sh` lists the most frequently touched files across the
+whole log, and `number-of-commits.sh <file_path>` counts commits touching a
+given path.
 
 ### Checking convergence
 
-After dumping documents, assert that all peers converged byte-for-byte:
+`verify_convergence.exs` (above) is the preferred, dynamic check. The older
+`scripts/identical.sh` remains for a simpler, fixture-free pairwise byte-equality
+check across whatever's under `debug/documents/`:
 
 ```bash
 cd code
@@ -158,6 +193,27 @@ mix test                                   # all tests
 mix test test/syncordian/path_id_test.exs  # a single file
 mix test test/syncordian/path_id_test.exs:42  # a single test by line
 ```
+
+`code/test/` is organized by what it exercises:
+
+- **`test/syncordian/`** — unit tests for the Syncordian CRDT's internals, one
+  file per concern: `path_id_test.exs` (dense identifier allocation between two
+  existing lines), `document_test.exs` (line insertion/deletion bookkeeping),
+  `interleaving_test.exs` (the re-placement logic that keeps concurrently
+  authored blocks contiguous), `vector_clock_test.exs` (causal ordering),
+  `pending_ops_test.exs` / `seen_ops_test.exs` (the buffers that hold
+  out-of-order/duplicate remote edits until they're applicable), and
+  `ack_signature_test.exs` / `wire_signature_test.exs` /
+  `boundary_secret_test.exs` (the Byzantine-resistant signing scheme edits carry
+  over the wire). A `supervisor/` subdirectory covers the commit-replay/edit-index
+  accounting done by `Syncordian.Supervisor` and `Syncordian.GitParser`.
+- **`test/syncordian_web/controllers/`** — Phoenix controller/endpoint tests for
+  the LiveView routes.
+- **`test/git_log/`** — legacy fixture git logs
+  (`ohmyzsh_README_git_log`, `ohmyzsh_README_full_git_log`) kept for ad-hoc
+  parser testing via `parser_git_log/1`; real experiment runs now read the log
+  live from the configured clone through `Syncordian.GitLog` instead of these
+  fixtures.
 
 Code is formatted with `mix format` (config in `.formatter.exs`).
 

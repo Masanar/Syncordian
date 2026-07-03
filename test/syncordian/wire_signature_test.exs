@@ -120,7 +120,7 @@ defmodule Syncordian.WireSignatureTest do
 
       # Direct path: locate parents by position, verify the tag, seal σ from the pair.
       line_index = get_document_new_index_by_incoming_line_id(provisional, receiver_document)
-      [left_parent, right_parent] = get_parents_by_index(receiver_document, line_index)
+      [left_parent, right_parent] = get_splice_parents(receiver_document, line_index)
       assert Byzantine.check_tag_insert(left_parent, provisional, right_parent, insert_tag)
 
       sigma_direct =
@@ -154,6 +154,56 @@ defmodule Syncordian.WireSignatureTest do
       # Both receiver routes and the author agree on σ — without σ ever traveling.
       assert sigma_direct == sigma_stash
       assert sigma_direct == get_signature(authored_line)
+    end
+
+    test "direct path verifies an insert whose right neighbor is the second-to-last line" do
+      # Regression for the splice-index/git-index confusion: the author inserts between
+      # (infimum, a) in a document whose only live line is `a`, so at the receiver the
+      # incoming line's right neighbor sits at index len-2. Feeding the splice index into
+      # get_parents_by_index/2 (git semantics, `distance == 2` append case) mislocated the
+      # pair as (a, supremum), failed the tag check, and permanently dropped the honest
+      # insert once the receiver held the sender's full causal context — divergence.
+      infimum = create_infimum_line(0, @network_size)
+      supremum = create_supremum_line(0, @network_size)
+
+      line_a =
+        create_line_between_two_lines("existing line", infimum, supremum, @author_peer, {
+          @author_peer,
+          1
+        })
+
+      content = "inserted at top"
+
+      authored_line =
+        create_line_between_two_lines(content, infimum, line_a, @author_peer, {@author_peer, 2})
+
+      insert_tag =
+        Byzantine.create_tag_insert(
+          get_signature(infimum),
+          content,
+          get_signature(line_a),
+          @author_peer
+        )
+
+      receiver_document = [infimum, line_a, supremum]
+
+      provisional =
+        create_line_from_wire(get_line_id(authored_line), content, @author_peer, @network_size)
+
+      line_index = get_document_new_index_by_incoming_line_id(provisional, receiver_document)
+      [left_parent, right_parent] = get_splice_parents(receiver_document, line_index)
+
+      assert Byzantine.check_tag_insert(left_parent, provisional, right_parent, insert_tag)
+
+      sealed_sigma =
+        Byzantine.create_signature_doc(
+          get_signature(left_parent),
+          content,
+          get_signature(right_parent),
+          @author_peer
+        )
+
+      assert sealed_sigma == get_signature(authored_line)
     end
   end
 

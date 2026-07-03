@@ -669,14 +669,23 @@ defmodule Syncordian.Peer do
   end
 
   # Re-issues the lower-priority block this peer authored as a fresh contiguous chain inside
-  # the disjoint sub-interval (gap_left, gap_right), retracting the superseded lines. No
-  # existing line's position, signature, or identity is rewritten — the new lines are
-  # ordinary authored inserts and the retractions ordinary deletes — so the convergence and
-  # signature invariants are untouched (the re-placement is operation issuance, not state
-  # mutation, in the sense of sec:formal-intention).
+  # the disjoint sub-interval (gap_left, wall), retracting the superseded lines. The right
+  # parent is `wall` — the document line immediately after gap_left, NOT gap_right: the
+  # interval (gap_left, wall) is empty at authoring time, so every authored parent pair of
+  # the chain is *adjacent* in this replica's document. Receivers locate an insert's parents
+  # by adjacency (direct path) or an L1-clock-bounded window (stash path); authoring against
+  # the non-adjacent (gap_left, gap_right) pair — with the still-present superseded lines
+  # between them — puts the authored pair beyond both locators and gets the replacement
+  # inserts rejected at every other replica while the retraction deletes still apply.
+  # Everything still sorts strictly below wall <= gap_right, i.e. left of the
+  # higher-priority block, so theo:nonint is unaffected. No existing line's position,
+  # signature, or identity is rewritten — the new lines are ordinary authored inserts and
+  # the retractions ordinary deletes — so the convergence and signature invariants are
+  # untouched (the re-placement is operation issuance, not state mutation, in the sense of
+  # sec:formal-intention).
   @spec reissue_replacement(peer(), Syncordian.Interleaving.replacement()) :: peer()
   defp reissue_replacement(peer, replacement) do
-    %{moving_lines: moving_lines, gap_left: gap_left, gap_right: gap_right} = replacement
+    %{moving_lines: moving_lines, gap_left: gap_left, wall: wall} = replacement
 
     peer =
       get_metadata(peer)
@@ -685,7 +694,7 @@ defmodule Syncordian.Peer do
 
     {peer, _last_left} =
       Enum.reduce(moving_lines, {peer, gap_left}, fn old_line, {peer_acc, left_parent} ->
-        reissue_one_line(peer_acc, old_line, left_parent, gap_right)
+        reissue_one_line(peer_acc, old_line, left_parent, wall)
       end)
 
     peer
@@ -1174,7 +1183,12 @@ defmodule Syncordian.Peer do
                 line_index =
                   get_document_new_index_by_incoming_line_id(provisional_line, document)
 
-                [left_parent, right_parent] = get_parents_by_index(document, line_index)
+                # line_index is a SPLICE index (the right neighbor's position), so the
+                # candidate parents are the pair around it — not get_parents_by_index/2,
+                # whose git-calibrated append case returns the wrong pair when the right
+                # neighbor is the second-to-last line. This matches the stash path, whose
+                # nearest candidate pair is exactly this adjacent pair.
+                [left_parent, right_parent] = get_splice_parents(document, line_index)
 
                 case order_vc do
                   # local_vc ≤ incoming_vc — deliver
@@ -1237,6 +1251,20 @@ defmodule Syncordian.Peer do
                           )
                           |> loop
                         else
+                          # Terminal drop of an admitted insert: this gaps the sender's
+                          # sequence at this replica forever (every later op of that
+                          # sender head-of-line blocks on the missing clock tick), so it
+                          # must be loud.
+                          debug_print(
+                            "insert TERMINAL DROP (direct path)",
+                            %{
+                              op_id: op_id,
+                              local_vc: local_vector_clock,
+                              incoming_vc: incoming_vc,
+                              line_index: line_index
+                            }
+                          )
+
                           get_metadata(peer)
                           |> inc_insert_request_counter
                           |> update_metadata(peer)
@@ -1304,6 +1332,18 @@ defmodule Syncordian.Peer do
                           )
                           |> loop
                         else
+                          # Terminal drop of an admitted insert (see the direct-path
+                          # drop above): must be loud.
+                          debug_print(
+                            "insert TERMINAL DROP (stash path)",
+                            %{
+                              op_id: op_id,
+                              local_vc: local_vector_clock,
+                              incoming_vc: incoming_vc,
+                              window: projection_distance(local_vector_clock, incoming_vc)
+                            }
+                          )
+
                           get_metadata(peer)
                           |> inc_insert_stash_fail_counter
                           |> update_metadata(peer)

@@ -347,9 +347,38 @@ defmodule Syncordian.Document do
     end)
   end
 
+  @doc """
+    Parent pair of an incoming broadcast line located by its splice index — the index of
+    the line's right neighbor, as returned by `get_document_new_index_by_incoming_line_id/2`.
+    The parents of a splice at index `i` are always `{document[i-1], document[i]}`: the
+    infimum sentinel guarantees `i >= 1` and the supremum guarantees `i <= len - 1`, so
+    both lookups are total.
+
+    This is deliberately distinct from `get_parents_by_index/2`, whose index is a
+    *translated git index* with empirically calibrated append/tail cases (its
+    `distance == 2` branch returns `{document[i], document[i+1]}`). Feeding a splice index
+    into that function returns the wrong pair whenever the incoming line's right neighbor
+    sits at `len - 2`, making an honest insert's wire tag fail verification against the
+    mislocated pair.
+  """
+  @spec get_splice_parents(
+          document :: Syncordian.Basic_Types.document(),
+          splice_index :: integer()
+        ) :: [Syncordian.Line_Object.line()]
+  def get_splice_parents(document, splice_index) when splice_index >= 1 do
+    [
+      get_document_line_by_index(document, splice_index - 1),
+      get_document_line_by_index(document, splice_index)
+    ]
+  end
+
   # Given a document and a position index, this function returns the previous and next
   # parents of the given index. The line_pos_index_status is the status of the line in the
   # original index i.e. the index with out the shift due to the previous tombstones.
+  #
+  # NOTE: the index here is a *translated git index* (see attempt_local_edit in
+  # Syncordian.Peer); the branches below are calibrated against the git replay. For the
+  # splice index of an incoming broadcast line use get_splice_parents/2 instead.
   @spec get_parents_by_index(
           document :: Syncordian.Basic_Types.document(),
           index :: Syncordian.Basic_Types.git_document_index()

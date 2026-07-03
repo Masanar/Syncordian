@@ -56,14 +56,24 @@ defmodule Syncordian.Interleaving do
 
   @typedoc """
   A re-placement instruction: the `writer` that must re-issue, the superseded `moving_lines`
-  (position-ordered live lines to retract), and the `gap_left` / `gap_right` lines bounding
-  the fresh, disjoint sub-interval the new chain is placed into.
+  (position-ordered live lines to retract), the `gap_left` / `gap_right` lines bounding
+  the fresh, disjoint sub-interval the new chain is placed into, and `wall` — the document
+  line immediately to the right of `gap_left` (the first superseded member inside the gap,
+  or `gap_right` itself when the gap holds none). The writer authors the re-issued chain
+  between `gap_left` and `wall`: the interval `(gap_left, wall)` is empty by definition of
+  successor, so every authored parent pair is *adjacent* in the writer's document at
+  authoring time — the invariant the receivers' parent locator (adjacent pair on the
+  direct path, L1-clock-bounded window on the stash path) is sound against. All re-issued
+  lines still sort strictly below `wall <= gap_right`, i.e. strictly left of the
+  higher-priority block, so the non-interleaving postcondition (`theo:nonint`) is
+  unchanged.
   """
   @type replacement :: %{
           writer: Syncordian.Basic_Types.peer_id(),
           moving_lines: [Syncordian.Line_Object.line()],
           gap_left: Syncordian.Line_Object.line(),
-          gap_right: Syncordian.Line_Object.line()
+          gap_right: Syncordian.Line_Object.line(),
+          wall: Syncordian.Line_Object.line()
         }
 
   @doc """
@@ -219,7 +229,8 @@ defmodule Syncordian.Interleaving do
                   writer: block.writer,
                   moving_lines: block.lines,
                   gap_left: gap_left,
-                  gap_right: gap_right
+                  gap_right: gap_right,
+                  wall: successor_line(document, gap_left, gap_right)
                 }
               ]
             end
@@ -251,6 +262,28 @@ defmodule Syncordian.Interleaving do
     blocks
     |> Enum.flat_map(& &1.lines)
     |> Enum.min_by(&get_line_id/1, PathId, fn -> nil end)
+  end
+
+  # The document line immediately after `gap_left` in the ⋖-sorted document (taken from
+  # the list itself, so position ties resolved by the identity tiebreak stay consistent).
+  # By construction of nearest_left_non_member/3 every line strictly between gap_left and
+  # gap_right is a moving-block member, so the successor is the first superseded member,
+  # or gap_right itself when the gap holds none — never a foreign line. `fallback`
+  # (gap_right) is only reached if gap_left were somehow absent or the last line, which
+  # cannot happen for a line chosen strictly left of gap_right; it keeps the function
+  # total.
+  @spec successor_line(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Line_Object.line()
+        ) :: Syncordian.Line_Object.line()
+  defp successor_line(document, gap_left, fallback) do
+    gap_left_id = get_line_id(gap_left)
+
+    case Enum.drop_while(document, fn line -> get_line_id(line) != gap_left_id end) do
+      [_gap_left, successor | _] -> successor
+      _ -> fallback
+    end
   end
 
   # The closest line strictly to the left of `gap_right` in the sorted document that is not

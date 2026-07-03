@@ -162,8 +162,15 @@ defmodule FullExperiment do
 
     case Application.ensure_all_started(:observer) do
       {:ok, _} ->
-        :observer.start()
-        IO.puts("Observer launched — look under the \"Processes\" tab for the peer PIDs.")
+        case :observer.start() do
+          :ok ->
+            IO.puts("Observer launched — look under the \"Processes\" tab for the peer PIDs.")
+
+          {:error, reason} ->
+            IO.puts(
+              "Could not start the Observer window (#{inspect(reason)}) — continuing without it."
+            )
+        end
 
       {:error, reason} ->
         IO.puts(

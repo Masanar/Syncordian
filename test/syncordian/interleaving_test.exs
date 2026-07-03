@@ -131,6 +131,32 @@ defmodule Syncordian.InterleavingTest do
       # the nearest non-B line to its left — so (L, a1) is a clean, disjoint sub-interval.
       assert get_line_id(r.gap_right) == get_line_id(a1)
       assert get_line_id(r.gap_left) == get_line_id(anchor_l())
+      # No moving-block line lies between gap_left and gap_right, so the wall — the fixed
+      # right parent the writer re-issues against — is gap_right itself.
+      assert get_line_id(r.wall) == get_line_id(a1)
+    end
+
+    test "the wall is the first superseded member when one lies inside the gap" do
+      # b1@7 sits between the anchor L@5 (gap_left) and a1@10 (gap_right), so the writer
+      # must author the re-issued chain against (L, b1): the interval (L, b1) is empty, so
+      # every authored parent pair is adjacent in the writer's document — the invariant the
+      # receivers' parent locator relies on. Authoring against (L, a1) instead would put the
+      # authored pair beyond the receivers' adjacency/window search (b1 still occupies its
+      # position after retraction, tombstones are never removed).
+      a1 = mk_line(10, 1, {1, 1}, @l_op, @r_op)
+      a2 = mk_line(30, 1, {1, 2}, {1, 1}, @r_op)
+      b1 = mk_line(7, 2, {2, 1}, @l_op, @r_op)
+      b2 = mk_line(40, 2, {2, 2}, {2, 1}, @r_op)
+
+      document = doc([anchor_l(), anchor_r(), a1, a2, b1, b2])
+      replacements = Interleaving.detect_replacements(document)
+
+      assert length(replacements) == 1
+      [r] = replacements
+      assert r.writer == 2
+      assert get_line_id(r.gap_left) == get_line_id(anchor_l())
+      assert get_line_id(r.gap_right) == get_line_id(a1)
+      assert get_line_id(r.wall) == get_line_id(b1)
     end
 
     test "priority is by writer id regardless of which side is positionally first" do

@@ -24,9 +24,8 @@ defmodule Syncordian.PathId do
 
   `between/3` produces a fresh path strictly between two existing paths. It walks the
   shared prefix, then either picks a digit between the two diverging segments or
-  extends the smaller path by one segment. The chosen digit is drawn from a small
-  random sub-range of `[lo, hi]`, biased toward the left parent, to mirror the
-  edit-locality heuristic of the previous float-based scheme.
+  extends the smaller path by one segment. The chosen digit is drawn uniformly at
+  random from the available range `[lo, hi]` (see `pick_digit/2`).
 
   This module is pure and side-effect-free aside from `:rand.uniform/1` inside
   `between/3`. It does not depend on the rest of the codebase.

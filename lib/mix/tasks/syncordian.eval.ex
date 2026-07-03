@@ -56,7 +56,8 @@ defmodule Mix.Tasks.Syncordian.Eval do
     # rerun look like it converged.
     crdt_dir
     |> File.ls!()
-    |> Enum.reject(&(&1 in [".gitignore", "raw"]))
+    |> Enum.reject(&(&1 == ".gitignore"))
+    |> Enum.reject(&File.dir?(Path.join(crdt_dir, &1)))
     |> Enum.each(&File.rm!(Path.join(crdt_dir, &1)))
 
     IO.puts(banner(crdt, byzantine))

@@ -97,4 +97,38 @@ defmodule Syncordian.DocumentTest do
       assert get_document_index_by_line_id(document, {:path, [{99, 9}]}) == nil
     end
   end
+
+  describe "get_splice_parents/2" do
+    # The splice index of an incoming line is the index of its right neighbor
+    # (get_document_new_index_by_incoming_line_id/2), so the parents are always the
+    # adjacent pair {doc[i-1], doc[i]} — for EVERY valid splice position, including the
+    # second-to-last one that get_parents_by_index/2 (git-index semantics) maps to the
+    # append pair instead.
+    test "returns the adjacent pair around every splice position" do
+      a = mk_line({:path, [{10, 1}]}, 1, {1, 1})
+      b = mk_line({:path, [{20, 2}]}, 2, {2, 1})
+      {:ok, document} = add_line_to_document(a, base_document())
+      {:ok, document} = add_line_to_document(b, document)
+
+      # document: [infimum, a, b, supremum]
+      for i <- 1..3 do
+        assert get_splice_parents(document, i) ==
+                 [Enum.at(document, i - 1), Enum.at(document, i)]
+      end
+    end
+
+    test "splice before the last real line yields that line as right parent (len-2 geometry)" do
+      a = mk_line({:path, [{10, 1}]}, 1, {1, 1})
+      {:ok, document} = add_line_to_document(a, base_document())
+
+      # Incoming line between infimum and a: right neighbor a sits at index len-2.
+      incoming = mk_line({:path, [{5, 2}]}, 2, {2, 1})
+      splice = get_document_new_index_by_incoming_line_id(incoming, document)
+      assert splice == 1
+
+      [left, right] = get_splice_parents(document, splice)
+      assert get_line_id(left) == :infimum
+      assert get_line_id(right) == {:path, [{10, 1}]}
+    end
+  end
 end

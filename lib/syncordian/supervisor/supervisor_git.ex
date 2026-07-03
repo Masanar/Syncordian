@@ -496,7 +496,23 @@ defmodule Syncordian.Supervisor do
           )
         else
           IO.puts("All commits processed")
-          send(self(), {:write_current_peers_document})
+
+          # The final commit's broadcasts (and any suspended-op cascades they release)
+          # are still propagating when the loop reaches this point — the barrier only
+          # gated the NEXT commit's author, and there is no next commit. Snapshot every
+          # peer's suspended-op buffer for diagnosis, then give the network a settle
+          # window before dumping documents, so the convergence check measures the
+          # fixpoint rather than the in-flight backlog.
+          supervisor
+          |> get_pid_list()
+          |> Enum.each(&send(&1, {:write_pending_dump}))
+
+          Process.send_after(
+            self(),
+            {:write_current_peers_document},
+            Application.get_env(:syncordian, :final_settle_ms, 3_000)
+          )
+
           # TODO: repetid code!
           pid_individual = supervisor |> get_pid_list() |> Enum.at(:rand.uniform(28))
           send(pid_individual, {:write_raw_document})

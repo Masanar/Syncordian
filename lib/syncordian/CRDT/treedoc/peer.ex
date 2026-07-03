@@ -20,10 +20,8 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
   and broadcasts through `Syncordian.Utilities.perform_broadcast/3`.
   """
   import Syncordian.Metadata
-  import Syncordian.Utilities
-  alias Syncordian.CRDT.Treedoc.{Bst, Node}
+  alias Syncordian.CRDT.Treedoc.Bst
 
-  @peer_metadata_id 7
 
   defstruct peer_id: nil,
             document: nil,
@@ -169,13 +167,13 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
   # except the current peer. or the supervisor. This one is define here because here the
   # delay makes sense to be define and then use the perform_broadcast function of the
   # utilities module.
-  @spec perform_broadcast_peer(peer_treedoc(), any) :: any
-  defp perform_broadcast_peer(peer, message) do
-    peer_pid = get_peer_pid(peer)
-    # delay = 10..30
-    delay = 0..0
-    perform_broadcast(peer_pid, message, delay)
-  end
+  # @spec perform_broadcast_peer(peer_treedoc(), any) :: any
+  # defp perform_broadcast_peer(peer, message) do
+  #   peer_pid = get_peer_pid(peer)
+  #   # delay = 10..30
+  #   delay = 0..0
+  #   perform_broadcast(peer_pid, message, delay)
+  # end
 
   def loop(peer) do
     receive do

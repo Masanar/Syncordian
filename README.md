@@ -101,15 +101,32 @@ The same evaluation can be driven from scripts with `mix run --no-start`
 crashes a script run). Each script under `code/scripts/` exercises a different
 slice of the experiment:
 
-- **`run_full_experiment.exs`** — the full paper experiment. Replays all 71
-  commits of the OhMyZsh README git log across the 30 author peers (plus an
-  optional number of Byzantine peers), waits for the network to settle, dumps
-  every peer's document, and then checks byte-for-byte convergence inline.
-  Wall time is ~3 min for the 71-commit replay.
+- **`run_full_experiment.exs`** — the full paper experiment. Prints the source
+  repo/tracked file, author (peer) count, commit count, and the last replayed
+  commit's hash up front (a manual `git show <hash>:<file>` reference point —
+  handy when pointing the run at a repo other than OhMyZsh, where you don't
+  already know what convergence should look like), then replays every commit
+  of the tracked file's mainline log across the resulting author peers (plus
+  an optional number of Byzantine peers), waits for the network to settle,
+  dumps every peer's document, and checks byte-for-byte convergence inline.
+  Wall time is ~3 min for the 71-commit OhMyZsh log.
 
   ```bash
   mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
   mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine
+  ```
+
+  Add `--observer` (in either argument position) to also launch the Erlang
+  `:observer` GUI right before the peers spawn, so you can watch peer process
+  count, mailbox sizes, and memory live during the replay. It needs a display
+  and an Erlang build with `:wx` compiled in; if either is missing the script
+  logs why and continues without it. With `--observer`, the script waits for
+  an Enter keypress at the end instead of exiting immediately, so the window
+  stays open for inspection:
+
+  ```bash
+  mix run --no-start scripts/run_full_experiment.exs --observer
+  mix run --no-start scripts/run_full_experiment.exs 5 --observer
   ```
 
 - **`three_peer_smoke.exs`** — a fast, git-log-free smoke test. Spawns 3 peers,

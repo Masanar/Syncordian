@@ -62,19 +62,13 @@ defmodule FullExperiment do
     # It also queues a {:write_current_peers_document} to itself at completion.
     wait_for_limit_reached()
 
-    # After {:limit_reached}, the supervisor self-sends {:write_current_peers_document},
-    # which fans out save_content/1 to all peers. Allow time for: (a) any in-flight
-    # broadcasts from the last commit to settle into stash/document, (b) save_content
-    # to actually write each file.
-    settle_ms = 10_000
-    IO.puts("Settling network for #{div(settle_ms, 1000)}s before reading dumps…")
-    Process.sleep(settle_ms)
-
-    # Re-issue the dump explicitly in case some peers missed the supervisor's self-send
-    # because they were still processing broadcasts at that moment.
-    IO.puts("Re-issuing {:write_current_peers_document} as a belt-and-braces…")
-    send(sup_pid, {:write_current_peers_document})
-    Process.sleep(2_000)
+    # Fixed sleeps are NOT enough here: a straggling replica can still be catching up
+    # when the dump lands, so its file is a stale snapshot (and a kill right after loses
+    # its remaining work entirely). Wait for true network quiescence, then dump
+    # repeatedly until two consecutive rounds are byte-identical — a fixpoint.
+    IO.puts("Waiting for network quiescence, then dumping to a fixpoint…")
+    wait_quiescence()
+    wait_dump_fixpoint(sup_pid, out_dir, nil, 1)
 
     files = Path.wildcard(Path.join(out_dir, "document_peer_*")) |> Enum.sort()
     IO.puts("Dumped #{length(files)} peer documents:")
@@ -85,6 +79,68 @@ defmodule FullExperiment do
     # so it walks debug/documents/* at the top level. To make it check the Syncordian
     # subtree specifically, we do the byte-equality check inline instead.
     verify_convergence(files, observer?)
+  end
+
+  # Total queued messages across all globally registered processes must be 0 on two
+  # consecutive samples 1s apart. (Mailbox emptiness misses in-flight send_after timers,
+  # which is why the dump below still iterates to a fixpoint.)
+  defp wait_quiescence(streak \\ 0, waited_ms \\ 0)
+
+  defp wait_quiescence(2, waited_ms) do
+    IO.puts("  network quiescent after ~#{div(waited_ms, 1000)}s")
+  end
+
+  defp wait_quiescence(streak, waited_ms) do
+    if waited_ms > 600_000 do
+      IO.puts("  WARNING: still #{total_backlog()} queued messages after 10 min; continuing")
+    else
+      Process.sleep(1_000)
+      backlog = total_backlog()
+      if rem(waited_ms, 10_000) == 0 and backlog > 0, do: IO.puts("  backlog: #{backlog}")
+      wait_quiescence(if(backlog == 0, do: streak + 1, else: 0), waited_ms + 1_000)
+    end
+  end
+
+  defp total_backlog do
+    :global.registered_names()
+    |> Enum.map(&:global.whereis_name/1)
+    |> Enum.filter(&is_pid/1)
+    |> Enum.map(fn pid ->
+      try do
+        case Process.info(pid, :message_queue_length) do
+          {:message_queue_length, n} -> n
+          nil -> 0
+        end
+      rescue
+        ArgumentError -> 0
+      end
+    end)
+    |> Enum.sum()
+  end
+
+  # Requests a full document dump each round and stops when two consecutive rounds are
+  # byte-identical (and non-empty) — the network reached a fixpoint. Late peers keep the
+  # loop going instead of leaving a stale file behind.
+  defp wait_dump_fixpoint(sup_pid, out_dir, prev, round) do
+    send(sup_pid, {:write_current_peers_document})
+    Process.sleep(3_000)
+    wait_quiescence()
+
+    current =
+      Path.wildcard(Path.join(out_dir, "document_peer_*"))
+      |> Enum.sort()
+      |> Enum.map(fn f -> {f, :erlang.md5(File.read!(f))} end)
+
+    cond do
+      current == prev and current != [] ->
+        IO.puts("  fixpoint after #{round} dump rounds (#{length(current)} documents)")
+
+      round >= 60 ->
+        IO.puts("  WARNING: no fixpoint after #{round} dump rounds; documents still changing")
+
+      true ->
+        wait_dump_fixpoint(sup_pid, out_dir, current, round + 1)
+    end
   end
 
   # Starts the Erlang :observer GUI (process list, mailbox sizes, memory, etc.) so peer

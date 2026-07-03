@@ -1452,6 +1452,27 @@ defmodule Syncordian.Peer do
         update_metadata(updated_memory_metadata, peer)
         |> loop()
 
+      # Diagnostic snapshot of everything that can wedge a replica: the suspended-op
+      # buffer, the local-edit FIFO, and the clock. Written on demand by experiment
+      # drivers when the network fails to reach a fixpoint.
+      {:write_pending_dump} ->
+        File.mkdir_p!("debug/documents/syncordian/pending")
+
+        dump = %{
+          peer_id: get_peer_id(peer),
+          vector_clock: get_peer_vector_clock(peer),
+          edit_count: get_edit_count(peer),
+          local_edits_queue: get_local_edits(peer),
+          pending_ops: get_pending(peer)
+        }
+
+        File.write!(
+          "debug/documents/syncordian/pending/pending_peer_#{get_peer_id(peer)}",
+          inspect(dump, limit: :infinity, printable_limit: :infinity, pretty: true)
+        )
+
+        loop(peer)
+
       {:write_raw_document} ->
         document = get_peer_document(peer)
         document_str = inspect(document, limit: :infinity, printable_limit: :infinity)

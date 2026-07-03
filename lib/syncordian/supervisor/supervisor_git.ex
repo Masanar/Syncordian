@@ -232,16 +232,21 @@ defmodule Syncordian.Supervisor do
     do: Application.get_env(:syncordian, :commit_dispatch_delay_ms, 100)
 
   # Polls the authoring peer until its materialized document hashes equal to the tracked
-  # file at `commit_hash`. Bounded: after ~60s of mismatch the replay proceeds with a
-  # loud warning (the convergence check will catch the divergence at the end).
+  # file at `commit_hash`. Deliberately UNBOUNDED: dispatching a commit against the wrong
+  # parent state silently corrupts the whole replay (the author broadcasts consistently
+  # wrong ops, so peers agree with each other but not with git), which is strictly worse
+  # than a visibly stalled run. Every 60s of mismatch it prints a warning and snapshots
+  # every peer's suspended-op buffer and local-edit FIFO
+  # (debug/documents/syncordian/pending/), so a wedged replica is diagnosable while the
+  # replay waits.
   @spec await_author_materialization(pid(), String.t(), String.t()) :: :ok
   defp await_author_materialization(peer_pid, commit_hash, author_id) do
     expected = :erlang.md5(Syncordian.GitLog.file_at(commit_hash))
-    deadline = System.monotonic_time(:millisecond) + 60_000
-    poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline)
+    warn_at = System.monotonic_time(:millisecond) + 60_000
+    poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at)
   end
 
-  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline) do
+  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at) do
     ref = make_ref()
     send(peer_pid, {:request_content_hash, self(), ref})
 
@@ -256,17 +261,32 @@ defmodule Syncordian.Supervisor do
       got == expected ->
         :ok
 
-      System.monotonic_time(:millisecond) > deadline ->
+      System.monotonic_time(:millisecond) > warn_at ->
         IO.puts(
-          "WARNING: author #{author_id} did not materialize commit " <>
-            "#{String.slice(commit_hash, 0, 10)} within 60s — replay may diverge"
+          "WARNING: author #{author_id} has not materialized commit " <>
+            "#{String.slice(commit_hash, 0, 10)} after 60s — still waiting; " <>
+            "pending dumps written to debug/documents/syncordian/pending/"
         )
 
-        :ok
+        :global.registered_names()
+        |> Enum.each(fn name ->
+          case :global.whereis_name(name) do
+            pid when is_pid(pid) and name != :supervisor -> send(pid, {:write_pending_dump})
+            _ -> :ok
+          end
+        end)
+
+        poll_author_hash(
+          peer_pid,
+          commit_hash,
+          author_id,
+          expected,
+          System.monotonic_time(:millisecond) + 60_000
+        )
 
       true ->
         Process.sleep(50)
-        poll_author_hash(peer_pid, commit_hash, author_id, expected, deadline)
+        poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at)
     end
   end
 

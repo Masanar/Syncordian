@@ -22,7 +22,6 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
   import Syncordian.Metadata
   alias Syncordian.CRDT.Treedoc.Bst
 
-
   defstruct peer_id: nil,
             document: nil,
             pid: nil,

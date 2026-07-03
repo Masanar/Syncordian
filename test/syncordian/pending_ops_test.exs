@@ -54,6 +54,30 @@ defmodule Syncordian.PendingOpsTest do
     end
   end
 
+  describe "release/2 — vc_ready dependency (clock-gated inserts)" do
+    test "releases only when the local clock dominates the sender's view" do
+      # Insert from sender 1 authored at vc [2, 3, 1]: deliverable once the local clock
+      # reaches 2 on component 0, 3-1 = 2 on the sender's own component, and 1 on
+      # component 2 (the insert itself provides the sender's final tick).
+      buf = P.suspend(P.new(), :ins, {:vc_ready, [2, 3, 1], 1}, 0)
+
+      # Missing causal context on component 0: not released.
+      assert {[], buf} = P.release(buf, {:clock_now, [1, 2, 1]})
+      assert P.size(buf) == 1
+
+      # Sender's own component only needs incoming - 1.
+      assert {[:ins], buf} = P.release(buf, {:clock_now, [2, 2, 1]})
+      assert P.size(buf) == 0
+    end
+
+    test "vc_ready waiters ignore other event kinds" do
+      buf = P.suspend(P.new(), :ins, {:vc_ready, [1, 1], 0}, 0)
+      assert {[], buf} = P.release(buf, :progress)
+      assert {[], buf} = P.release(buf, {:clock_advanced, 0, 5})
+      assert P.size(buf) == 1
+    end
+  end
+
   describe "release/2 — progress dependency and event isolation" do
     test "progress entries release only on a progress event" do
       buf = P.suspend(P.new(), :p, :progress, 0)

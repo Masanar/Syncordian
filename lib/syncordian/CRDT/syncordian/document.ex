@@ -298,85 +298,53 @@ defmodule Syncordian.Document do
   end
 
   # This function checks if the incoming line is checkable in the window of the document
-  # defined by the window_center, window_size, and the document_length. It needs to check
-  # any window size until the window_size attribute in the available part of the document,
-  # based on the document_length, window_size and window center. If the incoming line is
-  # checkable — i.e. some candidate parent pair verifies the insert wire tag — it returns
-  # true together with the (document-index) positions of the accepted parents; otherwise
-  # false.
+  # defined by the window_center, window_size, and the document_length. If the incoming
+  # line is checkable — i.e. some candidate parent pair verifies the insert wire tag — it
+  # returns true together with the (document-index) positions of the accepted parents;
+  # otherwise false.
+  #
+  # The candidate (left, right) pairs are enumerated FLAT, nearest pairs first, so each of
+  # the O(window²) distinct pairs is hashed exactly once. The previous implementation
+  # explored the same pairs by branching recursion (expand-left OR expand-right at every
+  # failure), recomputing overlapping subproblems Θ(2^window) times: once replicas drifted
+  # enough for windows to widen, whole peers sank into billions of SHA checks per message
+  # and the network CPU-melted. By the unique-verifier property of the wire tag at most
+  # one pair can match, so enumeration order cannot change the result.
   #
   # Deletes no longer use this search: their authorization tag binds the target line's
   # stored signature directly (an intrinsic check), so locating shifted neighbors is
   # unnecessary for them.
-  @spec window_stash_check_signature(
-          fix_parameter :: {
-            integer(),
-            integer(),
-            integer(),
-            Syncordian.Basic_Types.document(),
-            Syncordian.Line_Object.line(),
-            Syncordian.Basic_Types.signature()
-          },
-          left_shift :: integer(),
-          right_shift :: integer()
-        ) :: {boolean(), {integer(), integer()}}
+  @spec window_stash_check_signature({
+          integer(),
+          integer(),
+          integer(),
+          Syncordian.Basic_Types.document(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Basic_Types.signature()
+        }) :: {boolean(), {integer(), integer()}}
   defp window_stash_check_signature(
-         fix_parameter =
-           {document_length, window_size, window_center, document, incoming_line, insert_tag},
-         left_shift \\ -1,
-         right_shift \\ 1
+         {document_length, window_size, window_center, document, incoming_line, insert_tag}
        ) do
-    left_parent = get_document_line_by_index(document, window_center + left_shift)
-    right_parent = get_document_line_by_index(document, window_center + right_shift)
+    max_spread = window_size + 2
 
-    not_found_value = {false, {0, 0}}
-
-    check_value = check_tag_insert(left_parent, incoming_line, right_parent, insert_tag)
-
-    if right_parent != nil do
-      if check_value do
-        {true, {left_shift + window_center, right_shift + window_center}}
-      else
-        new_left_shift = left_shift - 1
-        new_right_shift = right_shift + 1
-
-        within_left_bounds? =
-          window_center + new_left_shift >= 0 and
-            new_left_shift * -1 + right_shift <= window_size + 2
-
-        within_right_bounds? =
-          window_center + new_right_shift < document_length and
-            left_shift * -1 + new_right_shift <= window_size + 2
-
-        # Only compute left and right if within bounds
-        result_left =
-          if within_left_bounds?,
-            do: window_stash_check_signature(fix_parameter, new_left_shift, right_shift),
-            else: not_found_value
-
-        result_right =
-          if within_right_bounds? and not elem(result_left, 0),
-            do: window_stash_check_signature(fix_parameter, left_shift, new_right_shift),
-            else: not_found_value
-
-        case {elem(result_left, 0), elem(result_right, 0)} do
-          {false, false} ->
-            not_found_value
-
-          {true, false} ->
-            result_left
-
-          {false, true} ->
-            result_right
-
-          _ ->
-            IO.puts("Error in window_stash_check_signature")
-            result_right
-        end
+    candidate_pairs =
+      for spread <- 2..max_spread,
+          left_shift <- 1..(spread - 1),
+          right_shift = spread - left_shift,
+          window_center - left_shift >= 0,
+          window_center + right_shift < document_length do
+        {window_center - left_shift, window_center + right_shift}
       end
-    else
-      not_found_value
-    end
+
+    Enum.find_value(candidate_pairs, {false, {0, 0}}, fn {left_index, right_index} ->
+      left_parent = get_document_line_by_index(document, left_index)
+      right_parent = get_document_line_by_index(document, right_index)
+
+      if right_parent != nil and
+           check_tag_insert(left_parent, incoming_line, right_parent, insert_tag),
+         do: {true, {left_index, right_index}},
+         else: nil
+    end)
   end
 
   # Given a document and a position index, this function returns the previous and next

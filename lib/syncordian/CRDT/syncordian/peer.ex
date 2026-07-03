@@ -58,7 +58,12 @@ defmodule Syncordian.Peer do
     # Per-peer monotonic counter for minting operation ids (op_seq), and the bounded set of
     # op_ids already applied, used to reject replays (Syncordian.SeenOps).
     op_seq: 0,
-    seen_ops: nil
+    seen_ops: nil,
+    # FIFO of local edits (supervisor git replay) not yet applied. Local edits MUST apply
+    # in arrival order: their git indices assume every earlier local edit of the same
+    # author already took effect, so an unready head blocks the tail (see
+    # drain_local_edits/2).
+    local_edits: []
   )
 
   @type peer ::
@@ -73,7 +78,8 @@ defmodule Syncordian.Peer do
             edit_count: integer(),
             pending: Syncordian.PendingOps.t() | nil,
             op_seq: non_neg_integer(),
-            seen_ops: Syncordian.SeenOps.t() | nil
+            seen_ops: Syncordian.SeenOps.t() | nil,
+            local_edits: list()
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -90,10 +96,11 @@ defmodule Syncordian.Peer do
 
   @spec get_document_byte_size(peer()) :: integer
   def get_document_byte_size(peer) do
-    document = get_peer_document(peer)
-
-    inspect(document, limit: :infinity, printable_limit: :infinity)
-    |> byte_size
+    # Size of the document's external term representation. The metadata peer samples
+    # this on EVERY applied edit, so it must be cheap: the previous
+    # `inspect(limit: :infinity) |> byte_size` built a multi-megabyte string per edit,
+    # which alone made that peer lag thousands of messages behind the network.
+    :erlang.external_size(get_peer_document(peer))
   end
 
   @spec get_module_name() :: String.t()
@@ -230,6 +237,19 @@ defmodule Syncordian.Peer do
     |> then(&update_pending(pending, &1))
   end
 
+  # True when the sender's progress vector records edits (from peers other than the
+  # sender itself) that this replica has not applied yet — i.e. the sender's causal
+  # context is not fully present here, so verification failures may be mere reordering.
+  @spec missing_causal_context?(list(), list(), Syncordian.Basic_Types.peer_id()) ::
+          boolean()
+  defp missing_causal_context?(local_vc, incoming_vc, sender_id) do
+    incoming_vc
+    |> Enum.with_index()
+    |> Enum.any?(fn {incoming_at, j} ->
+      j != sender_id and incoming_at > Enum.at(local_vc, j)
+    end)
+  end
+
   # Releases every operation whose dependency is satisfied by the given apply events and
   # re-dispatches each released payload to the peer's own mailbox. Returns the peer with the
   # trimmed buffer. Called from the apply paths, which are the only points that change
@@ -274,14 +294,14 @@ defmodule Syncordian.Peer do
   # theory this function should trigger the update mechanism of the peer. This feature
   # is not implemented yet. Instead it just prints a message in the console and continues
   # as usual.
-  @spec check_deleted_lines_limit(peer()) :: any()
+  @spec check_deleted_lines_limit(peer()) :: peer()
   defp check_deleted_lines_limit(peer) do
     if get_peer_deleted_count(peer) > @delete_limit do
       # TODO: HERE call the mechanism of broadcast consensus -> update
       IO.puts(" The deleted lines limit has been reached by #{get_peer_id(peer)} ")
     end
 
-    loop(peer)
+    peer
   end
 
   # This is a private function used to update the deleted count of the peer.
@@ -556,7 +576,7 @@ defmodule Syncordian.Peer do
       wake_pending(peer, [
         {:clock_advanced, incoming_peer_id, sender_clock_value},
         {:line_added, get_line_id(line)},
-        :progress
+        {:clock_now, get_peer_vector_clock(peer)}
       ])
 
     # This apply may have completed an interleaving between two concurrently authored blocks
@@ -615,19 +635,18 @@ defmodule Syncordian.Peer do
       |> tick_edit_count()
       |> record_seen(op_id)
 
-    # A delete applied: re-evaluate operations suspended on the generic progress
-    # dependency (inserts whose projection distance was too large — a delete apply ticks
-    # the edit count, so their deliverability may have changed). Deletes themselves only
-    # ever wait on their target line's arrival, never on progress: their verification is
-    # intrinsic to the target.
-    peer = wake_pending(peer, [:progress])
+    # A delete applied: deletes do not advance the vector clock, but re-check the
+    # clock-gated waiters anyway (cheap in-buffer comparisons) in case an earlier release
+    # was missed. Deletes themselves only ever wait on their target line's arrival: their
+    # verification is intrinsic to the target.
+    peer = wake_pending(peer, [{:clock_now, get_peer_vector_clock(peer)}])
 
     peer_up =
       if peer_id == @peer_metadata_id,
         do: save_peer_metadata_edit(peer),
         else: peer
 
-    tick_peer_deleted_count(peer_up)
+    tick_peer_deleted_count(peer_up) |> loop()
   end
 
   # ---- Interleaving re-placement (sec:formal-intention, theo:nonint) -------------------
@@ -756,122 +775,147 @@ defmodule Syncordian.Peer do
   end
 
   # ---- Local edits (supervisor git replay) ---------------------------------------------
+  #
+  # Local edits are the replay's ground truth and their git indices are RELATIVE to the
+  # author's document after every earlier local edit took effect, so they must apply
+  # strictly in arrival order. They therefore go through a per-peer FIFO: only the head
+  # is ever attempted, and an unready head (its referenced git index has not materialized
+  # locally yet, because earlier commits' remote inserts are still in flight) blocks the
+  # tail. A plain per-edit re-queue would let a later edit overtake an unready earlier
+  # one — e.g. the insert of a replace pair becomes satisfiable one remote arrival before
+  # its delete, inverting the pair and tombstoning a shifted line.
+  #
+  # Retrying the head uses a *progress-aware* budget: the attempt counter only advances
+  # while the peer applies nothing between attempts (tracked through its monotone edit
+  # count) and resets whenever the document moved. A slow replica that is still catching
+  # up therefore never abandons its own commit; the budget only expires after a fully
+  # quiescent window, i.e. the referenced index can never materialize. That stalled case
+  # is the local analogue of the remote path's horizon backstop (theo:nostarve): the
+  # head is abandoned, counted, and the drain moves on.
 
-  # Re-queues a local edit whose referenced git index is not materialized yet, with a
-  # small delay (no hot-spin on the own mailbox) and a *progress-aware* retry budget:
-  # the attempt counter only advances while the peer applies no new edit between retries
-  # (tracked through its monotone edit count), and resets whenever the document moved.
-  # A slow replica that is still catching up on remote inserts therefore never abandons
-  # its own commit — the budget only expires when the peer has been fully quiescent for
-  # the whole window, i.e. the referenced index can never materialize. That stalled case
-  # is the horizon backstop of the remote path (theo:nostarve): the edit is abandoned
-  # and counted. Returns to the loop either way.
-  @spec retry_or_drop_local_edit(
-          peer(),
-          atom(),
-          list(),
-          {non_neg_integer(), integer()},
-          (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
-        ) :: any
-  defp retry_or_drop_local_edit(peer, tag, args, {attempts, last_edit_count}, drop_counter) do
+  @spec get_local_edits(peer()) :: list()
+  defp get_local_edits(peer), do: peer(peer, :local_edits)
+
+  @spec set_local_edits(peer(), list()) :: peer()
+  defp set_local_edits(peer, edits), do: peer(peer, local_edits: edits)
+
+  @spec enqueue_local_edit(peer(), tuple()) :: peer()
+  defp enqueue_local_edit(peer, edit),
+    do: set_local_edits(peer, get_local_edits(peer) ++ [edit])
+
+  # Applies queued local edits head-first until the queue empties or the head is not
+  # ready; in the latter case schedules a delayed re-drain carrying the retry state.
+  # Returns the peer (callers loop).
+  @spec drain_local_edits(peer(), {non_neg_integer(), integer()}) :: peer()
+  defp drain_local_edits(peer, retry_state) do
+    case get_local_edits(peer) do
+      [] ->
+        peer
+
+      [edit | rest] ->
+        case attempt_local_edit(peer, edit) do
+          {:applied, peer} ->
+            peer |> set_local_edits(rest) |> drain_local_edits({0, -1})
+
+          :not_ready ->
+            retry_or_abandon_head(peer, edit, rest, retry_state)
+        end
+    end
+  end
+
+  @spec retry_or_abandon_head(peer(), tuple(), list(), {non_neg_integer(), integer()}) ::
+          peer()
+  defp retry_or_abandon_head(peer, edit, rest, {attempts, last_edit_count}) do
     current_edit_count = get_edit_count(peer)
     attempts = if current_edit_count == last_edit_count, do: attempts, else: 0
 
     if attempts >= @local_edit_retry_limit do
       debug_print(
-        "retry_or_drop_local_edit",
-        "abandoning local edit after #{attempts} stalled retries: #{inspect({tag, args})}"
+        "drain_local_edits",
+        "abandoning local edit after #{attempts} stalled retries: #{inspect(edit)}"
       )
+
+      drop_counter =
+        case edit do
+          {:insert, _} -> &inc_insert_request_limit_counter/1
+          {:delete_line, _} -> &inc_delete_requeue_limit_counter/1
+        end
 
       get_metadata(peer)
       |> drop_counter.()
       |> update_metadata(peer)
-      |> loop()
+      |> set_local_edits(rest)
+      |> drain_local_edits({0, -1})
     else
       Process.send_after(
         get_peer_pid(peer),
-        {tag, args, {attempts + 1, current_edit_count}},
+        {:drain_local_edits, {attempts + 1, current_edit_count}},
         @local_edit_retry_delay_ms
       )
 
-      loop(peer)
+      peer
     end
   end
 
-  @spec handle_local_delete(peer(), list(), {non_neg_integer(), integer()}) :: any
-  defp handle_local_delete(
+  # Attempts one local edit against the current document. Returns {:applied, peer} on
+  # success or :not_ready when the referenced git index is not materialized locally yet
+  # (never a side effect in that case).
+  @spec attempt_local_edit(peer(), tuple()) :: {:applied, peer()} | :not_ready
+  defp attempt_local_edit(
          peer,
-         [index_position, test_index, _global_position, _current_delete_ops],
-         retry_state
+         {:delete_line, [index_position, test_index, _global_position, _current_delete_ops]}
        ) do
     document = get_peer_document(peer)
     document_len = get_document_length(document)
 
-    case document_len - 1 <= index_position or document_len < 0 do
-      true ->
-        IO.puts("The to delete line does not exist! ")
-        IO.puts("Index position: #{index_position} ")
-        IO.puts("Document length: #{document_len}")
-        loop(peer)
+    git_index_translated =
+      if document_len - 1 <= index_position or document_len < 0,
+        do: -1,
+        else: translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
-      _ ->
-        peer_id = get_peer_id(peer)
+    if git_index_translated == -1 do
+      :not_ready
+    else
+      peer_id = get_peer_id(peer)
 
-        git_index_translated =
-          translate_git_index_to_syncordian_index(document, test_index, 0, 0)
+      peer =
+        document
+        |> update_document_line_status(git_index_translated, :tombstone)
+        |> update_document_line_peer_id(git_index_translated, peer_id)
+        |> update_peer_document(peer)
+        |> tick_edit_count()
 
-        if git_index_translated == -1 do
-          # The referenced line has not materialized in this replica yet (its insert is
-          # still in flight): retry later, bounded.
-          retry_or_drop_local_edit(
-            peer,
-            :delete_line,
-            [index_position, test_index, 0, 0],
-            retry_state,
-            &inc_delete_requeue_limit_counter/1
-          )
-        else
-          peer =
-            document
-            |> update_document_line_status(git_index_translated, :tombstone)
-            |> update_document_line_peer_id(git_index_translated, peer_id)
-            |> update_peer_document(peer)
-            |> tick_edit_count()
+      peer =
+        if peer_id == @peer_metadata_id,
+          do: save_peer_metadata_edit(peer),
+          else: peer
 
-          peer =
-            if peer_id == @peer_metadata_id,
-              do: save_peer_metadata_edit(peer),
-              else: peer
+      line_deleted =
+        get_document_line_by_index(document, git_index_translated)
 
-          line_deleted =
-            get_document_line_by_index(document, git_index_translated)
+      line_deleted_id = line_deleted |> get_line_id
 
-          line_deleted_id = line_deleted |> get_line_id
+      # The delete authorization tag binds the target line's stored signature
+      # (an intrinsic property of the target), not its neighbors — so receivers
+      # validate it by direct lookup, with no windowed search. Deletes carry no
+      # vector clock: their deliverability depends only on the target's
+      # presence, which transitively inherits the target insert's clock gating.
+      delete_tag = create_tag_delete(get_signature(line_deleted))
+      {op_id, peer} = next_op_id(peer)
+      peer = record_seen(peer, op_id)
 
-          # The delete authorization tag binds the target line's stored signature
-          # (an intrinsic property of the target), not its neighbors — so receivers
-          # validate it by direct lookup, with no windowed search. Deletes carry no
-          # vector clock: their deliverability depends only on the target's
-          # presence, which transitively inherits the target insert's clock gating.
-          delete_tag = create_tag_delete(get_signature(line_deleted))
-          {op_id, peer} = next_op_id(peer)
-          peer = record_seen(peer, op_id)
+      send(
+        get_peer_pid(peer),
+        {:send_delete_broadcast, {line_deleted_id, delete_tag, op_id}}
+      )
 
-          send(
-            get_peer_pid(peer),
-            {:send_delete_broadcast, {line_deleted_id, delete_tag, op_id}}
-          )
-
-          tick_peer_deleted_count(peer)
-        end
+      {:applied, tick_peer_deleted_count(peer)}
     end
   end
 
-  @spec handle_local_insert(peer(), list(), {non_neg_integer(), integer()}) :: any
-  defp handle_local_insert(
+  defp attempt_local_edit(
          peer,
-         [content, _index_position, test_index, _global_position, _current_delete_ops],
-         retry_state
+         {:insert, [content, _index_position, test_index, _global_position, _current_delete_ops]}
        ) do
     document = get_peer_document(peer)
     peer_id = get_peer_id(peer)
@@ -879,15 +923,7 @@ defmodule Syncordian.Peer do
     git_index_translated = translate_git_index_to_syncordian_index(document, test_index, 0, 0)
 
     if git_index_translated == -1 do
-      # The insertion point's neighborhood has not materialized in this replica yet:
-      # retry later, bounded.
-      retry_or_drop_local_edit(
-        peer,
-        :insert,
-        [content, 0, test_index, 0, 0],
-        retry_state,
-        &inc_insert_request_limit_counter/1
-      )
+      :not_ready
     else
       [left_parent, right_parent] =
         get_parents_by_index(
@@ -944,7 +980,7 @@ defmodule Syncordian.Peer do
           do: save_peer_metadata_edit(peer),
           else: peer
 
-      loop(peer)
+      {:applied, peer}
     end
   end
 
@@ -957,21 +993,25 @@ defmodule Syncordian.Peer do
   @spec loop(peer()) :: any
   def loop(peer) do
     receive do
-      # ✅ Local delete from the supervisor's git replay. The bare form is the public
-      # interface; the 3-tuple form is a delayed retry of the same edit carrying its
-      # progress-aware retry state (see retry_or_drop_local_edit/5).
+      # ✅ Local edits from the supervisor's git replay enter the per-peer FIFO and are
+      # applied strictly in arrival order (see drain_local_edits/2); the drain message is
+      # the delayed retry of an unready head, carrying its progress-aware retry state.
       {:delete_line, args} when is_list(args) ->
-        handle_local_delete(peer, args, {0, -1})
+        peer
+        |> enqueue_local_edit({:delete_line, args})
+        |> drain_local_edits({0, -1})
+        |> loop()
 
-      {:delete_line, args, retry_state} ->
-        handle_local_delete(peer, args, retry_state)
-
-      # ✅ Local insert from the supervisor's git replay, same retry scheme.
       {:insert, args} when is_list(args) ->
-        handle_local_insert(peer, args, {0, -1})
+        peer
+        |> enqueue_local_edit({:insert, args})
+        |> drain_local_edits({0, -1})
+        |> loop()
 
-      {:insert, args, retry_state} ->
-        handle_local_insert(peer, args, retry_state)
+      {:drain_local_edits, retry_state} ->
+        peer
+        |> drain_local_edits(retry_state)
+        |> loop()
 
       # ✅ Attaches the admission authenticator α, keyed by the boundary secret, over the
       # full insert payload — binding every field it carries, op_id included.
@@ -1099,9 +1139,12 @@ defmodule Syncordian.Peer do
                     {:clock, incoming_peer_id, incoming_at - 1}
                   else
                     # The sender's component matches/precedes ours, but the local replica
-                    # is behind on other peers' edits (projection distance > 1):
-                    # re-evaluate on the next local apply.
-                    :progress
+                    # is behind on other peers' edits (projection distance > 1): wait,
+                    # in-buffer, until the local clock dominates the sender's recorded
+                    # view. (A blanket re-dispatch-on-every-apply here floods a lagging
+                    # peer's mailbox quadratically — each round re-runs the admission
+                    # check just to re-suspend.)
+                    {:vc_ready, incoming_vc, incoming_peer_id}
                   end
 
                 get_metadata(peer)
@@ -1171,15 +1214,34 @@ defmodule Syncordian.Peer do
                         )
 
                       false ->
-                        # Deliverable by the progress vector but the wire tag does not
-                        # verify against the local neighbors. This is a rejection, not a
-                        # wait: under the partial order the relevant predecessors are
-                        # already present, so the mismatch indicates a forged/garbled
-                        # edit rather than reordering.
-                        get_metadata(peer)
-                        |> inc_insert_request_counter
-                        |> update_metadata(peer)
-                        |> loop
+                        # The wire tag does not verify against the current local
+                        # neighbors. local ≤ incoming does NOT mean the authored parents
+                        # are present here — it means the SENDER's causal past contains
+                        # ours, so the sender may have authored against lines we have not
+                        # applied yet. Rejecting in that state permanently stalls the
+                        # sender's clock at this replica (head-of-line blocking every
+                        # later insert from it). Only when we hold the sender's full
+                        # causal context (incoming ≤ local on every other component) is a
+                        # mismatch a definite forged/garbled edit; otherwise suspend and
+                        # re-evaluate as local applies land, horizon-bounded.
+                        if missing_causal_context?(
+                             local_vector_clock,
+                             incoming_vc,
+                             incoming_peer_id
+                           ) do
+                          suspend_operation(
+                            peer,
+                            {:receive_insert_broadcast, insert_payload, alpha},
+                            {:vc_ready, incoming_vc, incoming_peer_id},
+                            &inc_insert_request_limit_counter/1
+                          )
+                          |> loop
+                        else
+                          get_metadata(peer)
+                          |> inc_insert_request_counter
+                          |> update_metadata(peer)
+                          |> loop
+                        end
                     end
 
                   # local_vc > incoming_vc
@@ -1224,10 +1286,29 @@ defmodule Syncordian.Peer do
                         )
 
                       false ->
-                        get_metadata(peer)
-                        |> inc_insert_stash_fail_counter
-                        |> update_metadata(peer)
-                        |> loop
+                        # Same reasoning as the direct-path mismatch: if the clocks are
+                        # concurrent the sender saw lines we still lack, so the windowed
+                        # search may simply be missing the authored parents — suspend and
+                        # retry on progress. Only a strictly-dominated incoming clock
+                        # (we hold everything the sender saw) makes the failure definite.
+                        if missing_causal_context?(
+                             local_vector_clock,
+                             incoming_vc,
+                             incoming_peer_id
+                           ) do
+                          suspend_operation(
+                            peer,
+                            {:receive_insert_broadcast, insert_payload, alpha},
+                            {:vc_ready, incoming_vc, incoming_peer_id},
+                            &inc_insert_request_limit_counter/1
+                          )
+                          |> loop
+                        else
+                          get_metadata(peer)
+                          |> inc_insert_stash_fail_counter
+                          |> update_metadata(peer)
+                          |> loop
+                        end
                     end
                 end
 
@@ -1302,6 +1383,14 @@ defmodule Syncordian.Peer do
       # ✅
       {:save_content, :document} ->
         save_document_content(get_peer_document(peer), peer(peer, :peer_id))
+        loop(peer)
+
+      # ✅ Replay barrier probe (supervisor): hash of the materialized document (content
+      # of live lines only, tombstones filtered), so the supervisor can hold the next
+      # commit until this author's replica byte-matches the git state its edits assumed.
+      {:request_content_hash, reply_pid, ref} ->
+        hash = :erlang.md5(string_document_content(get_peer_document(peer)))
+        send(reply_pid, {:content_hash, ref, hash})
         loop(peer)
 
       # ✅

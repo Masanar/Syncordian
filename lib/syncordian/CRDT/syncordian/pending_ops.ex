@@ -43,11 +43,13 @@ defmodule Syncordian.PendingOps do
   @type dependency ::
           {:clock, Basic_Types.peer_id(), non_neg_integer()}
           | {:line, Basic_Types.line_id()}
+          | {:vc_ready, [non_neg_integer()], Basic_Types.peer_id()}
           | :progress
 
   @type event ::
           {:clock_advanced, Basic_Types.peer_id(), non_neg_integer()}
           | {:line_added, Basic_Types.line_id()}
+          | {:clock_now, [non_neg_integer()]}
           | :progress
 
   @typep entry :: {payload(), dependency(), non_neg_integer()}
@@ -145,5 +147,21 @@ defmodule Syncordian.PendingOps do
 
   defp satisfied?({:line, line_id}, {:line_added, line_id}), do: true
   defp satisfied?(:progress, :progress), do: true
+
+  # An insert suspended for missing causal context is deliverable exactly when the local
+  # clock has caught up with the sender's recorded view: every non-sender component
+  # dominated, and the sender's own component at its immediate predecessor (the insert
+  # itself provides the final tick). Evaluated in-buffer against the current clock, so a
+  # not-yet-ready op costs one integer comparison per apply instead of a full re-dispatch
+  # through admission checking.
+  defp satisfied?({:vc_ready, incoming_vc, sender}, {:clock_now, local_vc}) do
+    incoming_vc
+    |> Enum.with_index()
+    |> Enum.all?(fn {incoming_at, j} ->
+      needed = if j == sender, do: incoming_at - 1, else: incoming_at
+      Enum.at(local_vc, j, 0) >= needed
+    end)
+  end
+
   defp satisfied?(_dependency, _event), do: false
 end

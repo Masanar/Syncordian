@@ -48,9 +48,11 @@ def extract_byzantine_number(filename):
         return int(match.group(1))
     return None
 
-# Function to extract commit number from the filename
+# Function to extract commit number from the filename (e.g. "commit_42.json";
+# anchored so it doesn't match the "commit_42.json" suffix of
+# "byzantine_nodes_2_commit_42.json")
 def extract_commit_number(filename):
-    match = re.search(r"commit_(\d+)_", filename)
+    match = re.fullmatch(r"commit_(\d+)\.json", filename)
     if match:
         return int(match.group(1))
     return None
@@ -93,7 +95,7 @@ def read_json_files_no_byzantine_nodes(directory):
         "insert_valid_counter": [],
     }
 
-    files = [f for f in os.listdir(directory) if f.endswith(".json")]
+    files = [f for f in os.listdir(directory) if extract_commit_number(f) is not None]
     files.sort(key=lambda f: extract_commit_number(f))
 
     for filename in files:
@@ -118,7 +120,7 @@ def normalize(values):
     else:
         return [(value - min_val) / (max_val - min_val) for value in values]
 
-def plot_metrics(x_axis, metrics, xlabel, title):
+def plot_metrics(x_axis, metrics, xlabel, title, output_path):
     # Normalize metrics
     normalized_metrics = {key: normalize(values) for key, values in metrics.items()}
 
@@ -154,16 +156,19 @@ def plot_metrics(x_axis, metrics, xlabel, title):
     # Customize the plot with grid
     ax1.grid(True)
 
-    # Show the plot
+    # Save the plot to a file
     plt.tight_layout()
     # plt.title(title)
-    plt.show()
+    plt.savefig(output_path)
+    print(f"Plot saved to {output_path}")
 
 # Main function to execute the script
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    directory = os.path.join(script_dir, "../debug/metadata/no_byzantine_nodes")
+    directory = os.path.join(script_dir, "../debug/metadata/supervisor/syncordian")
     directory_byzantine = os.path.join(script_dir, "../debug/metadata/byzantine_nodes")
+    figures_dir = os.path.join(script_dir, "../figures")
+    os.makedirs(figures_dir, exist_ok=True)
 
     # Plot no byzantine nodes data
     x_axis_no_byzantine, metrics_no_byzantine = read_json_files_no_byzantine_nodes(
@@ -174,6 +179,7 @@ def main():
         metrics_no_byzantine,
         "Commit Number",
         "Normalized Metric Values Over Commit Numbers",
+        os.path.join(figures_dir, "no_byzantine_metrics.pdf"),
     )
 
     # Plot byzantine nodes data
@@ -185,6 +191,7 @@ def main():
         metrics_byzantine,
         "Number of Distrusted Nodes",
         "Normalized Metric Values Over Distrusted Nodes",
+        os.path.join(figures_dir, "byzantine_metrics.pdf"),
     )
 
 if __name__ == "__main__":

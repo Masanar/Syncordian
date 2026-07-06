@@ -54,6 +54,16 @@ defmodule FullExperiment do
     Path.wildcard(Path.join(out_dir, "document_peer_*"))
     |> Enum.each(&File.rm!/1)
 
+    # Stale JSONs from a prior run (possibly over a different commit range/repo) would
+    # otherwise mix with this run's snapshots in scripts/data_visualization.py's
+    # "no byzantine nodes" plot, so start each run from an empty directory.
+    metadata_dir = "debug/metadata/supervisor/syncordian"
+    IO.puts("Cleaning #{metadata_dir}/*.json …")
+    File.mkdir_p!(metadata_dir)
+
+    Path.wildcard(Path.join(metadata_dir, "*.json"))
+    |> Enum.each(&File.rm!/1)
+
     if observer?, do: start_observer()
 
     IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=#{byzantine_count} …")

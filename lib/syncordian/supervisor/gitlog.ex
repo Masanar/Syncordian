@@ -8,17 +8,14 @@ defmodule Syncordian.GitLog do
   shape the parser previously read from the fixture, so it is fed unchanged to
   `Syncordian.GitParser.parse_lines/1` and `Syncordian.GitParser.commits_from_lines/1`.
 
-  Configuration (env override wins over config, which wins over the built-in default):
+  Configuration (env override wins over config; defaults live in `config/config.exs`,
+  the single source of truth for both settings):
 
     * repo path    - `SYNCORDIAN_REPO_PATH`    / `config :syncordian, :git_repo_path`
     * tracked file - `SYNCORDIAN_TRACKED_FILE`  / `config :syncordian, :git_tracked_file`
 
   The repo path may be absolute or relative to the mix working directory (`code/`).
   """
-
-  @default_repo_path "../../repos/ohmyzsh"
-  # @default_tracked_file "oh-my-zsh.sh"
-  @default_tracked_file "plugins/git/git.plugin.zsh"
 
   @doc """
   Returns the `git log -p` output for the tracked file as a list of lines (newest commit
@@ -85,18 +82,18 @@ defmodule Syncordian.GitLog do
     end
   end
 
-  @doc "Resolved repo path (env override > config > built-in default)."
+  @doc "Resolved repo path (env override > config/config.exs)."
   @spec repo_path() :: String.t()
   def repo_path do
     System.get_env("SYNCORDIAN_REPO_PATH") ||
-      Application.get_env(:syncordian, :git_repo_path, @default_repo_path)
+      Application.get_env(:syncordian, :git_repo_path)
   end
 
-  @doc "Resolved tracked file, relative to the repo root (env override > config > default)."
+  @doc "Resolved tracked file, relative to the repo root (env override > config/config.exs)."
   @spec tracked_file() :: String.t()
   def tracked_file do
     System.get_env("SYNCORDIAN_TRACKED_FILE") ||
-      Application.get_env(:syncordian, :git_tracked_file, @default_tracked_file)
+      Application.get_env(:syncordian, :git_tracked_file)
   end
 
   defp validate!(repo, file) do

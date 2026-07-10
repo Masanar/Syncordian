@@ -6,14 +6,20 @@ import re
 # Define a global properties map that holds both the display name, color, and linestyle for each metric
 metric_properties_map = {
     "delete_stash_counter": {"name": "Delete stash activate", "color": "#03071e", "linestyle": "-"},  # Dark Black
-    "delete_valid_counter": {"name": "Valid delete messages", "color": "#370617", "linestyle": "--"},  # Dark Burgundy
+    "delete_valid_counter": {"name": "Valid delete messages", "color": "#eb6834", "linestyle": "--", "linewidth": 1.6},  # Orange
     "insert_distance_greater_than_one": {
         "name": "Insert messages ahead of local clock",
-        "color": "#7209b7",  # Deep Red
-        "linestyle": "--",
-        "linewidth": 1,
+        "color": "#4a3aa7",  # Violet
+        "linestyle": "-.",
+        "linewidth": 1.6,
     },
-    "insert_valid_counter": {"name": "Valid insert messages", "color": "#9d0208", "linestyle": "-"},  # Crimson
+    "insert_valid_counter": {"name": "Valid insert messages", "color": "#2a78d6", "linestyle": "-", "linewidth": 1.6},  # Blue
+    "settle_counter": {
+        "name": "Lines settled (acknowledged by all peers)",
+        "color": "#008300",  # Green
+        "linestyle": ":",
+        "linewidth": 2,
+    },
     "byzantine_delete_counter": {
         "name": "Delete messages Distrusted nodes",
         "color": "#e85d04",  # Bright Red
@@ -89,10 +95,10 @@ def read_json_files_byzantine_nodes(directory):
 def read_json_files_no_byzantine_nodes(directory):
     x_axis = []
     metrics = {
-        "delete_stash_counter": [],
         "delete_valid_counter": [],
         "insert_distance_greater_than_one": [],
         "insert_valid_counter": [],
+        "settle_counter": [],
     }
 
     files = [f for f in os.listdir(directory) if extract_commit_number(f) is not None]
@@ -109,6 +115,41 @@ def read_json_files_no_byzantine_nodes(directory):
 
     return x_axis, metrics
 
+# The supervisor collects peer metadata asynchronously, so some per-commit
+# snapshots miss peer responses and their network-wide sums dip below earlier
+# ones (a few are even all-zero). Keep the longest subsequence of snapshots in
+# which every counter is non-decreasing — the maximal mutually-consistent set —
+# and drop the rest.
+def filter_consistent_snapshots(x_axis, metrics):
+    keys = list(metrics.keys())
+    vectors = [[metrics[k][i] for k in keys] for i in range(len(x_axis))]
+    n = len(vectors)
+    best, prev = [1] * n, [-1] * n
+    for i in range(n):
+        for j in range(i):
+            if best[j] + 1 > best[i] and all(a <= b for a, b in zip(vectors[j], vectors[i])):
+                best[i], prev[i] = best[j] + 1, j
+    i = max(range(n), key=lambda k: best[k], default=-1)
+    chain = []
+    while i != -1:
+        chain.append(i)
+        i = prev[i]
+    chain.reverse()
+    return (
+        [x_axis[i] for i in chain],
+        {k: [metrics[k][i] for i in chain] for k in keys},
+    )
+
+# The peer counters are cumulative sums over the whole network; the difference
+# between consecutive snapshots is the number of messages of that kind processed
+# for that commit. Snapshot commit numbers may have gaps, so deltas are taken
+# between consecutive available snapshots.
+def to_deltas(metrics):
+    return {
+        key: [values[0]] + [b - a for a, b in zip(values, values[1:])]
+        for key, values in metrics.items()
+    }
+
 # Function to normalize a list of values
 def normalize(values):
     if not values:
@@ -120,17 +161,17 @@ def normalize(values):
     else:
         return [(value - min_val) / (max_val - min_val) for value in values]
 
-def plot_metrics(x_axis, metrics, xlabel, title, output_path):
-    # Normalize metrics
-    normalized_metrics = {key: normalize(values) for key, values in metrics.items()}
+def plot_metrics(x_axis, metrics, xlabel, title, output_path, normalize_values=True, ylabel="Normalized Metrics"):
+    if normalize_values:
+        metrics = {key: normalize(values) for key, values in metrics.items()}
 
     # Create the main plot
     fig, ax1 = plt.subplots(figsize=(8, 6))
     ax1.set_xlabel(xlabel)
-    ax1.set_ylabel("Normalized Metrics")
+    ax1.set_ylabel(ylabel)
 
-    # Plot each normalized metric with predefined colors and line styles
-    for metric, values in normalized_metrics.items():
+    # Plot each metric with predefined colors and line styles
+    for metric, values in metrics.items():
         properties = metric_properties_map.get(
             metric, {"name": metric, "color": "black"}
         )
@@ -150,8 +191,8 @@ def plot_metrics(x_axis, metrics, xlabel, title, output_path):
                 linewidth=linewidth,
             )
 
-    # Customize the legend to appear in the upper right corner
-    ax1.legend(loc="lower right", frameon=True, fancybox=True, shadow=True)
+    # Let matplotlib place the legend in the emptiest corner
+    ax1.legend(loc="best", frameon=True, fancybox=True, shadow=True)
 
     # Customize the plot with grid
     ax1.grid(True)
@@ -174,12 +215,17 @@ def main():
     x_axis_no_byzantine, metrics_no_byzantine = read_json_files_no_byzantine_nodes(
         directory
     )
+    x_axis_no_byzantine, metrics_no_byzantine = filter_consistent_snapshots(
+        x_axis_no_byzantine, metrics_no_byzantine
+    )
     plot_metrics(
         x_axis_no_byzantine,
-        metrics_no_byzantine,
+        to_deltas(metrics_no_byzantine),
         "Commit Number",
-        "Normalized Metric Values Over Commit Numbers",
+        "Message Processing per Commit",
         os.path.join(figures_dir, "no_byzantine_metrics.pdf"),
+        normalize_values=False,
+        ylabel="Messages per commit",
     )
 
     # Plot byzantine nodes data

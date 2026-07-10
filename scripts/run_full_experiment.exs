@@ -44,6 +44,13 @@
 #
 # After it completes, the script invokes scripts/identical.sh, which exits 0
 # iff every dumped peer document is byte-identical.
+#
+# `debug/` is largely git-ignored, so on a fresh clone none of its subdirectories exist
+# yet. Before replaying, the script creates (and, for the ones this run itself populates,
+# wipes stale contents from) every debug/documents and debug/metadata directory consumed
+# by this script, scripts/data_visualization.py, and scripts/heap_size_visualization.py —
+# not just the ones this run writes to — so neither a metadata write nor a follow-up plot
+# script silently fails/crashes for want of a directory.
 
 defmodule FullExperiment do
   def run(byzantine_count, observer?) do
@@ -64,11 +71,35 @@ defmodule FullExperiment do
     Path.wildcard(Path.join(metadata_dir, "*.json"))
     |> Enum.each(&File.rm!/1)
 
+    # Same staleness concern as above, but for the per-edit snapshots
+    # scripts/heap_size_visualization.py reads: Syncordian.Peer writes one on every edit
+    # (peer.ex, off the critical path in a detached spawn — if this dir is missing on a
+    # fresh clone, that write fails silently and the whole run's heap-size data goes
+    # missing without any error surfacing).
+    individual_peer_dir = "debug/metadata/individual_peer/syncordian"
+    IO.puts("Cleaning #{individual_peer_dir}/*.json …")
+    File.mkdir_p!(individual_peer_dir)
+
+    Path.wildcard(Path.join(individual_peer_dir, "*.json"))
+    |> Enum.each(&File.rm!/1)
+
+    # This run only replays :syncordian, so it never populates these — but
+    # data_visualization.py and heap_size_visualization.py os.listdir() them
+    # unconditionally (for the other CRDTs' comparison series, and for the byzantine-node
+    # sweep plot respectively), which raises FileNotFoundError on a fresh clone if the
+    # directory is simply absent. Just make sure they exist; leave their contents alone.
+    ensure_dirs_exist([
+      "debug/metadata/individual_peer/fugue",
+      "debug/metadata/individual_peer/logoot",
+      "debug/metadata/byzantine_nodes"
+    ])
+
     if observer?, do: start_observer()
 
     IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=#{byzantine_count} …")
     sup_pid = Syncordian.Supervisor.init(byzantine_count, :syncordian)
     IO.puts("Supervisor pid: #{inspect(sup_pid)}")
+    print_source_summary()
 
     # Give peers a moment to fully register with :global and bind to the supervisor.
     Process.sleep(500)
@@ -100,6 +131,10 @@ defmodule FullExperiment do
     # so it walks debug/documents/* at the top level. To make it check the Syncordian
     # subtree specifically, we do the byte-equality check inline instead.
     verify_convergence(files, observer?)
+  end
+
+  defp ensure_dirs_exist(dirs) do
+    Enum.each(dirs, &File.mkdir_p!/1)
   end
 
   # Total queued messages across all globally registered processes must be 0 on two

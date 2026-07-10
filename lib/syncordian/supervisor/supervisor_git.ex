@@ -33,9 +33,8 @@ defmodule Syncordian.Supervisor do
     pid_list_author_peers: [],
     map_peer_id_authors: %{},
     commit_counter: 0,
-    metadata_peer_count: 0,
     byzantine_nodes: 0,
-    metadata: Syncordian.Metadata.metadata(),
+    peer_metadata_map: %{},
     peer_module: nil
   )
 
@@ -46,9 +45,8 @@ defmodule Syncordian.Supervisor do
             pid_list_author_peers: list(),
             map_peer_id_authors: map(),
             commit_counter: integer(),
-            metadata_peer_count: integer(),
             byzantine_nodes: integer(),
-            metadata: Syncordian.Metadata.metadata(),
+            peer_metadata_map: map(),
             peer_module: module()
           )
 
@@ -67,45 +65,28 @@ defmodule Syncordian.Supervisor do
   @spec get_pid_list(supervisor()) :: list()
   defp get_pid_list(supervisor), do: supervisor(supervisor, :pid_list_author_peers)
 
-  @spec get_metadata_peer_count(supervisor()) :: integer()
-  defp get_metadata_peer_count(supervisor),
-    do: supervisor(supervisor, :metadata_peer_count)
+  # Latest metadata record reported by each peer, keyed by the identifier the peer
+  # echoes in {:receive_metadata_from_peer, ...}. Peer counters are cumulative and
+  # per-sender message order is preserved, so keeping only the newest report per
+  # peer makes the network-wide sum monotone by construction: a snapshot with a
+  # lagging peer reuses that peer's previous report instead of dropping it, and a
+  # late reply can never be double counted against a fresh one.
+  @spec get_peer_metadata_map(supervisor()) :: map()
+  defp get_peer_metadata_map(supervisor), do: supervisor(supervisor, :peer_metadata_map)
 
-  @spec inc_metadata_peer_count(supervisor()) :: supervisor()
-  defp inc_metadata_peer_count(supervisor) do
-    current_metadata_peer_count = get_metadata_peer_count(supervisor)
-
-    number_of_peers = length(get_pid_list(supervisor))
-    byzantine_nodes = supervisor(supervisor, :byzantine_nodes)
-
-    new_supervisor =
-      if current_metadata_peer_count + 1 == number_of_peers + byzantine_nodes do
-        IO.puts("Supervisor: all metadata from peers collected")
-        IO.puts("")
-        # TODO: This should be a setter
-        supervisor(supervisor,
-          metadata_peer_count: 0
-        )
-      else
-        # TODO: This should be a setter
-        supervisor(supervisor,
-          metadata_peer_count: current_metadata_peer_count + 1
-        )
-      end
-
-    new_supervisor
+  @spec put_peer_metadata(supervisor(), term(), Syncordian.Metadata.metadata()) :: supervisor()
+  defp put_peer_metadata(supervisor, peer_key, metadata) do
+    supervisor(supervisor,
+      peer_metadata_map: Map.put(get_peer_metadata_map(supervisor), peer_key, metadata)
+    )
   end
 
-  @spec get_metadata(supervisor()) :: Syncordian.Metadata.metadata()
-  defp get_metadata(supervisor), do: supervisor(supervisor, :metadata)
-
-  defp update_metadata(supervisor),
-    do: supervisor(supervisor, metadata: Syncordian.Metadata.metadata())
-
-  @spec update_metadata(Syncordian.Metadata.metadata(), supervisor()) :: supervisor()
-  defp update_metadata(metadata, supervisor) do
-    inc_metadata_peer_count(supervisor)
-    |> supervisor(metadata: metadata)
+  @spec merged_peer_metadata(supervisor()) :: Syncordian.Metadata.metadata()
+  defp merged_peer_metadata(supervisor) do
+    supervisor
+    |> get_peer_metadata_map()
+    |> Map.values()
+    |> Enum.reduce(Syncordian.Metadata.metadata(), &merge_metadata/2)
   end
 
   # Parses a single edit and applies it to the specified peer.
@@ -463,7 +444,9 @@ defmodule Syncordian.Supervisor do
     * `{:send_all_commits, ...}` — replay every remaining commit in a loop
     * `{:write_current_peers_document}` — tell each peer to dump its document
     * `{:collect_metadata_from_peers}` / `{:receive_metadata_from_peer, ...}` —
-      request and accumulate per-peer metadata
+      request per-peer metadata and record the latest report of each peer
+    * `{:print_supervisor_metadata, commit}` — write the merged reports as the
+      snapshot for `commit`
     * `{:kill}` — tear the network down
 
   Not called directly; run via `spawn/3` from `init/2`.
@@ -498,9 +481,18 @@ defmodule Syncordian.Supervisor do
             peer_module
           )
 
-          send(self(), {:restart_metadata})
+          # Request fresh reports right after dispatch, snapshot just before the next
+          # commit goes out. The snapshot is tagged with the commit number it belongs
+          # to, so a print processed after later dispatches still lands in the right
+          # file. Peers that miss the window are covered by their previous report
+          # (see get_peer_metadata_map/1).
           Process.send_after(self(), {:collect_metadata_from_peers}, 10)
-          Process.send_after(self(), {:print_supervisor_metadata}, 1000)
+
+          Process.send_after(
+            self(),
+            {:print_supervisor_metadata, supervisor_counter + 1},
+            commit_dispatch_delay_ms()
+          )
 
           Process.send_after(
             self(),
@@ -527,10 +519,23 @@ defmodule Syncordian.Supervisor do
           |> get_pid_list()
           |> Enum.each(&send(&1, {:write_pending_dump}))
 
+          final_settle_ms = Application.get_env(:syncordian, :final_settle_ms, 3_000)
+
           Process.send_after(
             self(),
             {:write_current_peers_document},
-            Application.get_env(:syncordian, :final_settle_ms, 3_000)
+            final_settle_ms
+          )
+
+          # One last collection after the settle window, overwriting the final
+          # per-commit snapshot with the network's fixpoint values (peers are idle
+          # by then, so every report is complete and current).
+          Process.send_after(self(), {:collect_metadata_from_peers}, final_settle_ms)
+
+          Process.send_after(
+            self(),
+            {:print_supervisor_metadata, length_of_commits},
+            final_settle_ms + 1_000
           )
 
           # TODO: repetid code!
@@ -571,32 +576,30 @@ defmodule Syncordian.Supervisor do
           supervisor_loop(supervisor)
         end
 
-      {:restart_metadata} ->
-        supervisor
-        |> update_metadata()
-        |> supervisor_loop()
-
       {:collect_metadata_from_peers} ->
         :global.whereis_name(:supervisor)
         |> perform_broadcast({:supervisor_request_metadata}, 0..0)
 
         supervisor_loop(supervisor)
 
-      {:receive_metadata_from_peer, metadata, _peer_id} ->
+      {:receive_metadata_from_peer, metadata, peer_id} ->
         supervisor
-        |> get_metadata()
-        |> merge_metadata(metadata)
-        |> update_metadata(supervisor)
+        |> put_peer_metadata(peer_id, metadata)
         |> supervisor_loop
 
+      # Untagged variant kept for the LiveView button: snapshot under the current
+      # commit counter.
       {:print_supervisor_metadata} ->
-        peer_str = "#{get_peer_module_string(supervisor)}/"
-        commit_counter = supervisor |> get_commit_counter()
+        send(self(), {:print_supervisor_metadata, get_commit_counter(supervisor)})
+        supervisor_loop(supervisor)
 
-        get_metadata(supervisor)
+      {:print_supervisor_metadata, commit_number} ->
+        peer_str = "#{get_peer_module_string(supervisor)}/"
+
+        merged_peer_metadata(supervisor)
         |> save_metadata(
           supervisor(supervisor, :byzantine_nodes),
-          commit_counter,
+          commit_number,
           peer_str
         )
 

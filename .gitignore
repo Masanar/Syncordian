@@ -44,4 +44,5 @@ syncordian-*.tar
 TODO.md
 debug/metadata/
 debug/documents/
+__pycache__/
 

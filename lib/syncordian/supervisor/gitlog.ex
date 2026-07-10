@@ -13,6 +13,8 @@ defmodule Syncordian.GitLog do
 
     * repo path    - `SYNCORDIAN_REPO_PATH`    / `config :syncordian, :git_repo_path`
     * tracked file - `SYNCORDIAN_TRACKED_FILE`  / `config :syncordian, :git_tracked_file`
+    * commit cap   - `SYNCORDIAN_MAX_COMMITS`   / `config :syncordian, :max_commits`
+      (replay only the first N mainline commits, oldest first; unset = full history)
 
   The repo path may be absolute or relative to the mix working directory (`code/`).
   """
@@ -51,6 +53,7 @@ defmodule Syncordian.GitLog do
              "--first-parent",
              "--diff-merges=first-parent",
              "--no-color",
+             log_tip(repo, file),
              "--",
              file
            ],
@@ -94,6 +97,36 @@ defmodule Syncordian.GitLog do
   def tracked_file do
     System.get_env("SYNCORDIAN_TRACKED_FILE") ||
       Application.get_env(:syncordian, :git_tracked_file)
+  end
+
+  @doc "Optional cap on how many mainline commits (oldest first) to replay (env override > config)."
+  @spec max_commits() :: pos_integer() | nil
+  def max_commits do
+    case System.get_env("SYNCORDIAN_MAX_COMMITS") do
+      nil -> Application.get_env(:syncordian, :max_commits)
+      value -> String.to_integer(value)
+    end
+  end
+
+  # The tip commit the log runs up to: HEAD for the full history, or — when a commit
+  # cap is set — the cap-th oldest mainline commit touching the file, so the replayed
+  # history is exactly its first `max_commits` commits and every consumer (parser,
+  # supervisor, convergence checks) sees the same truncated history.
+  defp log_tip(repo, file) do
+    case max_commits() do
+      nil ->
+        "HEAD"
+
+      cap ->
+        {output, 0} =
+          System.cmd(
+            "git",
+            ["-C", repo, "rev-list", "--reverse", "--first-parent", "HEAD", "--", file]
+          )
+
+        hashes = String.split(output, "\n", trim: true)
+        Enum.at(hashes, min(cap, length(hashes)) - 1)
+    end
   end
 
   defp validate!(repo, file) do

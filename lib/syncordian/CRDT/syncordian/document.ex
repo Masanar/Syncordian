@@ -188,6 +188,51 @@ defmodule Syncordian.Document do
   end
 
   @doc """
+    Single-traversal acknowledgement application, semantically identical to
+    `get_document_line_by_line_id/2` + `verify` + `update_document_line_commit_at/3` +
+    `settle_line_if_complete/2` but walking the document exactly once — the ack path is
+    the hottest in the system (every peer processes every other peer's ack for every
+    line, so repeated full scans dominate large replays).
+
+    `verify` receives the found line and must return whether the acknowledgement is
+    genuine for it (the response-tag check). Returns `:absent` when no line has
+    `line_id` (caller suspends), `:rejected` when `verify` fails (defense in depth
+    behind admission), or `{:ok, document, settled?}` with the acking peer unioned into
+    the line's checklist and the line settled iff the checklist became all-true while
+    still `:aura` — the same lattice rule as `settle_line_if_complete/2`.
+  """
+  @spec apply_ack_to_document(
+          Syncordian.Basic_Types.document(),
+          Syncordian.Basic_Types.line_id(),
+          Syncordian.Basic_Types.peer_id(),
+          (Syncordian.Line_Object.line() -> boolean())
+        ) :: {:ok, Syncordian.Basic_Types.document(), boolean()} | :absent | :rejected
+  def apply_ack_to_document([], _line_id, _acker_peer_id, _verify), do: :absent
+
+  def apply_ack_to_document([head | tail], line_id, acker_peer_id, verify) do
+    if get_line_id(head) == line_id do
+      cond do
+        not verify.(head) ->
+          :rejected
+
+        true ->
+          line = update_line_commit_at(head, acker_peer_id)
+
+          if get_line_status(line) == :aura and Enum.all?(get_commit_at(line)) do
+            {:ok, [set_line_status(line, :settled) | tail], true}
+          else
+            {:ok, [line | tail], false}
+          end
+      end
+    else
+      case apply_ack_to_document(tail, line_id, acker_peer_id, verify) do
+        {:ok, new_tail, settled?} -> {:ok, [head | new_tail], settled?}
+        other -> other
+      end
+    end
+  end
+
+  @doc """
     After an acknowledgement is recorded, settle the given line iff every trusted peer has
     now acknowledged it: when its `commit_at` is all-true and it is still `:aura`, join in
     `:settled` (the acknowledgement case of `def:apply` in the formal model). This is

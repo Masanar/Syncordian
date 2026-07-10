@@ -24,8 +24,18 @@ defmodule Syncordian.PathId do
 
   `between/3` produces a fresh path strictly between two existing paths. It walks the
   shared prefix, then either picks a digit between the two diverging segments or
-  extends the smaller path by one segment. The chosen digit is drawn uniformly at
-  random from the available range `[lo, hi]` (see `pick_digit/2`).
+  extends the smaller path by one segment.
+
+  Digits are chosen with LSEQ-style *boundary* allocation rather than uniformly over
+  the whole available range: a small random step (at most `step/0`) away from the
+  bound the insert hugs — just above the left bound when inserting after an existing
+  line, just below the right bound when inserting before one. A uniform pick exhausts
+  a level after ~`ln(base)` sequential allocations (the pick soon lands on the
+  extreme digit and every later allocation must descend), which made runs of
+  same-direction inserts — e.g. a large file-creation commit appending thousands of
+  lines — mint paths whose depth grows linearly with the run length, degrading every
+  comparison, insert, and message payload with it. With the boundary step a level
+  absorbs on the order of `base/step` same-direction inserts before deepening.
 
   This module is pure and side-effect-free aside from `:rand.uniform/1` inside
   `between/3`. It does not depend on the rest of the codebase.
@@ -61,6 +71,10 @@ defmodule Syncordian.PathId do
   @base 65_536
   @doc "Digit alphabet upper bound (exclusive). Segments use digits in `[0, base())`."
   def base, do: @base
+
+  @step 32
+  @doc "Maximum boundary-allocation step: a fresh digit lands within `step()` of the bound it hugs."
+  def step, do: @step
 
   @doc "Returns the bottom sentinel."
   @spec infimum() :: t
@@ -171,14 +185,14 @@ defmodule Syncordian.PathId do
   defp normalize({:path, segs}), do: {:segs, segs}
 
   defp do_between({:bound, :low}, {:bound, :high}, peer_id, _prefix) do
-    digit = pick_digit(0, @base - 1)
+    digit = pick_above(0, @base - 1)
     {:path, [{digit, peer_id}]}
   end
 
   defp do_between({:bound, :low}, {:segs, [{r_digit, r_peer} | r_rest]}, peer_id, prefix) do
     cond do
       r_digit > 0 ->
-        digit = pick_digit(0, r_digit - 1)
+        digit = pick_below(0, r_digit - 1)
         finish(prefix, {digit, peer_id})
 
       # r_digit == 0; we need a tiebreaker below (0, r_peer) at this level.
@@ -200,13 +214,13 @@ defmodule Syncordian.PathId do
   end
 
   defp do_between({:segs, []}, {:bound, :high}, peer_id, prefix) do
-    digit = pick_digit(0, @base - 1)
+    digit = pick_above(0, @base - 1)
     finish(prefix, {digit, peer_id})
   end
 
   defp do_between({:segs, [{l_digit, _} | _]}, {:bound, :high}, peer_id, prefix)
        when l_digit < @base - 1 do
-    digit = pick_digit(l_digit + 1, @base - 1)
+    digit = pick_above(l_digit + 1, @base - 1)
     finish(prefix, {digit, peer_id})
   end
 
@@ -223,7 +237,7 @@ defmodule Syncordian.PathId do
   defp do_between({:segs, []}, {:segs, [{r_digit, r_peer} | r_rest]}, peer_id, prefix) do
     cond do
       r_digit > 0 ->
-        digit = pick_digit(0, r_digit - 1)
+        digit = pick_below(0, r_digit - 1)
         finish(prefix, {digit, peer_id})
 
       # r_digit == 0; same shape as the `{:bound, :low}` symmetric case.
@@ -255,7 +269,7 @@ defmodule Syncordian.PathId do
        ) do
     cond do
       l_digit + 1 < r_digit ->
-        digit = pick_digit(l_digit + 1, r_digit - 1)
+        digit = pick_above(l_digit + 1, r_digit - 1)
         finish(prefix, {digit, peer_id})
 
       l_digit == r_digit and l_peer == r_peer ->
@@ -298,7 +312,7 @@ defmodule Syncordian.PathId do
   # bound compatible with this corner (any proper prefix of right) and strictly less
   # than right at the {0, r_peer - 1} segment.
   defp fallback_below(prefix, r_peer, shifted_id) do
-    digit = pick_digit(0, @base - 1)
+    digit = pick_above(0, @base - 1)
     {:path, Enum.reverse([{digit, shifted_id}, {0, r_peer - 1} | prefix])}
   end
 
@@ -309,6 +323,13 @@ defmodule Syncordian.PathId do
     span = hi - lo + 1
     lo + :rand.uniform(span) - 1
   end
+
+  # Boundary allocation (see "Allocation" in the module doc): an insert-after hugs its
+  # left bound, an insert-before hugs its right bound, leaving the rest of the level's
+  # digit space for the same-direction inserts that realistic edits arrive in.
+  defp pick_above(lo, hi), do: pick_digit(lo, min(hi, lo + @step))
+
+  defp pick_below(lo, hi), do: pick_digit(max(lo, hi - @step), hi)
 
   @doc """
   Human-readable rendering for debug output and serialization.

@@ -339,16 +339,39 @@ defmodule Syncordian.Supervisor do
   # author IDs are mapped to their respective peer IDs in the resulting map.
   @spec init_peers(list(), module()) :: {list(), map()}
   defp init_peers(authors_list, peer_module) do
-    network_size = authors_list |> length()
+    author_count = length(authors_list)
+    pool_size = min(author_count, max_peers() || author_count)
 
-    values =
+    if pool_size < author_count do
+      IO.puts(
+        "Capping peer pool: #{pool_size} peers for #{author_count} authors (round-robin)"
+      )
+    end
+
+    pid_list =
+      Enum.map(0..(pool_size - 1), fn peer_id -> peer_module.start(peer_id, pool_size) end)
+
+    map_ids =
       authors_list
-      |> Enum.reduce({0, [], %{}}, fn author_id, {acc, add_pid, map_ids} ->
-        {acc + 1, [peer_module.start(acc, network_size) | add_pid],
-         Map.put(map_ids, author_id, acc)}
-      end)
+      |> Enum.with_index()
+      |> Map.new(fn {author_id, index} -> {author_id, rem(index, pool_size)} end)
 
-    {elem(values, 1) |> Enum.reverse(), elem(values, 2)}
+    {pid_list, map_ids}
+  end
+
+  # Optional cap on the peer pool (env override > config; unset = one peer per author).
+  # The history's author count sets the network size, but acknowledgement traffic is
+  # O(peers²) per inserted line, so histories with hundreds of authors (linux
+  # MAINTAINERS has 277) are unsimulatable on one machine. Capping assigns authors to
+  # peers round-robin: a peer simply authors several contributors' commits, which
+  # preserves replay semantics — edits stay serialized per peer and the
+  # materialization barrier still gates each commit on its authoring peer.
+  @spec max_peers() :: pos_integer() | nil
+  defp max_peers do
+    case System.get_env("SYNCORDIAN_MAX_PEERS") do
+      nil -> Application.get_env(:syncordian, :max_peers)
+      value -> String.to_integer(value)
+    end
   end
 
   @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::

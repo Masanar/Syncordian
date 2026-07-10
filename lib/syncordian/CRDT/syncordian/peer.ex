@@ -1372,10 +1372,10 @@ defmodule Syncordian.Peer do
           reject_admission(peer)
         else
           document = get_peer_document(peer)
-          acked_line = get_document_line_by_line_id(document, inserted_line_id)
+          verify = fn line -> check_tag_ack(ack_tag, get_signature(line), acker_peer_id) end
 
-          cond do
-            acked_line == nil ->
+          case apply_ack_to_document(document, inserted_line_id, acker_peer_id, verify) do
+            :absent ->
               # Acks are broadcast, so one can outrun the insert it acknowledges. The target
               # line is not present here yet: suspend on its arrival rather than drop, so the
               # checklist still fills once the insert is delivered (the ack deliverability
@@ -1388,13 +1388,10 @@ defmodule Syncordian.Peer do
               )
               |> loop
 
-            check_tag_ack(ack_tag, get_signature(acked_line), acker_peer_id) ->
-              # Genuine response: union the acking peer into this line's checklist, then
-              # settle the line if every trusted peer has now acknowledged it.
-              document =
-                update_document_line_commit_at(document, inserted_line_id, acker_peer_id)
-
-              {document, settled?} = settle_line_if_complete(document, inserted_line_id)
+            {:ok, document, settled?} ->
+              # Genuine response: the acking peer is unioned into the line's checklist, and
+              # the line settled if every trusted peer has now acknowledged it — one
+              # document traversal for the whole step (see apply_ack_to_document/4).
               peer = update_peer_document(document, peer)
 
               peer =
@@ -1404,7 +1401,7 @@ defmodule Syncordian.Peer do
 
               loop(peer)
 
-            true ->
+            :rejected ->
               # Admitted but stale or mismatched: the tag is bound to a different line or
               # peer (defense in depth behind admission); drop without advancing the
               # checklist.

@@ -332,6 +332,4 @@ defmodule Syncordian.Interleaving do
     end)
   end
 
-  @spec line_leq?(Syncordian.Line_Object.line(), Syncordian.Line_Object.line()) :: boolean()
-  defp line_leq?(a, b), do: PathId.compare(get_line_id(a), get_line_id(b)) != :gt
 end

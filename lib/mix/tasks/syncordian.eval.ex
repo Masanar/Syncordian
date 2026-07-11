@@ -67,6 +67,30 @@ defmodule Mix.Tasks.Syncordian.Eval do
 
     File.rm(Path.join([crdt_dir, "raw", "document"]))
 
+    # Stale metadata JSONs from a prior run (different commit range, byzantine count,
+    # or an aborted attempt) would silently mix into the series that
+    # scripts/data_visualization.py and scripts/heap_size_visualization.py plot, so
+    # start each run from empty metadata dirs — mirroring
+    # scripts/run_full_experiment.exs, whose cleaning this task previously lacked.
+    for dir <- [
+          Path.join(["debug", "metadata", "supervisor", to_string(crdt)]),
+          Path.join(["debug", "metadata", "individual_peer", to_string(crdt)])
+        ] do
+      File.mkdir_p!(dir)
+      dir |> Path.join("*.json") |> Path.wildcard() |> Enum.each(&File.rm!/1)
+    end
+
+    # The plot scripts os.listdir() these unconditionally (comparison series / the
+    # byzantine sweep); make sure they exist on a fresh clone, but leave contents alone.
+    Enum.each(
+      [
+        "debug/metadata/individual_peer/fugue",
+        "debug/metadata/individual_peer/logoot",
+        "debug/metadata/byzantine_nodes"
+      ],
+      &File.mkdir_p!/1
+    )
+
     IO.puts(banner(crdt, byzantine))
 
     supervisor_pid = Syncordian.Supervisor.init(byzantine, crdt)

@@ -44,6 +44,12 @@ defmodule Syncordian.Peer do
   # analogue of the remote path's @dependency_wait_horizon backstop (theo:nostarve).
   @local_edit_retry_limit 2_000
   @local_edit_retry_delay_ms 10
+  # Max insertion responses pulled out of the mailbox into one batched apply
+  # (process_ack_batch/2). Bounds the latency of a single batch — the peer stays
+  # responsive to barrier probes and local edits — while still amortizing the document
+  # traversal over the whole queued burst (acks are N-1 per line at every replica, by
+  # far the highest-volume message of the system).
+  @ack_drain_limit 5_000
   Record.defrecord(:peer,
     peer_id: None,
     document: None,
@@ -63,7 +69,14 @@ defmodule Syncordian.Peer do
     # in arrival order: their git indices assume every earlier local edit of the same
     # author already took effect, so an unready head blocks the tail (see
     # drain_local_edits/2).
-    local_edits: []
+    local_edits: [],
+    # Cached boundary secret {κ⊥, κ⊤} — the sentinels' immutable stored signatures,
+    # read once at define-time (see get_boundary_secret/1).
+    boundary_secret: nil,
+    # Cached broadcast recipient pids. Network membership is static for a run, so the
+    # registry is scanned once, lazily on the first broadcast (after every peer has
+    # registered), instead of per message (see perform_broadcast_peer/2).
+    broadcast_pids: nil
   )
 
   @type peer ::
@@ -79,7 +92,10 @@ defmodule Syncordian.Peer do
             pending: Syncordian.PendingOps.t() | nil,
             op_seq: non_neg_integer(),
             seen_ops: Syncordian.SeenOps.t() | nil,
-            local_edits: list()
+            local_edits: list(),
+            boundary_secret:
+              {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()} | nil,
+            broadcast_pids: [pid()] | nil
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -163,13 +179,12 @@ defmodule Syncordian.Peer do
   # else (Syncordian.Byzantine.create_admission/3). The pair is drawn at random per run
   # by the supervisor and distributed out-of-band to admitted peers
   # (Syncordian.Byzantine.boundary_secret/0), which is how the sentinel signatures were
-  # initialized; lB and lE are always present, so the lookup never fails.
+  # initialized. The sentinels are immutable, so the pair is cached in the peer record
+  # at define-time: the previous List.first/List.last lookup walked the whole document
+  # on EVERY message sent or received, which dominated large replays.
   @spec get_boundary_secret(peer()) ::
           {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
-  defp get_boundary_secret(peer) do
-    document = get_peer_document(peer)
-    {get_signature(List.first(document)), get_signature(List.last(document))}
-  end
+  defp get_boundary_secret(peer), do: peer(peer, :boundary_secret)
 
   @spec seen_op?(peer(), Syncordian.Basic_Types.op_id()) :: boolean()
   defp seen_op?(peer, op_id), do: SeenOps.seen?(get_seen_ops(peer), op_id)
@@ -348,7 +363,10 @@ defmodule Syncordian.Peer do
       peer_id: peer_id,
       document: initial_peer_document,
       pending: PendingOps.new(),
-      seen_ops: SeenOps.new()
+      seen_ops: SeenOps.new(),
+      # Same pair the sentinel lines above were just built from; cached so admission
+      # checks never re-walk the document (see get_boundary_secret/1).
+      boundary_secret: Syncordian.Byzantine.boundary_secret()
     )
   end
 
@@ -436,8 +454,30 @@ defmodule Syncordian.Peer do
 
   ################################ Peer utility ################################
 
+  # Cadence gate for the metadata peer's per-edit snapshots: sample every Nth applied
+  # edit (default 1 = every edit, the historical behavior). At MAINTAINERS scale the
+  # per-edit :erlang.external_size(document) plus one file write per edit is real load,
+  # so long replays set SYNCORDIAN_EDIT_METADATA_EVERY high (or rely on the
+  # supervisor's per-commit collection instead).
+  @spec edit_metadata_every() :: pos_integer()
+  defp edit_metadata_every do
+    case System.get_env("SYNCORDIAN_EDIT_METADATA_EVERY") do
+      nil -> 1
+      value -> max(String.to_integer(value), 1)
+    end
+  end
+
   @spec save_peer_metadata_edit(peer()) :: peer()
   defp save_peer_metadata_edit(peer) do
+    if rem(get_edit_count(peer), edit_metadata_every()) == 0 do
+      do_save_peer_metadata_edit(peer)
+    else
+      peer
+    end
+  end
+
+  @spec do_save_peer_metadata_edit(peer()) :: peer()
+  defp do_save_peer_metadata_edit(peer) do
     file_prefix = "edit"
     folder = "syncordian/"
     peer_pid = get_peer_pid(peer)
@@ -463,15 +503,29 @@ defmodule Syncordian.Peer do
 
   # Function to perform the filtering and broadcast messages to all peers in the network
   # except the current peer. or the supervisor. This one is define here because here the
-  # delay makes sense to be define and then use the perform_broadcast function of the
+  # delay makes sense to be define and then use the broadcast functions of the
   # utilities module.
-  @spec perform_broadcast_peer(peer(), any) :: any
+  #
+  # The recipient pid set is resolved once — lazily, on the first broadcast, i.e. after
+  # every peer of the run has registered — and cached in the peer record; membership is
+  # static per run, and re-scanning the :global registry per message was measurable
+  # overhead on the ack storm. Returns the possibly-updated peer: callers must keep it.
+  @spec perform_broadcast_peer(peer(), any) :: peer()
   defp perform_broadcast_peer(peer, message) do
-    peer_pid = get_peer_pid(peer)
+    peer = ensure_broadcast_pids(peer)
     # Per-recipient network-jitter range. Defaults to no delay; tests/experiments can widen
     # it (e.g. to force concurrent, same-interval authoring) without a global sleep.
     delay = Application.get_env(:syncordian, :broadcast_delay, 0..0)
-    perform_broadcast(peer_pid, message, delay)
+    broadcast_to(peer(peer, :broadcast_pids), message, delay)
+    peer
+  end
+
+  @spec ensure_broadcast_pids(peer()) :: peer()
+  defp ensure_broadcast_pids(peer) do
+    case peer(peer, :broadcast_pids) do
+      nil -> peer(peer, broadcast_pids: broadcast_recipients(get_peer_pid(peer)))
+      _ -> peer
+    end
   end
 
   @doc """
@@ -501,6 +555,81 @@ defmodule Syncordian.Peer do
       {:receive_confirmation_line_insertion, ack_payload, alpha}
     )
   end
+
+  # Pulls every {:receive_confirmation_line_insertion, ...} message already queued in
+  # the mailbox (up to `budget`), returning the batch in arrival order. The selective
+  # receive leaves every other message untouched and in its original relative order.
+  @spec drain_ack_messages(list(), non_neg_integer()) :: list()
+  defp drain_ack_messages(acc, 0), do: Enum.reverse(acc)
+
+  defp drain_ack_messages(acc, budget) do
+    receive do
+      {:receive_confirmation_line_insertion, ack_payload, alpha} ->
+        drain_ack_messages([{ack_payload, alpha} | acc], budget - 1)
+    after
+      0 -> Enum.reverse(acc)
+    end
+  end
+
+  # Applies a batch of insertion responses with ONE document traversal
+  # (Syncordian.Document.apply_acks_to_document/2), preserving the single-response
+  # semantics case by case: admission failure → admission_rejected counter (message
+  # neither applied nor buffered); target present and tag verifies → acker unioned
+  # into the line's checklist, settling iff it became all-true while still :aura
+  # (settle counter); target present but tag mismatch → ack_rejected counter; target
+  # absent → suspended on {:line, id} for the {:line_added, _} wake, exactly as the
+  # single-response path did.
+  @spec process_ack_batch(peer(), list()) :: any()
+  defp process_ack_batch(peer, acks) do
+    secret = get_boundary_secret(peer)
+
+    {admitted_reversed, admission_rejected} =
+      Enum.reduce(acks, {[], 0}, fn {payload, alpha}, {admitted, rejected} ->
+        if check_admission(alpha, secret, :ack, payload),
+          do: {[{payload, alpha} | admitted], rejected},
+          else: {admitted, rejected + 1}
+      end)
+
+    acks_by_line =
+      admitted_reversed
+      |> Enum.reverse()
+      |> Enum.group_by(fn {{line_id, _acker_peer_id, _ack_tag}, _alpha} -> line_id end)
+
+    {document, %{settled: settled, rejected: tag_rejected, absent: absent}} =
+      apply_acks_to_document(get_peer_document(peer), acks_by_line)
+
+    peer =
+      get_metadata(peer)
+      |> inc_counter_times(admission_rejected, &inc_admission_rejected_counter/1)
+      |> inc_counter_times(tag_rejected, &inc_ack_rejected_counter/1)
+      |> inc_counter_times(settled, &inc_settle_counter/1)
+      |> update_metadata(peer)
+
+    peer = update_peer_document(document, peer)
+
+    absent
+    |> Enum.reduce(peer, fn {line_id, entries}, peer_acc ->
+      Enum.reduce(entries, peer_acc, fn {payload, alpha}, peer_inner ->
+        suspend_operation(
+          peer_inner,
+          {:receive_confirmation_line_insertion, payload, alpha},
+          {:line, line_id},
+          &inc_requeue_counter/1
+        )
+      end)
+    end)
+    |> loop()
+  end
+
+  @spec inc_counter_times(
+          Syncordian.Metadata.metadata(),
+          non_neg_integer(),
+          (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
+        ) :: Syncordian.Metadata.metadata()
+  defp inc_counter_times(metadata, 0, _inc), do: metadata
+
+  defp inc_counter_times(metadata, times, inc),
+    do: Enum.reduce(1..times, metadata, fn _, m -> inc.(m) end)
 
   @spec add_valid_line_to_document_and_loop(
           peer(),
@@ -551,7 +680,9 @@ defmodule Syncordian.Peer do
     ack_tag = create_tag_ack(get_signature(line), peer_id)
     ack_payload = {line_id, peer_id, ack_tag}
     ack_alpha = create_admission(get_boundary_secret(peer), :ack, ack_payload)
-    perform_broadcast_peer(peer, {:receive_confirmation_line_insertion, ack_payload, ack_alpha})
+
+    peer =
+      perform_broadcast_peer(peer, {:receive_confirmation_line_insertion, ack_payload, ack_alpha})
 
     {document, settled?} = settle_line_if_complete(document, line_id)
 
@@ -1026,14 +1157,18 @@ defmodule Syncordian.Peer do
       # full insert payload — binding every field it carries, op_id included.
       {:send_insert_broadcast, insert_payload} ->
         alpha = create_admission(get_boundary_secret(peer), :ins, insert_payload)
-        perform_broadcast_peer(peer, {:receive_insert_broadcast, insert_payload, alpha})
-        loop(peer)
+
+        peer
+        |> perform_broadcast_peer({:receive_insert_broadcast, insert_payload, alpha})
+        |> loop()
 
       # ✅ Same admission authenticator, under the :del kind, over the delete payload.
       {:send_delete_broadcast, delete_payload} ->
         alpha = create_admission(get_boundary_secret(peer), :del, delete_payload)
-        perform_broadcast_peer(peer, {:receive_delete_broadcast, delete_payload, alpha})
-        loop(peer)
+
+        peer
+        |> perform_broadcast_peer({:receive_delete_broadcast, delete_payload, alpha})
+        |> loop()
 
       # ✅ Receipt of a delete, evaluated in the formal order: admission, replay, then the
       # intrinsic verification predicate. The delete tag binds the target line's stored
@@ -1363,54 +1498,21 @@ defmodule Syncordian.Peer do
       # response tag is checked against the acknowledged line's stored signature and the
       # claimed acknowledging peer. Responses carry no op_id — their effect is setting
       # one checklist entry, which is idempotent, so a replayed response is harmless.
-      {:receive_confirmation_line_insertion,
-       ack_payload = {inserted_line_id, acker_peer_id, ack_tag}, alpha} ->
-        if not check_admission(alpha, get_boundary_secret(peer), :ack, ack_payload) do
-          # A distrusted node cannot produce a valid authenticator without the boundary
-          # secret, so it cannot advance any line's response checklist (the
-          # premature-settle attack discussed in the paper).
-          reject_admission(peer)
-        else
-          document = get_peer_document(peer)
-          verify = fn line -> check_tag_ack(ack_tag, get_signature(line), acker_peer_id) end
-
-          case apply_ack_to_document(document, inserted_line_id, acker_peer_id, verify) do
-            :absent ->
-              # Acks are broadcast, so one can outrun the insert it acknowledges. The target
-              # line is not present here yet: suspend on its arrival rather than drop, so the
-              # checklist still fills once the insert is delivered (the ack deliverability
-              # rule of def:deliverable). Released by the {:line_added, _} wake on apply.
-              peer
-              |> suspend_operation(
-                {:receive_confirmation_line_insertion, ack_payload, alpha},
-                {:line, inserted_line_id},
-                &inc_requeue_counter/1
-              )
-              |> loop
-
-            {:ok, document, settled?} ->
-              # Genuine response: the acking peer is unioned into the line's checklist, and
-              # the line settled if every trusted peer has now acknowledged it — one
-              # document traversal for the whole step (see apply_ack_to_document/4).
-              peer = update_peer_document(document, peer)
-
-              peer =
-                if settled?,
-                  do: get_metadata(peer) |> inc_settle_counter() |> update_metadata(peer),
-                  else: peer
-
-              loop(peer)
-
-            :rejected ->
-              # Admitted but stale or mismatched: the tag is bound to a different line or
-              # peer (defense in depth behind admission); drop without advancing the
-              # checklist.
-              get_metadata(peer)
-              |> inc_ack_rejected_counter
-              |> update_metadata(peer)
-              |> loop
-          end
-        end
+      #
+      # Responses are processed in BATCHES: every response already queued in the mailbox
+      # (bounded by @ack_drain_limit) is drained and the burst is applied in a single
+      # document traversal (process_ack_batch/2). Responses are the highest-volume
+      # message of the system — N-1 per inserted line, at every replica — and a
+      # per-message traversal made the response path O(N·D) per line, which froze
+      # large-peer-count replays. Batching is protocol-neutral: each response is still
+      # admission-checked and tag-verified individually, checklist union is idempotent
+      # and commutative so intra-batch order is immaterial, and draining responses ahead
+      # of queued non-response messages cannot change any content — a response never
+      # edits content, and one whose target insert has not arrived yet is suspended on
+      # {:line, id} exactly as before.
+      {:receive_confirmation_line_insertion, ack_payload, alpha} ->
+        acks = drain_ack_messages([{ack_payload, alpha}], @ack_drain_limit)
+        process_ack_batch(peer, acks)
 
       # ✅
       {:print_content, :document} ->
@@ -1495,17 +1597,30 @@ defmodule Syncordian.Peer do
       {:write_pending_dump} ->
         File.mkdir_p!("debug/documents/syncordian/pending")
 
+        pending = get_pending(peer)
+
+        summary =
+          "peer_id=#{get_peer_id(peer)} edit_count=#{get_edit_count(peer)} " <>
+            "pending_ops=#{PendingOps.size(pending)} " <>
+            "local_edits=#{length(get_local_edits(peer))}\n"
+
         dump = %{
           peer_id: get_peer_id(peer),
           vector_clock: get_peer_vector_clock(peer),
           edit_count: get_edit_count(peer),
           local_edits_queue: get_local_edits(peer),
-          pending_ops: get_pending(peer)
+          pending_ops: pending
         }
 
+        # Truncated on purpose: a stalled peer at MAINTAINERS scale holds 10⁴–10⁵
+        # suspended ops, and the previous limit: :infinity dump built a
+        # multi-hundred-MB string — a wave of those (one per peer) froze the network
+        # harder than the stall being diagnosed. The summary line above carries the
+        # exact sizes; the truncated inspect shows the oldest entries, which are the
+        # diagnostically relevant ones.
         File.write!(
           "debug/documents/syncordian/pending/pending_peer_#{get_peer_id(peer)}",
-          inspect(dump, limit: :infinity, printable_limit: :infinity, pretty: true)
+          summary <> inspect(dump, limit: 1_000, printable_limit: 10_000, pretty: true)
         )
 
         loop(peer)

@@ -35,29 +35,53 @@ defmodule Syncordian.Utilities do
     end
   end
 
-  # Function to filter weather the peer is the current peer, the supervisor or the storage
-  @spec should_filter_out?(any, pid) :: boolean
-  defp should_filter_out?(name, peer_pid) do
-    pid = :global.whereis_name(name)
-
-    pid == peer_pid or
-      pid == :global.whereis_name(:supervisor) or
-      pid == :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
-  end
-
   @doc """
   Function to perform the filtering and broadcast messages to all peers in the network
   except the current peer. or the supervisor.
   """
   @spec perform_broadcast(pid(), any, any) :: any
   def perform_broadcast(pid, message, range) do
+    pid
+    |> broadcast_recipients()
+    |> broadcast_to(message, range)
+  end
+
+  @doc """
+  Recipient pid list for a broadcast from `sender_pid`: every globally registered
+  process except the sender, the supervisor, and the Swoosh mailbox. Network
+  membership is static for a whole experiment run (peers register at launch, before
+  the first commit is dispatched), so hot senders may resolve this once and reuse it
+  with `broadcast_to/3` instead of re-scanning the registry per message
+  (`Syncordian.Peer` caches it in its peer record).
+  """
+  @spec broadcast_recipients(pid()) :: [pid()]
+  def broadcast_recipients(sender_pid) do
+    supervisor_pid = :global.whereis_name(:supervisor)
+    swoosh_pid = :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
+
     :global.registered_names()
-    |> Enum.filter(fn name -> not should_filter_out?(name, pid) end)
-    |> Enum.each(fn name ->
-      delay = Enum.random(range)
-      pid = :global.whereis_name(name)
-      Process.send_after(pid, message, delay)
+    |> Enum.map(&:global.whereis_name/1)
+    |> Enum.filter(fn pid ->
+      is_pid(pid) and pid != sender_pid and pid != supervisor_pid and pid != swoosh_pid
     end)
+  end
+
+  @doc """
+  Sends `message` to every pid with an independent per-recipient delay drawn from
+  `range` — the network-jitter model. The degenerate `0..0` range short-circuits to a
+  plain `send`: `Process.send_after/3` with delay 0 has the same delivery semantics
+  but pays timer bookkeeping on every message, which is pure overhead on the ack/insert
+  storm paths.
+  """
+  @spec broadcast_to([pid()], any, any) :: any
+  def broadcast_to(pids, message, range) do
+    case range do
+      %Range{first: 0, last: 0} ->
+        Enum.each(pids, fn pid -> send(pid, message) end)
+
+      _ ->
+        Enum.each(pids, fn pid -> Process.send_after(pid, message, Enum.random(range)) end)
+    end
   end
 
   @doc """

@@ -14,7 +14,10 @@ defmodule Mix.Tasks.Syncordian.Eval do
       mix syncordian.eval --crdt fugue             # one of: syncordian | fugue | treedoc | logoot
       mix syncordian.eval --byzantine 3
       mix syncordian.eval --skip-identical         # skip the cmp pass (faster smoke run)
-      mix syncordian.eval --commit-timeout 8000    # ms allowed per commit before giving up
+      mix syncordian.eval --commit-timeout 600000  # ms allowed per commit before giving up
+                                                   # (default 120000; the materialization
+                                                   # barrier legitimately waits a while on
+                                                   # large commits at high peer counts)
 
   ## Exit codes
 
@@ -41,7 +44,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
 
     crdt = parse_crdt(opts[:crdt] || "syncordian")
     byzantine = opts[:byzantine] || 0
-    commit_timeout = opts[:commit_timeout] || 10_000
+    commit_timeout = opts[:commit_timeout] || 120_000
     skip_identical = opts[:skip_identical] || false
 
     # Load code paths without booting the Phoenix endpoint — the supervisor only needs
@@ -53,12 +56,16 @@ defmodule Mix.Tasks.Syncordian.Eval do
     File.mkdir_p!(Path.join(crdt_dir, "raw"))
     File.mkdir_p!("debug/metadata")
     # Clear any prior dump from this CRDT so a stale prior run can't make a divergent
-    # rerun look like it converged.
+    # rerun look like it converged. The raw dump must go too: the convergence script's
+    # no-:aura check reads raw/document, and a leftover from an earlier run reports
+    # that run's settle state, not this one's.
     crdt_dir
     |> File.ls!()
     |> Enum.reject(&(&1 == ".gitignore"))
     |> Enum.reject(&File.dir?(Path.join(crdt_dir, &1)))
     |> Enum.each(&File.rm!(Path.join(crdt_dir, &1)))
+
+    File.rm(Path.join([crdt_dir, "raw", "document"]))
 
     IO.puts(banner(crdt, byzantine))
 
@@ -80,9 +87,9 @@ defmodule Mix.Tasks.Syncordian.Eval do
     end
 
     # The supervisor schedules :write_current_peers_document right before sending
-    # :limit_reached, but the save runs asynchronously per peer. Give it a moment
-    # to flush before we read the directory.
-    wait_for_documents(crdt, 30_000)
+    # :limit_reached, but the save runs asynchronously per peer after the settle
+    # window. Wait generously: hundreds of peers each flush a document file.
+    wait_for_documents(crdt, 120_000)
 
     send(supervisor_pid, {:kill})
 
@@ -131,11 +138,19 @@ defmodule Mix.Tasks.Syncordian.Eval do
     end
   end
 
+  # Waits until every peer's document save has landed: the file count must be >= 2 AND
+  # stable across several consecutive polls (the eval does not know the pool size, and
+  # the previous ">= 2 then 500 ms" rule killed the network while late savers — one
+  # peer out of 85 in practice — were still flushing, silently shrinking the identical
+  # check). For syncordian it additionally waits for this run's raw dump
+  # (raw/document, deleted at startup), which the convergence script's no-:aura check
+  # reads and which the supervisor schedules after the settle window.
   defp wait_for_documents(crdt, total_timeout_ms) do
     dir = Path.join(["debug", "documents", to_string(crdt)])
+    raw_path = Path.join([dir, "raw", "document"])
     deadline = System.monotonic_time(:millisecond) + total_timeout_ms
 
-    poll = fn poll ->
+    poll = fn poll, prev_count, stable ->
       files =
         case File.ls(dir) do
           {:ok, fs} ->
@@ -147,22 +162,27 @@ defmodule Mix.Tasks.Syncordian.Eval do
             []
         end
 
+      count = length(files)
+      stable = if count == prev_count, do: stable + 1, else: 0
+      raw_ok = crdt != :syncordian or File.exists?(raw_path)
+
       cond do
-        length(files) >= 2 ->
-          # Give one more half-second so the last save finishes flushing to disk.
-          Process.sleep(500)
+        count >= 2 and stable >= 4 and raw_ok ->
           :ok
 
         System.monotonic_time(:millisecond) >= deadline ->
-          Mix.raise("documents directory #{dir} still has fewer than 2 files; aborting")
+          Mix.raise(
+            "documents under #{dir} incomplete after timeout " <>
+              "(#{count} files, raw dump present: #{raw_ok}); aborting"
+          )
 
         true ->
-          Process.sleep(250)
-          poll.(poll)
+          Process.sleep(500)
+          poll.(poll, count, stable)
       end
     end
 
-    poll.(poll)
+    poll.(poll, -1, 0)
   end
 
   defp run_identical(crdt) do

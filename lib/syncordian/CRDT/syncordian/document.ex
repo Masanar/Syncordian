@@ -233,6 +233,95 @@ defmodule Syncordian.Document do
   end
 
   @doc """
+    Batched variant of `apply_ack_to_document/4`: applies a whole burst of admitted
+    acknowledgements in ONE document traversal. `acks_by_line` maps a target line id to
+    its acknowledgement entries `{{line_id, acker_peer_id, ack_tag}, alpha}` in arrival
+    order (the full admitted wire messages, so absent ones can be re-suspended
+    verbatim).
+
+    Per line the rule is identical to the single-acknowledgement path: each entry's
+    response tag is verified against the found line's stored signature and claimed
+    acker (`Syncordian.Byzantine.check_tag_ack/3`); genuine ackers are unioned into the
+    line's checklist; the line settles iff the checklist became all-true while still
+    `:aura` (`:tombstone` is never demoted). Union is idempotent and commutative, so
+    applying a burst together yields the same document as applying its members one by
+    one in any order.
+
+    Returns `{document, %{applied: n, rejected: n, settled: n, absent: remaining}}`
+    where `absent` holds the entries whose target line is not present yet, keyed by
+    line id — the caller suspends each on `{:line, id}` exactly as the single path
+    does.
+  """
+  @spec apply_acks_to_document(
+          Syncordian.Basic_Types.document(),
+          %{optional(Syncordian.Basic_Types.line_id()) => list()}
+        ) ::
+          {Syncordian.Basic_Types.document(),
+           %{
+             applied: non_neg_integer(),
+             rejected: non_neg_integer(),
+             settled: non_neg_integer(),
+             absent: map()
+           }}
+  def apply_acks_to_document(document, acks_by_line) when map_size(acks_by_line) == 0,
+    do: {document, %{applied: 0, rejected: 0, settled: 0, absent: %{}}}
+
+  def apply_acks_to_document(document, acks_by_line) do
+    do_apply_acks(document, acks_by_line, %{applied: 0, rejected: 0, settled: 0})
+  end
+
+  # Walks the document until every targeted line has been visited, then keeps the
+  # untouched tail by reference — matching the early exit of the single-ack path
+  # (small batches would otherwise pay a full-document walk for a line near the head).
+  defp do_apply_acks(tail, remaining, stats) when map_size(remaining) == 0,
+    do: {tail, Map.put(stats, :absent, %{})}
+
+  defp do_apply_acks([], remaining, stats), do: {[], Map.put(stats, :absent, remaining)}
+
+  defp do_apply_acks([line | tail], remaining, stats) do
+    case Map.pop(remaining, get_line_id(line)) do
+      {nil, _} ->
+        {new_tail, result} = do_apply_acks(tail, remaining, stats)
+        {[line | new_tail], result}
+
+      {entries, remaining} ->
+        {line, stats} = apply_line_acks(line, entries, stats)
+        {new_tail, result} = do_apply_acks(tail, remaining, stats)
+        {[line | new_tail], result}
+    end
+  end
+
+  # Applies one line's acknowledgement entries: verify each tag against the line's
+  # stored signature, union the genuine ackers, then apply the settle lattice rule
+  # once (equivalent to checking after every union — the checklist only grows).
+  defp apply_line_acks(line, entries, stats) do
+    {line, applied, rejected} =
+      Enum.reduce(entries, {line, 0, 0}, fn
+        {{_line_id, acker_peer_id, ack_tag}, _alpha}, {line_acc, applied, rejected} ->
+          if check_tag_ack(ack_tag, get_signature(line_acc), acker_peer_id) do
+            {update_line_commit_at(line_acc, acker_peer_id), applied + 1, rejected}
+          else
+            {line_acc, applied, rejected + 1}
+          end
+      end)
+
+    {line, settled} =
+      if get_line_status(line) == :aura and Enum.all?(get_commit_at(line)) do
+        {set_line_status(line, :settled), 1}
+      else
+        {line, 0}
+      end
+
+    {line,
+     %{
+       stats
+       | applied: stats.applied + applied,
+         rejected: stats.rejected + rejected,
+         settled: stats.settled + settled
+     }}
+  end
+
+  @doc """
     After an acknowledgement is recorded, settle the given line iff every trusted peer has
     now acknowledged it: when its `commit_at` is all-true and it is still `:aura`, join in
     `:settled` (the acknowledgement case of `def:apply` in the formal model). This is

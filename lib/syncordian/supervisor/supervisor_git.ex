@@ -218,18 +218,53 @@ defmodule Syncordian.Supervisor do
 
   # Optional extra pacing on top of the materialization barrier (room for Byzantine
   # traffic and broadcast jitter to interleave between commits); also the delay before
-  # the next {:send_all_commits} self-send.
+  # the next {:send_all_commits} self-send. Env override > config > default.
   defp commit_dispatch_delay_ms,
-    do: Application.get_env(:syncordian, :commit_dispatch_delay_ms, 100)
+    do:
+      env_int(
+        "SYNCORDIAN_COMMIT_DELAY_MS",
+        Application.get_env(:syncordian, :commit_dispatch_delay_ms, 100)
+      )
+
+  # Settle window after the last commit, before documents are dumped and the final
+  # metadata snapshot is taken. Env override > config > default.
+  defp final_settle_ms,
+    do:
+      env_int(
+        "SYNCORDIAN_FINAL_SETTLE_MS",
+        Application.get_env(:syncordian, :final_settle_ms, 3_000)
+      )
+
+  # Collect/print peer metadata only every N commits (default 1 = every commit, the
+  # historical behavior). Long histories with hundreds of peers pay one
+  # :erlang.external_size(document) per peer per collection, so replays like the full
+  # linux MAINTAINERS log want a sparser cadence. The final post-settle snapshot is
+  # taken unconditionally either way.
+  defp metadata_every,
+    do: max(env_int("SYNCORDIAN_METADATA_EVERY", 1), 1)
+
+  # The every-60s pending dumps during a barrier stall are opt-in: with hundreds of
+  # peers a dump wave stalls the whole network (each peer serializes its buffers to
+  # disk), turning a slow barrier into a permanent freeze.
+  defp pending_dumps_enabled?,
+    do: System.get_env("SYNCORDIAN_PENDING_DUMPS") == "1"
+
+  defp env_int(name, default) do
+    case System.get_env(name) do
+      nil -> default
+      value -> String.to_integer(value)
+    end
+  end
 
   # Polls the authoring peer until its materialized document hashes equal to the tracked
   # file at `commit_hash`. Deliberately UNBOUNDED: dispatching a commit against the wrong
   # parent state silently corrupts the whole replay (the author broadcasts consistently
   # wrong ops, so peers agree with each other but not with git), which is strictly worse
-  # than a visibly stalled run. Every 60s of mismatch it prints a warning and snapshots
-  # every peer's suspended-op buffer and local-edit FIFO
-  # (debug/documents/syncordian/pending/), so a wedged replica is diagnosable while the
-  # replay waits.
+  # than a visibly stalled run. Every 60s of mismatch it prints a warning; with
+  # SYNCORDIAN_PENDING_DUMPS=1 it also snapshots the AWAITED AUTHOR's suspended-op buffer
+  # and local-edit FIFO (debug/documents/syncordian/pending/). The dump is scoped to that
+  # one peer and opt-in because a dump wave over hundreds of peers freezes the very
+  # network the barrier is waiting on.
   @spec await_author_materialization(pid(), String.t(), String.t()) :: :ok
   defp await_author_materialization(peer_pid, commit_hash, author_id) do
     # The line-based document cannot represent a missing final newline (materialization
@@ -244,10 +279,11 @@ defmodule Syncordian.Supervisor do
 
     expected = :erlang.md5(content)
     warn_at = System.monotonic_time(:millisecond) + 60_000
-    poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at)
+    poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, 0)
+    flush_stale_content_hashes()
   end
 
-  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at) do
+  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, misses) do
     ref = make_ref()
     send(peer_pid, {:request_content_hash, self(), ref})
 
@@ -265,29 +301,41 @@ defmodule Syncordian.Supervisor do
       System.monotonic_time(:millisecond) > warn_at ->
         IO.puts(
           "WARNING: author #{author_id} has not materialized commit " <>
-            "#{String.slice(commit_hash, 0, 10)} after 60s — still waiting; " <>
-            "pending dumps written to debug/documents/syncordian/pending/"
+            "#{String.slice(commit_hash, 0, 10)} after 60s — still waiting" <>
+            if(pending_dumps_enabled?(),
+              do: "; pending dump written to debug/documents/syncordian/pending/",
+              else: " (set SYNCORDIAN_PENDING_DUMPS=1 for a pending dump)"
+            )
         )
 
-        :global.registered_names()
-        |> Enum.each(fn name ->
-          case :global.whereis_name(name) do
-            pid when is_pid(pid) and name != :supervisor -> send(pid, {:write_pending_dump})
-            _ -> :ok
-          end
-        end)
+        if pending_dumps_enabled?(), do: send(peer_pid, {:write_pending_dump})
 
         poll_author_hash(
           peer_pid,
           commit_hash,
           author_id,
           expected,
-          System.monotonic_time(:millisecond) + 60_000
+          System.monotonic_time(:millisecond) + 60_000,
+          misses + 1
         )
 
       true ->
-        Process.sleep(50)
-        poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at)
+        # Each probe makes the author build and hash its whole materialized document,
+        # so back off once the wait is clearly not sub-second: keeps the author's CPU
+        # for actual replication work during long catch-ups.
+        Process.sleep(if misses < 20, do: 50, else: 250)
+        poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, misses + 1)
+    end
+  end
+
+  # A probe that timed out (mailbox backlog at the author) still gets answered later;
+  # those stale {:content_hash, ref, _} replies carry dead refs and would otherwise sit
+  # in the supervisor mailbox until the catch-all clause logs them as unknown messages.
+  defp flush_stale_content_hashes do
+    receive do
+      {:content_hash, _, _} -> flush_stale_content_hashes()
+    after
+      0 -> :ok
     end
   end
 
@@ -343,9 +391,7 @@ defmodule Syncordian.Supervisor do
     pool_size = min(author_count, max_peers() || author_count)
 
     if pool_size < author_count do
-      IO.puts(
-        "Capping peer pool: #{pool_size} peers for #{author_count} authors (round-robin)"
-      )
+      IO.puts("Capping peer pool: #{pool_size} peers for #{author_count} authors (round-robin)")
     end
 
     pid_list =
@@ -374,10 +420,15 @@ defmodule Syncordian.Supervisor do
     end
   end
 
+  # Byzantine ids are registry names / metadata keys only (byzantine peers never index
+  # a vector clock), so the sole requirement is disjointness from the author peer ids
+  # 0..pool_size-1. The previous n*73+73 scheme collided with author ids once the pool
+  # reached 147 (relevant since MAINTAINERS-scale histories have 279 authors), which
+  # made the byzantine :global.register_name fail silently.
   @spec byzantine_peer_id(Syncordian.Basic_Types.peer_id()) ::
           Syncordian.Basic_Types.peer_id()
   defp byzantine_peer_id(peer_id) do
-    peer_id * 73 + 73
+    1_000_000 + peer_id
   end
 
   @spec init_byzantine_peers(integer()) :: list()
@@ -508,14 +559,17 @@ defmodule Syncordian.Supervisor do
           # commit goes out. The snapshot is tagged with the commit number it belongs
           # to, so a print processed after later dispatches still lands in the right
           # file. Peers that miss the window are covered by their previous report
-          # (see get_peer_metadata_map/1).
-          Process.send_after(self(), {:collect_metadata_from_peers}, 10)
+          # (see get_peer_metadata_map/1). Cadence is gated by SYNCORDIAN_METADATA_EVERY
+          # (default: every commit); the fixpoint snapshot at the end always runs.
+          if rem(supervisor_counter, metadata_every()) == 0 do
+            Process.send_after(self(), {:collect_metadata_from_peers}, 10)
 
-          Process.send_after(
-            self(),
-            {:print_supervisor_metadata, supervisor_counter + 1},
-            commit_dispatch_delay_ms()
-          )
+            Process.send_after(
+              self(),
+              {:print_supervisor_metadata, supervisor_counter + 1},
+              commit_dispatch_delay_ms()
+            )
+          end
 
           Process.send_after(
             self(),
@@ -542,7 +596,7 @@ defmodule Syncordian.Supervisor do
           |> get_pid_list()
           |> Enum.each(&send(&1, {:write_pending_dump}))
 
-          final_settle_ms = Application.get_env(:syncordian, :final_settle_ms, 3_000)
+          final_settle_ms = final_settle_ms()
 
           Process.send_after(
             self(),
@@ -561,9 +615,12 @@ defmodule Syncordian.Supervisor do
             final_settle_ms + 1_000
           )
 
-          # TODO: repetid code!
+          # The raw dump feeds the convergence check's no-:aura assertion, so it must
+          # capture the post-settle fixpoint like the document dumps above — written
+          # at limit-reached time it races the final commit's in-flight acks and
+          # reports still-:aura lines that settle milliseconds later.
           pid_individual = supervisor |> get_pid_list() |> Enum.random()
-          send(pid_individual, {:write_raw_document})
+          Process.send_after(pid_individual, {:write_raw_document}, final_settle_ms)
           send(live_view_pid, {:limit_reached, "All commits processed"})
           supervisor_loop(supervisor)
         end

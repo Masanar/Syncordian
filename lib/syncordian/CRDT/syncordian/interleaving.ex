@@ -94,18 +94,29 @@ defmodule Syncordian.Interleaving do
   """
   @spec blocks(Syncordian.Basic_Types.document()) :: [block()]
   def blocks(document) do
-    live = Enum.filter(document, &live_block_line?/1)
-    by_opid = Map.new(live, fn l -> {get_line_op_id(l), l} end)
+    # The document is already ⋖-sorted, so each live line's index IS its position in
+    # the replica-independent total order. Carrying that integer lets block lines be
+    # ordered by plain integer comparison instead of PathId.compare/2 — this function
+    # runs on EVERY applied remote insert, and re-sorting a large single-writer block
+    # (e.g. a file-creating commit) with list-structured PathId comparisons dominated
+    # whole replays.
+    live =
+      document
+      |> Enum.filter(&live_block_line?/1)
+      |> Enum.with_index()
+
+    by_opid = Map.new(live, fn {l, _pos} -> {get_line_op_id(l), l} end)
 
     # Successor index: a line keyed by (writer, right anchor, its left parent) is the unique
     # next link of the chain whose current line has that op_id.
     succ_index =
-      Map.new(live, fn l ->
-        {{get_line_peer_id(l), get_line_parent_right_op_id(l), get_line_parent_left_op_id(l)}, l}
+      Map.new(live, fn {l, pos} ->
+        {{get_line_peer_id(l), get_line_parent_right_op_id(l), get_line_parent_left_op_id(l)},
+         {l, pos}}
       end)
 
     live
-    |> Enum.filter(fn l -> block_head?(l, by_opid) end)
+    |> Enum.filter(fn {l, _pos} -> block_head?(l, by_opid) end)
     |> Enum.map(fn head -> build_block(head, succ_index) end)
   end
 
@@ -147,28 +158,32 @@ defmodule Syncordian.Interleaving do
     end
   end
 
-  @spec build_block(Syncordian.Line_Object.line(), map()) :: block()
-  defp build_block(head, succ_index) do
-    lines = unfold_chain(head, succ_index, [head], MapSet.new([get_line_id(head)]))
+  @spec build_block({Syncordian.Line_Object.line(), non_neg_integer()}, map()) :: block()
+  defp build_block({head, head_pos}, succ_index) do
+    lines =
+      unfold_chain({head, head_pos}, succ_index, [{head, head_pos}], MapSet.new([head_pos]))
+      |> Enum.sort_by(fn {_line, pos} -> pos end)
+      |> Enum.map(fn {line, _pos} -> line end)
 
     %{
       writer: get_line_peer_id(head),
       left_anchor: get_line_parent_left_op_id(head),
       right_anchor: get_line_parent_right_op_id(head),
-      lines: Enum.sort(lines, &line_leq?/2)
+      lines: lines
     }
   end
 
-  # Follows the authored chain from `current`, accumulating lines. `seen` guards against a
-  # pathological cycle (never expected: the authored chain is linear).
+  # Follows the authored chain from `current`, accumulating {line, document position}
+  # pairs. `seen` (positions) guards against a pathological cycle (never expected: the
+  # authored chain is linear).
   @spec unfold_chain(
-          Syncordian.Line_Object.line(),
+          {Syncordian.Line_Object.line(), non_neg_integer()},
           map(),
-          [Syncordian.Line_Object.line()],
+          [{Syncordian.Line_Object.line(), non_neg_integer()}],
           MapSet.t()
         ) ::
-          [Syncordian.Line_Object.line()]
-  defp unfold_chain(current, succ_index, acc, seen) do
+          [{Syncordian.Line_Object.line(), non_neg_integer()}]
+  defp unfold_chain({current, _pos}, succ_index, acc, seen) do
     key =
       {get_line_peer_id(current), get_line_parent_right_op_id(current), get_line_op_id(current)}
 
@@ -176,13 +191,16 @@ defmodule Syncordian.Interleaving do
       nil ->
         acc
 
-      next ->
-        next_id = get_line_id(next)
-
-        if MapSet.member?(seen, next_id) do
+      {next, next_pos} ->
+        if MapSet.member?(seen, next_pos) do
           acc
         else
-          unfold_chain(next, succ_index, [next | acc], MapSet.put(seen, next_id))
+          unfold_chain(
+            {next, next_pos},
+            succ_index,
+            [{next, next_pos} | acc],
+            MapSet.put(seen, next_pos)
+          )
         end
     end
   end

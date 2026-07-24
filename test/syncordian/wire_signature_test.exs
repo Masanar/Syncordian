@@ -104,56 +104,63 @@ defmodule Syncordian.WireSignatureTest do
       refute Byzantine.check_tag_insert(infimum, provisional, supremum, forged)
     end
 
-    test "direct path and windowed path seal the identical stored signature (convergence)" do
+    test "a receiver locating the authored parents by identity seals the author's σ (convergence)" do
       content = "converging line"
       {authored_line, insert_tag, _inf, _sup} = author_side(content)
 
       # Receiver side: its own copies of the boundary lines carry the same sentinel
-      # signatures, and the line arrives WITHOUT its stored signature.
-      receiver_document = [
-        create_infimum_line(2, @network_size),
-        create_supremum_line(2, @network_size)
-      ]
+      # signatures, and the line arrives WITHOUT its stored signature. The author placed
+      # the line between the infimum and supremum, so the receiver resolves those two
+      # authored parents by identity (op_id) and re-derives σ from their signatures.
+      receiver_infimum = create_infimum_line(2, @network_size)
+      receiver_supremum = create_supremum_line(2, @network_size)
 
       provisional =
         create_line_from_wire(get_line_id(authored_line), content, @author_peer, @network_size)
 
-      # Direct path: locate parents by position, verify the tag, seal σ from the pair.
-      line_index = get_document_new_index_by_incoming_line_id(provisional, receiver_document)
-      [left_parent, right_parent] = get_splice_parents(receiver_document, line_index)
-      assert Byzantine.check_tag_insert(left_parent, provisional, right_parent, insert_tag)
+      # The wire tag verifies against exactly the authored parent pair.
+      assert Byzantine.check_tag_insert(
+               receiver_infimum,
+               provisional,
+               receiver_supremum,
+               insert_tag
+             )
 
-      sigma_direct =
+      sigma_sealed =
         Byzantine.create_signature_doc(
-          get_signature(left_parent),
+          get_signature(receiver_infimum),
           content,
-          get_signature(right_parent),
+          get_signature(receiver_supremum),
           @author_peer
         )
 
-      # Windowed (stash) path: the search returns the accepted parent pair; seal from it.
-      {found?, {stash_left, stash_right}} =
-        stash_document_lines_insert(
-          receiver_document,
-          provisional,
-          [1, 0, 1],
-          [0, 1, 0],
-          insert_tag
+      # The receiver seals exactly the author's σ — without σ ever traveling.
+      assert sigma_sealed == get_signature(authored_line)
+    end
+
+    test "a wire tag forged over the wrong authored parent op_ids never verifies" do
+      # The identity-based delivery locates parents by the op_ids the message names; a
+      # forger who does not know the parents' stored signatures cannot produce a wire tag
+      # that verifies against them, whatever op_ids it claims.
+      {_authored_line, _genuine, infimum, supremum} = author_side("payload")
+
+      provisional =
+        create_line_from_wire(
+          {:path, [{1, @author_peer}]},
+          "payload",
+          @author_peer,
+          @network_size
         )
 
-      assert found?
-
-      sigma_stash =
-        Byzantine.create_signature_doc(
-          get_signature(stash_left),
-          content,
-          get_signature(stash_right),
+      forged =
+        Byzantine.create_tag_insert(
+          "guessed_left_sig",
+          "payload",
+          "guessed_right_sig",
           @author_peer
         )
 
-      # Both receiver routes and the author agree on σ — without σ ever traveling.
-      assert sigma_direct == sigma_stash
-      assert sigma_direct == get_signature(authored_line)
+      refute Byzantine.check_tag_insert(infimum, provisional, supremum, forged)
     end
 
     test "direct path verifies an insert whose right neighbor is the second-to-last line" do
@@ -240,7 +247,11 @@ defmodule Syncordian.WireSignatureTest do
 
   describe "admission authenticator (α)" do
     setup do
-      payload = {{:path, [{1, 1}]}, "content", 1, "SOME_TAG", [0, 1, 0], {1, 1}}
+      # The full insert payload: line_id, content, author, wire tag, progress vector,
+      # op_id, and the two authored parent op_ids. α binds every field, parents included.
+      payload =
+        {{:path, [{1, 1}]}, "content", 1, "SOME_TAG", [0, 1, 0], {1, 1}, {-1, 0}, {-1, 1}}
+
       alpha = Byzantine.create_admission(@boundary, :ins, payload)
       %{payload: payload, alpha: alpha}
     end
@@ -266,14 +277,17 @@ defmodule Syncordian.WireSignatureTest do
     } do
       # This is exactly the Byzantine simulator's strongest move: mutate a field and
       # rebroadcast under the observed (now stale) authenticator.
-      {line_id, content, peer_id, tag, vc, op_id} = payload
+      {line_id, content, peer_id, tag, vc, op_id, lpo, rpo} = payload
 
       mutations = [
-        {line_id, "tampered", peer_id, tag, vc, op_id},
-        {line_id, content, 9, tag, vc, op_id},
-        {line_id, content, peer_id, "FORGED_TAG", vc, op_id},
-        {line_id, content, peer_id, tag, [9, 9, 9], op_id},
-        {line_id, content, peer_id, tag, vc, {1, 2}}
+        {line_id, "tampered", peer_id, tag, vc, op_id, lpo, rpo},
+        {line_id, content, 9, tag, vc, op_id, lpo, rpo},
+        {line_id, content, peer_id, "FORGED_TAG", vc, op_id, lpo, rpo},
+        {line_id, content, peer_id, tag, [9, 9, 9], op_id, lpo, rpo},
+        {line_id, content, peer_id, tag, vc, {1, 2}, lpo, rpo},
+        # Tampering with either authored parent op_id also invalidates α.
+        {line_id, content, peer_id, tag, vc, op_id, {9, 9}, rpo},
+        {line_id, content, peer_id, tag, vc, op_id, lpo, {9, 9}}
       ]
 
       for mutated <- mutations do

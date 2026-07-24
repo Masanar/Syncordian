@@ -113,7 +113,7 @@ defmodule Syncordian.ByzantinePeer do
   """
   def byzantine_peer_loop(byzantine_peer) do
     receive do
-      {:receive_delete_broadcast, {line_deleted_id, delete_tag, op_id}, alpha} ->
+      {:receive_delete_broadcast, {target_op_id, target_line_id, delete_tag, op_id}, alpha} ->
         # This guard prevents feedback between byzantine peers: an honest delete tag is a
         # sha256 digest of 64 characters, while a forged one is the 10-character string
         # generated below, so a byzantine peer never re-forges another byzantine forgery.
@@ -126,12 +126,13 @@ defmodule Syncordian.ByzantinePeer do
           # authenticator over its mutated payload — replaying the stale one is its
           # strongest available move (garbling it too is strictly weaker). Honest peers
           # therefore drop the forgery at admission (admission_rejected_counter), never
-          # applying or buffering it. The op_id is preserved from the observed message;
-          # since the forged copy is rejected before the replay check, it is never
-          # recorded, and the genuine delete is not later mistaken for a replay.
+          # applying or buffering it. The op_id and target identity are preserved from the
+          # observed message; since the forged copy is rejected before the replay check,
+          # it is never recorded, and the genuine delete is not later mistaken for a replay.
           perform_broadcast_byzantine(
             byzantine_peer,
-            {:receive_delete_broadcast, {line_deleted_id, byzantine_tag, op_id}, alpha}
+            {:receive_delete_broadcast, {target_op_id, target_line_id, byzantine_tag, op_id},
+             alpha}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending a delete broadcast")
@@ -144,18 +145,21 @@ defmodule Syncordian.ByzantinePeer do
           byzantine_peer_loop(byzantine_peer)
         end
 
-      {:receive_insert_broadcast, {line_id, content, peer_id, insert_tag, incoming_vc, op_id},
-       alpha} ->
+      {:receive_insert_broadcast,
+       {line_id, content, peer_id, insert_tag, incoming_vc, op_id, left_parent_op_id,
+        right_parent_op_id}, alpha} ->
         if String.length(insert_tag) != 10 and send?() do
           byzantine_tag = generate_string()
 
           # The forged wire tag is the attack; the stale admission authenticator no
           # longer matches the mutated payload, so honest receivers reject the message at
-          # admission — see the delete clause above for the modeling rationale.
+          # admission — see the delete clause above for the modeling rationale. The op_id
+          # and the authored parent identities are preserved from the observed message.
           perform_broadcast_byzantine(
             byzantine_peer,
             {:receive_insert_broadcast,
-             {line_id, content, peer_id, byzantine_tag, incoming_vc, op_id}, alpha}
+             {line_id, content, peer_id, byzantine_tag, incoming_vc, op_id, left_parent_op_id,
+              right_parent_op_id}, alpha}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")

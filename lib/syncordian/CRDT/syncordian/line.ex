@@ -14,7 +14,8 @@ defmodule Syncordian.Line_Object do
     # creation, or sealed by a receiver from the accepted parent pair — and never
     # recomputed (see the invariant in Syncordian.Byzantine). It is never transmitted:
     # only domain-separated wire tags travel, and each replica derives the identical σ
-    # locally. Neighbor drift is reconciled by the windowed search, not by rehashing.
+    # locally from the authored parent pair it resolves by identity (op_id), never by
+    # rehashing when neighbors drift.
     signature: "",
     peer_id: 9_999_999,
     status: :aura,
@@ -202,7 +203,12 @@ defmodule Syncordian.Line_Object do
       signature: infimum_secret,
       status: :settled,
       peer_id: peer_id,
-      commit_at: List.duplicate(true, network_size)
+      commit_at: List.duplicate(true, network_size),
+      # Sentinel authored identity: real peer ids are non-negative, so the reserved
+      # writer -1 belongs to no peer. A line authored just after the infimum names this
+      # op_id as its left parent, and every replica resolves it to its own infimum line
+      # through the peer's op-id index (see Syncordian.Peer.get_line_by_op_id/2).
+      op_id: {-1, 0}
     )
   end
 
@@ -224,7 +230,11 @@ defmodule Syncordian.Line_Object do
       signature: supremum_secret,
       status: :settled,
       peer_id: peer_id,
-      commit_at: List.duplicate(true, network_size)
+      commit_at: List.duplicate(true, network_size),
+      # Sentinel authored identity, the supremum counterpart of the infimum's {-1, 0}
+      # (see create_infimum_line/2). A line authored just before the supremum names this
+      # op_id as its right parent.
+      op_id: {-1, 1}
     )
   end
 
@@ -339,9 +349,10 @@ defmodule Syncordian.Line do
 
   # Identity tiebreak for equal positions: op_ids are {writer, seq} tuples, so Erlang
   # term order on them is exactly the lexicographic (writer, seq) order the model uses.
-  # The boundary sentinels carry a nil op_id but hold unique sentinel positions, so they
-  # never reach this tiebreak against a real line; nil-vs-nil can only be the two
-  # sentinels compared against themselves.
+  # The boundary sentinels carry the reserved op_ids {-1, 0} / {-1, 1} but hold unique
+  # sentinel positions, so PathId.compare/2 already separates them from every real line
+  # and they never reach this tiebreak; the nil clauses below are retained only as
+  # defense in depth for a line whose identity was somehow left unset.
   defp compare_lines_identity(line1, line2) do
     op_id1 = get_line_op_id(line1)
     op_id2 = get_line_op_id(line2)

@@ -168,11 +168,12 @@ defmodule Syncordian.Byzantine do
     do: digest(:ins, {left_parent_signature, content, right_parent_signature, peer_id})
 
   @doc """
-    Verifies an insert wire tag against a candidate parent pair: recomputes t_ins from
-    the candidates' stored signatures and the received line's content and author. Up to a
-    hash collision exactly one parent pair verifies — the authored one — so every replica
-    that accepts the tag (directly or at any offset of the windowed search) accepts the
-    same parents and seals the same stored signature. Missing candidates never verify.
+    Verifies an insert wire tag against the parent pair a receiver located by identity
+    (the op_ids the insert names): recomputes t_ins from the parents' stored signatures and
+    the received line's content and author. Up to a hash collision exactly one parent pair
+    verifies — the authored one — so every replica seals the same stored signature. A
+    genuine insert always verifies, since its parents are resolved by the very op_ids it
+    carries; a mismatch is therefore a forgery. Missing candidates never verify.
   """
   @spec check_tag_insert(
           left_parent :: Syncordian.Line_Object.line() | nil,

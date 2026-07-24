@@ -20,9 +20,7 @@ defmodule Syncordian.Document do
   # use TypeCheck
   import Syncordian.Line_Object
   import Syncordian.Line
-  import Syncordian.Vector_Clock
   import Syncordian.Byzantine
-  import Syncordian.Utilities
   import Syncordian.Basic_Types
   alias Syncordian.PathId
 
@@ -379,106 +377,6 @@ defmodule Syncordian.Document do
 
   def update_document_line_peer_id([head | tail], index, new_peer_id) when index > 0 do
     [head | update_document_line_peer_id(tail, index - 1, new_peer_id)]
-  end
-
-  @doc """
-    Windowed parent search for an out-of-order (stashed) insert. The receiver knows the
-    incoming line's position but its neighbors may have shifted under concurrent edits;
-    this function slides a bounded window — sized by the progress-vector projection
-    distance — around the insertion point, looking for the candidate parent pair whose
-    stored signatures verify the insert wire tag `t_ins`.
-
-    Up to a hash collision exactly one parent pair verifies (the authored one), so every
-    replica that accepts the tag — directly or at any window offset — accepts the same
-    parents. On success the accepted pair is returned so the caller can seal the line's
-    stored signature from it; on failure `{false, {nil, nil}}`.
-  """
-  @spec stash_document_lines_insert(
-          document :: Syncordian.Basic_Types.document(),
-          incoming_line :: Syncordian.Line_Object.line(),
-          local_peer_vc :: Syncordian.Basic_Types.vector_clock(),
-          incoming_peer_vc :: Syncordian.Basic_Types.vector_clock(),
-          insert_tag :: Syncordian.Basic_Types.signature()
-        ) ::
-          {boolean(), {Syncordian.Line_Object.line() | nil, Syncordian.Line_Object.line() | nil}}
-  def stash_document_lines_insert(
-        document,
-        incoming_line,
-        local_peer_vc,
-        incoming_peer_vc,
-        insert_tag
-      ) do
-    window_size = projection_distance(local_peer_vc, incoming_peer_vc)
-    document_length = get_document_length(document) + 1
-    window_center = get_document_new_index_by_incoming_line_id(incoming_line, document)
-
-    new_document =
-      add_element_list_in_given_index(document, window_center - 1, incoming_line)
-
-    window_search_result =
-      window_stash_check_signature(
-        {document_length, window_size, window_center, new_document, incoming_line, insert_tag}
-      )
-
-    case window_search_result do
-      {true, {left_parent_index, right_parent_index}} ->
-        {true,
-         {get_document_line_by_index(new_document, left_parent_index),
-          get_document_line_by_index(new_document, right_parent_index)}}
-
-      {false, _} ->
-        {false, {nil, nil}}
-    end
-  end
-
-  # This function checks if the incoming line is checkable in the window of the document
-  # defined by the window_center, window_size, and the document_length. If the incoming
-  # line is checkable — i.e. some candidate parent pair verifies the insert wire tag — it
-  # returns true together with the (document-index) positions of the accepted parents;
-  # otherwise false.
-  #
-  # The candidate (left, right) pairs are enumerated FLAT, nearest pairs first, so each of
-  # the O(window²) distinct pairs is hashed exactly once. The previous implementation
-  # explored the same pairs by branching recursion (expand-left OR expand-right at every
-  # failure), recomputing overlapping subproblems Θ(2^window) times: once replicas drifted
-  # enough for windows to widen, whole peers sank into billions of SHA checks per message
-  # and the network CPU-melted. By the unique-verifier property of the wire tag at most
-  # one pair can match, so enumeration order cannot change the result.
-  #
-  # Deletes no longer use this search: their authorization tag binds the target line's
-  # stored signature directly (an intrinsic check), so locating shifted neighbors is
-  # unnecessary for them.
-  @spec window_stash_check_signature({
-          integer(),
-          integer(),
-          integer(),
-          Syncordian.Basic_Types.document(),
-          Syncordian.Line_Object.line(),
-          Syncordian.Basic_Types.signature()
-        }) :: {boolean(), {integer(), integer()}}
-  defp window_stash_check_signature(
-         {document_length, window_size, window_center, document, incoming_line, insert_tag}
-       ) do
-    max_spread = window_size + 2
-
-    candidate_pairs =
-      for spread <- 2..max_spread,
-          left_shift <- 1..(spread - 1),
-          right_shift = spread - left_shift,
-          window_center - left_shift >= 0,
-          window_center + right_shift < document_length do
-        {window_center - left_shift, window_center + right_shift}
-      end
-
-    Enum.find_value(candidate_pairs, {false, {0, 0}}, fn {left_index, right_index} ->
-      left_parent = get_document_line_by_index(document, left_index)
-      right_parent = get_document_line_by_index(document, right_index)
-
-      if right_parent != nil and
-           check_tag_insert(left_parent, incoming_line, right_parent, insert_tag),
-         do: {true, {left_index, right_index}},
-         else: nil
-    end)
   end
 
   @doc """

@@ -13,29 +13,27 @@ defmodule Syncordian.PendingOps do
 
     * `{:clock, sender_id, needed_value}` — the operation is causally ahead of the local
       peer; it becomes deliverable once the local progress vector for `sender_id` reaches
-      `needed_value` (\\ie all preceding edits from that sender have been applied). Released
+      `needed_value` (\\ie all preceding inserts from that sender have been applied). Released
       by a `{:clock_advanced, sender_id, new_value}` event when `new_value >= needed_value`.
-    * `{:line, line_id}` — a delete whose target line is not present in the document yet.
-      Released by a `{:line_added, line_id}` event.
-    * `{:vc_ready, incoming_vc, sender_id}` — an insert suspended for missing causal
-      context; deliverable once the local clock dominates the sender's recorded view
-      (sender's own component at its immediate predecessor). Released by `{:clock_now, vc}`.
-    * `:progress` — a delete whose signature could not be validated against any stash
-      window yet; re-evaluated on any local apply. Released by a `:progress` event.
+    * `{:line, key}` — the operation needs a line that is not present in the document yet.
+      `key` is either an **op_id** (an insert waiting for one of its authored parents, or a
+      delete waiting for its target line, both named by authored identity) or a **line_id**
+      (an acknowledgement whose target line has not arrived; acknowledgements carry no
+      op_id). Released by a `{:line_added, key}` event; the apply path fires the event for
+      both the added line's op_id and its line_id, so either kind of waiter is woken.
 
   ## Indexing (liveness under load)
 
-  Entries are stored *indexed by their dependency* — per-sender lists for `{:clock, ...}`,
-  a map keyed by line id for `{:line, ...}`, and small dedicated lists for `:vc_ready` /
-  `:progress` — rather than one flat list. The apply path fires up to three events per
-  applied edit; with a flat list each event re-scanned the whole buffer, so a replica that
-  fell behind under network jitter paid O(backlog) per apply and O(backlog²) to drain,
-  which in practice turned a transient lag into a minutes-long stall (observed at ~29k
-  suspended ops) while the rest of the network waited on the replay barrier. With the
-  index, an event touches only the entries that could match it: `{:clock_advanced, s, _}`
-  scans sender `s`'s waiters, `{:line_added, id}` is a single map pop, and `{:clock_now, _}`
-  scans only the (small) `vc_ready` frontier. Released payloads preserve FIFO suspension
-  order via a monotonic sequence number.
+  Entries are stored *indexed by their dependency* — per-sender lists for `{:clock, ...}`
+  and a map keyed by `key` for `{:line, ...}` — rather than one flat list. The apply path
+  fires a small number of events per applied edit; with a flat list each event re-scanned
+  the whole buffer, so a replica that fell behind under network jitter paid O(backlog) per
+  apply and O(backlog²) to drain, which in practice turned a transient lag into a
+  minutes-long stall (observed at ~29k suspended ops) while the rest of the network waited
+  on the replay barrier. With the index, an event touches only the entries that could match
+  it: `{:clock_advanced, s, _}` scans sender `s`'s waiters and `{:line_added, key}` is a
+  single map pop. Released payloads preserve FIFO suspension order via a monotonic sequence
+  number.
 
   ## Liveness backstop
 
@@ -59,31 +57,28 @@ defmodule Syncordian.PendingOps do
   @typedoc "The original loop message to be re-dispatched verbatim once deliverable."
   @type payload :: term()
 
+  @typedoc "A `{:line, key}` waiter's key: an op_id (parents, delete targets) or a line_id (acks)."
+  @type line_key :: Basic_Types.op_id() | Basic_Types.line_id()
+
   @type dependency ::
           {:clock, Basic_Types.peer_id(), non_neg_integer()}
-          | {:line, Basic_Types.line_id()}
-          | {:vc_ready, [non_neg_integer()], Basic_Types.peer_id()}
-          | :progress
+          | {:line, line_key()}
 
   @type event ::
           {:clock_advanced, Basic_Types.peer_id(), non_neg_integer()}
-          | {:line_added, Basic_Types.line_id()}
-          | {:clock_now, [non_neg_integer()]}
-          | :progress
+          | {:line_added, line_key()}
 
   # Entries carry {seq, payload, <dependency data>, enqueued_edit}; seq preserves FIFO
   # release order, enqueued_edit drives the gc horizon.
   @opaque t :: %__MODULE__{
             clock: %{optional(Basic_Types.peer_id()) => list()},
-            line: %{optional(Basic_Types.line_id()) => list()},
-            vc: list(),
-            progress: list(),
+            line: %{optional(line_key()) => list()},
             seq: non_neg_integer(),
             size: non_neg_integer(),
             last_gc_edit: integer()
           }
 
-  defstruct clock: %{}, line: %{}, vc: [], progress: [], seq: 0, size: 0, last_gc_edit: -1
+  defstruct clock: %{}, line: %{}, seq: 0, size: 0, last_gc_edit: -1
 
   @doc """
   Returns an empty buffer.
@@ -108,7 +103,7 @@ defmodule Syncordian.PendingOps do
   ## Examples
 
       iex> alias Syncordian.PendingOps, as: P
-      iex> P.new() |> P.suspend(:msg, {:line, {:path, [{1, 0}]}}, 4) |> P.size()
+      iex> P.new() |> P.suspend(:msg, {:line, {1, 4}}, 4) |> P.size()
       1
   """
   @spec suspend(t, payload(), dependency(), non_neg_integer()) :: t
@@ -120,17 +115,9 @@ defmodule Syncordian.PendingOps do
         entry = {seq, payload, needed, edit_count}
         %{buf | clock: Map.update(buf.clock, sender, [entry], &[entry | &1])}
 
-      {:line, line_id} ->
+      {:line, key} ->
         entry = {seq, payload, edit_count}
-        %{buf | line: Map.update(buf.line, line_id, [entry], &[entry | &1])}
-
-      {:vc_ready, incoming_vc, sender} ->
-        entry = {seq, payload, incoming_vc, sender, edit_count}
-        %{buf | vc: [entry | buf.vc]}
-
-      :progress ->
-        entry = {seq, payload, edit_count}
-        %{buf | progress: [entry | buf.progress]}
+        %{buf | line: Map.update(buf.line, key, [entry], &[entry | &1])}
     end
   end
 
@@ -175,25 +162,11 @@ defmodule Syncordian.PendingOps do
     end
   end
 
-  def release(%__MODULE__{} = buf, {:line_added, line_id}) do
-    case Map.pop(buf.line, line_id) do
+  def release(%__MODULE__{} = buf, {:line_added, key}) do
+    case Map.pop(buf.line, key) do
       {nil, _} -> {[], buf}
       {ready, line} -> emit(ready, %{buf | line: line})
     end
-  end
-
-  def release(%__MODULE__{} = buf, {:clock_now, local_vc}) do
-    {ready, kept} =
-      Enum.split_with(buf.vc, fn {_seq, _payload, incoming_vc, sender, _e} ->
-        vc_ready?(incoming_vc, sender, local_vc)
-      end)
-
-    emit(ready, %{buf | vc: kept})
-  end
-
-  def release(%__MODULE__{} = buf, :progress) do
-    {ready, buf} = {buf.progress, %{buf | progress: []}}
-    emit(ready, buf)
   end
 
   # Sorts the released entries back into FIFO suspension order (seq is the first tuple
@@ -206,21 +179,6 @@ defmodule Syncordian.PendingOps do
       |> Enum.map(&elem(&1, 1))
 
     {payloads, %{buf | size: size - length(payloads)}}
-  end
-
-  # An insert suspended for missing causal context is deliverable exactly when the local
-  # clock has caught up with the sender's recorded view: every non-sender component
-  # dominated, and the sender's own component at its immediate predecessor (the insert
-  # itself provides the final tick).
-  @spec vc_ready?([non_neg_integer()], Basic_Types.peer_id(), [non_neg_integer()]) ::
-          boolean()
-  defp vc_ready?(incoming_vc, sender, local_vc) do
-    incoming_vc
-    |> Enum.with_index()
-    |> Enum.all?(fn {incoming_at, j} ->
-      needed = if j == sender, do: incoming_at - 1, else: incoming_at
-      Enum.at(local_vc, j, 0) >= needed
-    end)
   end
 
   @doc """
@@ -238,8 +196,8 @@ defmodule Syncordian.PendingOps do
 
       iex> alias Syncordian.PendingOps, as: P
       iex> buf = P.new()
-      ...>       |> P.suspend(:old, :progress, 0)
-      ...>       |> P.suspend(:new, :progress, 9)
+      ...>       |> P.suspend(:old, {:line, {1, 1}}, 0)
+      ...>       |> P.suspend(:new, {:line, {1, 2}}, 9)
       iex> {dropped, buf} = P.gc(buf, 10, 5)
       iex> {dropped, P.size(buf)}
       {1, 1}
@@ -267,18 +225,14 @@ defmodule Syncordian.PendingOps do
 
     {dropped_clock, clock} = sweep_map.(buf.clock)
     {dropped_line, line} = sweep_map.(buf.line)
-    {stale_vc, vc} = Enum.split_with(buf.vc, stale?)
-    {stale_progress, progress} = Enum.split_with(buf.progress, stale?)
 
-    dropped = dropped_clock + dropped_line + length(stale_vc) + length(stale_progress)
+    dropped = dropped_clock + dropped_line
 
     {dropped,
      %{
        buf
        | clock: clock,
          line: line,
-         vc: vc,
-         progress: progress,
          size: size(buf) - dropped,
          last_gc_edit: current_edit
      }}

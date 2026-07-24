@@ -15,10 +15,12 @@ defmodule Syncordian.Vector_Clock do
     incomparable yet share the same sum. Call sites that previously called it should now
     use `happens_before_or_equal?/2`.
 
-    `projection_distance/2` and `distance_between_vector_clocks/3` are *heuristics* used
-    for stash-window sizing and approximate dependency estimation. They do not encode a
-    partial order and must not be used as such. A proper dependency-based requeue
-    mechanism is tracked under workstream A3 of the revision roadmap.
+    The earlier L1-distance heuristics (`projection_distance/2`,
+    `distance_between_vector_clocks/3`) are gone: message delivery no longer sizes a stash
+    window or estimates dependencies from a clock distance. An undeliverable operation now
+    names the concrete event it waits for — the sender's preceding insert (a `{:clock, …}`
+    dependency) or a specific missing line (a `{:line, …}` dependency) — see
+    `Syncordian.PendingOps` and the receive paths of `Syncordian.Peer`.
   """
 
   alias Syncordian.Basic_Types
@@ -129,59 +131,5 @@ defmodule Syncordian.Vector_Clock do
     |> Enum.with_index()
     |> Enum.max_by(fn {tick, _idx} -> tick end)
     |> elem(1)
-  end
-
-  @doc """
-    Heuristic stash-window size: the L1 distance between two vector clocks. Used by the
-    document module to pick a search window when reconciling a stashed line; not a
-    partial-order test.
-
-    The `0 → Enum.sum(local_vc)` fallback preserves legacy behaviour where a zero L1
-    distance still triggers stash search; see A3 for the planned dependency-based
-    replacement.
-
-    ## Examples
-        iex> alias Syncordian.Vector_Clock, as: VC
-        iex> VC.projection_distance([1, 2, 3], [1, 2, 3])
-        6
-        iex> VC.projection_distance([1, 2, 0], [1, 2, 3])
-        3
-        iex> VC.projection_distance([1, 2, 0], [10, 3, 0])
-        10
-  """
-  @spec projection_distance(vc, vc) :: integer
-  def projection_distance(local_vc, incoming_vc) do
-    l1 =
-      Enum.zip_reduce(local_vc, incoming_vc, 0, fn l, i, acc ->
-        acc + abs(l - i)
-      end)
-
-    case l1 do
-      0 -> Enum.sum(local_vc)
-      _ -> l1
-    end
-  end
-
-  @doc """
-    Absolute difference between the two vector clocks at a single component (the
-    incoming peer's position). Used by the insert dispatcher as a coarse
-    sender-progress proxy. Not a partial-order test; see A3 for the planned causal
-    deliverability check.
-
-    ## Examples
-        iex> alias Syncordian.Vector_Clock, as: VC
-        iex> VC.distance_between_vector_clocks([1, 2, 3], [1, 2, 3], 0)
-        0
-        iex> VC.distance_between_vector_clocks([1, 2, 0], [1, 2, 3], 2)
-        3
-        iex> VC.distance_between_vector_clocks([1, 2, 0], [0, 3, 0], 1)
-        1
-  """
-  @spec distance_between_vector_clocks(vc, vc, integer) :: integer
-  def distance_between_vector_clocks(local_vc, incoming_vc, incoming_peer_position) do
-    abs(
-      Enum.at(local_vc, incoming_peer_position) -
-        Enum.at(incoming_vc, incoming_peer_position)
-    )
   end
 end

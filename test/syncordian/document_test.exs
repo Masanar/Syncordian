@@ -84,7 +84,8 @@ defmodule Syncordian.DocumentTest do
       {:ok, document} = add_line_to_document(b, base_document())
       {:ok, document} = add_line_to_document(a, document)
 
-      assert Enum.map(document, &get_line_op_id/1) == [nil, {1, 5}, {2, 1}, nil]
+      # The boundary sentinels carry the reserved authored identities {-1, 0} / {-1, 1}.
+      assert Enum.map(document, &get_line_op_id/1) == [{-1, 0}, {1, 5}, {2, 1}, {-1, 1}]
     end
   end
 

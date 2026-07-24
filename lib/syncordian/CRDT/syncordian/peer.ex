@@ -16,7 +16,6 @@ defmodule Syncordian.Peer do
   import Syncordian.Byzantine
   import Syncordian.Line_Object
   import Syncordian.Utilities
-  import Syncordian.Vector_Clock
   alias Syncordian.PendingOps
   alias Syncordian.SeenOps
   alias Syncordian.Interleaving
@@ -76,7 +75,14 @@ defmodule Syncordian.Peer do
     # Cached broadcast recipient pids. Network membership is static for a run, so the
     # registry is scanned once, lazily on the first broadcast (after every peer has
     # registered), instead of per message (see perform_broadcast_peer/2).
-    broadcast_pids: nil
+    broadcast_pids: nil,
+    # Authored-identity index: op_id -> line_id for every line ever added to the document
+    # (the boundary sentinels, local inserts, remote inserts, and re-issued inserts).
+    # Entries are never removed, since tombstoned lines stay in the document and keep
+    # their stored signature. It is the receiver's identity locator: an incoming insert
+    # names its authored parents by op_id and a delete names its target by op_id, and
+    # this map resolves each to the local line (see get_line_by_op_id/2).
+    op_index: %{}
   )
 
   @type peer ::
@@ -95,7 +101,10 @@ defmodule Syncordian.Peer do
             local_edits: list(),
             boundary_secret:
               {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()} | nil,
-            broadcast_pids: [pid()] | nil
+            broadcast_pids: [pid()] | nil,
+            op_index: %{
+              optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.line_id()
+            }
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -252,17 +261,65 @@ defmodule Syncordian.Peer do
     |> then(&update_pending(pending, &1))
   end
 
-  # True when the sender's progress vector records edits (from peers other than the
-  # sender itself) that this replica has not applied yet — i.e. the sender's causal
-  # context is not fully present here, so verification failures may be mere reordering.
-  @spec missing_causal_context?(list(), list(), Syncordian.Basic_Types.peer_id()) ::
-          boolean()
-  defp missing_causal_context?(local_vc, incoming_vc, sender_id) do
-    incoming_vc
-    |> Enum.with_index()
-    |> Enum.any?(fn {incoming_at, j} ->
-      j != sender_id and incoming_at > Enum.at(local_vc, j)
-    end)
+  # Suspends an admitted insert whose clock gate passed but one authored parent is not
+  # present locally yet, keyed by that parent's op_id. It is re-dispatched when a line with
+  # that op_id is added (the {:line_added, op_id} event fired on every remote apply). The
+  # dependency is on the concrete missing line, regardless of which peer authored it, so an
+  # insert whose parents were created by third parties is never admitted early or dropped.
+  @spec suspend_insert_on_parent(
+          peer(),
+          term(),
+          Syncordian.Basic_Types.signature(),
+          Syncordian.Basic_Types.op_id()
+        ) :: any()
+  defp suspend_insert_on_parent(peer, insert_payload, alpha, missing_parent_op_id) do
+    get_metadata(peer)
+    |> inc_requeue_counter
+    |> update_metadata(peer)
+    |> suspend_operation(
+      {:receive_insert_broadcast, insert_payload, alpha},
+      {:line, missing_parent_op_id},
+      &inc_insert_request_limit_counter/1
+    )
+    |> loop
+  end
+
+  # --- Authored-identity index (op_index) --------------------------------------------
+  #
+  # The delivery rule, stated once. The progress vector counts *applied inserts* per
+  # writer: a writer's own component is its number of authored inserts, and a receiver
+  # ticks that component once per insert it applies from the writer. The op_id sequence
+  # (op_seq) spans both inserts and deletes but serves only identity and replay, never
+  # delivery order. Deliverability is therefore two intrinsic conditions: an insert is
+  # deliverable once the writer's preceding insert has been applied (the clock gate) and
+  # both of its authored parents are present (the parent gate); a delete is deliverable
+  # once its target line is present. Neither gate looks at a clock distance or a stash
+  # window; both resolve authored identities through the op_index.
+
+  @spec get_op_index(peer()) :: %{
+          optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.line_id()
+        }
+  defp get_op_index(peer), do: peer(peer, :op_index)
+
+  # Records op_id -> line_id for a line just added to the document. Called at every add
+  # site (local insert, remote insert, re-issue insert); the sentinels are seeded in
+  # define/2. Entries are never removed.
+  @spec index_op(peer(), Syncordian.Basic_Types.op_id(), Syncordian.Basic_Types.line_id()) ::
+          peer()
+  defp index_op(peer, op_id, line_id),
+    do: peer(peer, op_index: Map.put(get_op_index(peer), op_id, line_id))
+
+  # Resolves an authored op_id to the local line that carries it, or nil when no such line
+  # has been applied here yet (its insert is still in flight). Since op_index entries are
+  # never removed and tombstoned lines stay in the document, a hit always resolves to a
+  # present line.
+  @spec get_line_by_op_id(peer(), Syncordian.Basic_Types.op_id()) ::
+          Syncordian.Line_Object.line() | nil
+  defp get_line_by_op_id(peer, op_id) do
+    case Map.get(get_op_index(peer), op_id) do
+      nil -> nil
+      line_id -> get_document_line_by_line_id(get_peer_document(peer), line_id)
+    end
   end
 
   # Releases every operation whose dependency is satisfied by the given apply events and
@@ -366,7 +423,12 @@ defmodule Syncordian.Peer do
       seen_ops: SeenOps.new(),
       # Same pair the sentinel lines above were just built from; cached so admission
       # checks never re-walk the document (see get_boundary_secret/1).
-      boundary_secret: Syncordian.Byzantine.boundary_secret()
+      boundary_secret: Syncordian.Byzantine.boundary_secret(),
+      # Seed the identity index with the two sentinels ({-1, 0} -> infimum,
+      # {-1, 1} -> supremum), so a line authored adjacent to a boundary resolves its
+      # boundary parent through the same lookup as any other parent.
+      op_index:
+        Map.new(initial_peer_document, fn line -> {get_line_op_id(line), get_line_id(line)} end)
     )
   end
 
@@ -692,22 +754,25 @@ defmodule Syncordian.Peer do
       |> tick_projection_peer_clock(incoming_peer_id)
       |> tick_edit_count()
       |> record_seen(op_id)
+      |> index_op(op_id, line_id)
 
     peer =
       if settled?,
         do: get_metadata(peer) |> inc_settle_counter() |> update_metadata(peer),
         else: peer
 
-    # This apply is the only event that can make suspended operations deliverable: the
-    # sender's progress-vector component advanced, and a new line is now present. Wake any
-    # operations waiting on either, plus the generic progress dependency.
+    # This apply is the only remote event that can make suspended operations deliverable:
+    # the sender's progress-vector component advanced, and a new line is now present. Wake
+    # operations waiting on the sender's clock, and on the new line by BOTH its op_id
+    # (inserts waiting for this as an authored parent, deletes waiting for this as their
+    # target) and its line_id (acknowledgements, which carry no op_id).
     sender_clock_value = Enum.at(get_peer_vector_clock(peer), incoming_peer_id)
 
     peer =
       wake_pending(peer, [
         {:clock_advanced, incoming_peer_id, sender_clock_value},
-        {:line_added, get_line_id(line)},
-        {:clock_now, get_peer_vector_clock(peer)}
+        {:line_added, op_id},
+        {:line_added, line_id}
       ])
 
     # This apply may have completed an interleaving between two concurrently authored blocks
@@ -766,11 +831,9 @@ defmodule Syncordian.Peer do
       |> tick_edit_count()
       |> record_seen(op_id)
 
-    # A delete applied: deletes do not advance the vector clock, but re-check the
-    # clock-gated waiters anyway (cheap in-buffer comparisons) in case an earlier release
-    # was missed. Deletes themselves only ever wait on their target line's arrival: their
-    # verification is intrinsic to the target.
-    peer = wake_pending(peer, [{:clock_now, get_peer_vector_clock(peer)}])
+    # A delete adds no line and does not advance the progress vector, so it can make no
+    # suspended operation deliverable: nothing to wake. (A delete's own target-presence
+    # dependency is satisfied by the target insert's apply, not by another delete.)
 
     peer_up =
       if peer_id == @peer_metadata_id,
@@ -801,19 +864,16 @@ defmodule Syncordian.Peer do
 
   # Re-issues the lower-priority block this peer authored as a fresh contiguous chain inside
   # the disjoint sub-interval (gap_left, wall), retracting the superseded lines. The right
-  # parent is `wall` — the document line immediately after gap_left, NOT gap_right: the
-  # interval (gap_left, wall) is empty at authoring time, so every authored parent pair of
-  # the chain is *adjacent* in this replica's document. Receivers locate an insert's parents
-  # by adjacency (direct path) or an L1-clock-bounded window (stash path); authoring against
-  # the non-adjacent (gap_left, gap_right) pair — with the still-present superseded lines
-  # between them — puts the authored pair beyond both locators and gets the replacement
-  # inserts rejected at every other replica while the retraction deletes still apply.
-  # Everything still sorts strictly below wall <= gap_right, i.e. left of the
-  # higher-priority block, so theo:nonint is unaffected. No existing line's position,
-  # signature, or identity is rewritten — the new lines are ordinary authored inserts and
-  # the retractions ordinary deletes — so the convergence and signature invariants are
-  # untouched (the re-placement is operation issuance, not state mutation, in the sense of
-  # sec:formal-intention).
+  # parent is `wall` — the document line immediately after gap_left, NOT gap_right — so the
+  # new chain's positions sort strictly below wall <= gap_right, i.e. left of the
+  # higher-priority block, and theo:nonint is unaffected. Each re-issued insert names its
+  # authored parents by identity (op_id), which every receiver resolves through its op_index
+  # regardless of the parents' current adjacency, so the re-issue is delivered wherever its
+  # named parents are present (and suspended on their arrival otherwise). No existing line's
+  # position, signature, or identity is rewritten — the new lines are ordinary authored
+  # inserts and the retractions ordinary deletes — so the convergence and signature
+  # invariants are untouched (the re-placement is operation issuance, not state mutation, in
+  # the sense of sec:formal-intention).
   @spec reissue_replacement(peer(), Syncordian.Interleaving.replacement()) :: peer()
   defp reissue_replacement(peer, replacement) do
     %{moving_lines: moving_lines, gap_left: gap_left, wall: wall} = replacement
@@ -870,13 +930,18 @@ defmodule Syncordian.Peer do
       |> tick_individual_peer_clock()
       |> tick_edit_count()
       |> record_seen(op_id)
+      |> index_op(op_id, get_line_id(new_line))
 
     current_vector_clock = get_peer_vector_clock(peer)
 
+    # The insert names its authored parents by identity: create_line_between_two_lines/5
+    # already stored them on new_line (left_parent's and right_parent's op_ids), so
+    # receivers locate the same pair and seal the same stored signature.
     send(
       get_peer_pid(peer),
       {:send_insert_broadcast,
-       {get_line_id(new_line), content, my_id, insert_tag, current_vector_clock, op_id}}
+       {get_line_id(new_line), content, my_id, insert_tag, current_vector_clock, op_id,
+        get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line)}}
     )
 
     peer =
@@ -906,9 +971,12 @@ defmodule Syncordian.Peer do
           |> record_seen(del_op_id)
       end
 
+    # The retraction names its target by identity (the superseded line's op_id), with its
+    # line_id kept as a position hint.
     send(
       get_peer_pid(peer),
-      {:send_delete_broadcast, {get_line_id(old_line), delete_tag, del_op_id}}
+      {:send_delete_broadcast,
+       {get_line_op_id(old_line), get_line_id(old_line), delete_tag, del_op_id}}
     )
 
     {peer, new_line}
@@ -1037,8 +1105,9 @@ defmodule Syncordian.Peer do
 
       # The delete authorization tag binds the target line's stored signature
       # (an intrinsic property of the target), not its neighbors — so receivers
-      # validate it by direct lookup, with no windowed search. Deletes carry no
-      # vector clock: their deliverability depends only on the target's
+      # validate it by direct lookup, with no windowed search. The message names the
+      # target by identity (its op_id), keeping the line_id as a position hint. Deletes
+      # carry no vector clock: their deliverability depends only on the target's
       # presence, which transitively inherits the target insert's clock gating.
       delete_tag = create_tag_delete(get_signature(line_deleted))
       {op_id, peer} = next_op_id(peer)
@@ -1046,7 +1115,8 @@ defmodule Syncordian.Peer do
 
       send(
         get_peer_pid(peer),
-        {:send_delete_broadcast, {line_deleted_id, delete_tag, op_id}}
+        {:send_delete_broadcast,
+         {get_line_op_id(line_deleted), line_deleted_id, delete_tag, op_id}}
       )
 
       {:applied, tick_peer_deleted_count(peer)}
@@ -1106,13 +1176,18 @@ defmodule Syncordian.Peer do
         |> tick_individual_peer_clock
         |> tick_edit_count()
         |> record_seen(op_id)
+        |> index_op(op_id, get_line_id(new_line))
 
       current_vector_clock = get_peer_vector_clock(peer)
 
+      # The insert carries its authored parent identities (stored on new_line by
+      # create_line_between_two_lines/5), so every receiver locates the same parent pair
+      # by identity and seals the same stored signature.
       send(
         get_peer_pid(peer),
         {:send_insert_broadcast,
-         {get_line_id(new_line), content, peer_id, insert_tag, current_vector_clock, op_id}}
+         {get_line_id(new_line), content, peer_id, insert_tag, current_vector_clock, op_id,
+          get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line)}}
       )
 
       peer =
@@ -1171,10 +1246,13 @@ defmodule Syncordian.Peer do
         |> loop()
 
       # ✅ Receipt of a delete, evaluated in the formal order: admission, replay, then the
-      # intrinsic verification predicate. The delete tag binds the target line's stored
-      # signature — never its neighbors — so a present target either verifies the tag or
-      # the message is forged; no windowed search and no wait can change the outcome.
-      {:receive_delete_broadcast, delete_payload = {line_deleted_id, delete_tag, op_id}, alpha} ->
+      # intrinsic verification predicate. The delete names its target by identity
+      # (target_op_id), resolved through the op_index; target_line_id is a position hint.
+      # The delete tag binds the target line's stored signature — never its neighbors — so
+      # a present target either verifies the tag or the message is forged; no windowed
+      # search and no wait can change the outcome.
+      {:receive_delete_broadcast,
+       delete_payload = {target_op_id, _target_line_id, delete_tag, op_id}, alpha} ->
         cond do
           not check_admission(alpha, get_boundary_secret(peer), :del, delete_payload) ->
             # Forged or tampered: without the boundary secret no valid authenticator can
@@ -1187,31 +1265,24 @@ defmodule Syncordian.Peer do
             reject_replay(peer)
 
           true ->
-            document = get_peer_document(peer)
-            target_line = get_document_line_by_line_id(document, line_deleted_id)
+            target_line = get_line_by_op_id(peer, target_op_id)
 
             cond do
               target_line == nil ->
-                # The target line is not in the document yet: suspend until its insert
-                # arrives, instead of busy re-queuing. The full admitted message is
-                # re-dispatched verbatim once the dependency is satisfied.
+                # The target line is not present yet: suspend on its arrival, keyed by the
+                # target's authored identity, instead of busy re-queuing. The full admitted
+                # message is re-dispatched verbatim once the dependency is satisfied.
                 get_metadata(peer)
                 |> inc_requeue_counter
                 |> update_metadata(peer)
                 |> suspend_operation(
                   {:receive_delete_broadcast, delete_payload, alpha},
-                  {:line, line_deleted_id},
+                  {:line, target_op_id},
                   &inc_delete_requeue_limit_counter/1
                 )
                 |> loop
 
-              check_tag_delete(delete_tag, target_line) ->
-                get_metadata(peer)
-                |> inc_delete_valid_counter
-                |> update_metadata(peer)
-                |> delete_valid_line_to_document_and_loop(document, line_deleted_id, op_id)
-
-              true ->
+              not check_tag_delete(delete_tag, target_line) ->
                 # The target is present but the tag does not verify against its stored
                 # signature. The check is intrinsic, so this is a forgery that slipped
                 # past admission (unreachable for the modeled outsider), not a
@@ -1220,19 +1291,45 @@ defmodule Syncordian.Peer do
                 |> inc_delete_rejected_counter
                 |> update_metadata(peer)
                 |> loop
+
+              is_tombstone?(target_line) ->
+                # The target is already tombstoned. A delete is idempotent on line status,
+                # so this redelivery (a replay that outlived the seen-set, or a concurrent
+                # delete of the same line by another peer) is a strict no-op: record the
+                # op_id and drop it, WITHOUT ticking the edit or deleted counters. This
+                # closes the post-GC delete-replay asymmetry where a re-applied delete
+                # would inflate those counts.
+                peer
+                |> record_seen(op_id)
+                |> then(fn p ->
+                  get_metadata(p) |> inc_replay_rejected_counter |> update_metadata(p)
+                end)
+                |> loop
+
+              true ->
+                get_metadata(peer)
+                |> inc_delete_valid_counter
+                |> update_metadata(peer)
+                |> delete_valid_line_to_document_and_loop(
+                  get_peer_document(peer),
+                  get_line_id(target_line),
+                  op_id
+                )
             end
         end
 
-      # ✅ Receipt of an insert, evaluated in the formal order: admission first, then the
-      # replay check, then deliverability. Only public fields travel — position, content,
-      # author, the insert wire tag, the sender's progress vector, and the op_id. The
-      # line's stored signature is NOT among them: each receiver re-derives it locally
-      # from the parent pair that verifies the wire tag. Up to a hash collision exactly
-      # one pair verifies (the authored one), so every replica — direct path or any
-      # window offset — seals the same stored signature without it ever riding a message.
+      # ✅ Receipt of an insert, evaluated in the formal order: admission, replay, then
+      # the two intrinsic deliverability gates. Only public fields travel — position,
+      # content, author, the insert wire tag, the sender's progress vector, the op_id, and
+      # the op_ids of the two authored parents. The line's stored signature is NOT among
+      # them: the receiver locates the authored parent pair by identity through the
+      # op_index and re-derives the stored signature from that pair. Up to a hash collision
+      # exactly one pair verifies (the authored one), so every replica seals the same
+      # stored signature without it ever riding a message.
       {:receive_insert_broadcast,
-       insert_payload = {line_id, content, incoming_peer_id, insert_tag, incoming_vc, op_id},
-       alpha} ->
+       insert_payload =
+           {line_id, content, incoming_peer_id, insert_tag, incoming_vc, op_id, left_parent_op_id,
+            right_parent_op_id}, alpha} ->
         cond do
           not check_admission(alpha, get_boundary_secret(peer), :ins, insert_payload) ->
             # Forged or tampered: without the boundary secret no valid authenticator can
@@ -1245,251 +1342,98 @@ defmodule Syncordian.Peer do
             reject_replay(peer)
 
           true ->
-            # Local reconstruction of the line from the wire fields, with a placeholder
-            # stored signature: the placeholder is never stored — both accept paths seal
-            # the locally computed signature before the line enters the document.
-            provisional_line =
-              create_line_from_wire(line_id, content, incoming_peer_id, length(incoming_vc))
-
             local_vector_clock = get_peer_vector_clock(peer)
+            incoming_at = Enum.at(incoming_vc, incoming_peer_id)
+            local_at = Enum.at(local_vector_clock, incoming_peer_id)
 
-            clock_distance_usual =
-              distance_between_vector_clocks(
-                local_vector_clock,
-                incoming_vc,
-                incoming_peer_id
-              )
-
-            clock_distance =
-              if clock_distance_usual == 0 do
-                projection_distance(local_vector_clock, incoming_vc)
-              else
-                clock_distance_usual
-              end
-
-            case {clock_distance > 1, clock_distance == 1} do
-              {true, _} ->
-                # The insert is not deliverable yet (progress-vector distance > 1). Rather
-                # than busy re-queuing it to ourselves until a fixed counter expires,
-                # suspend it against the event that would make it deliverable. The full
-                # admitted message is re-dispatched verbatim once that event is observed.
-                incoming_at = Enum.at(incoming_vc, incoming_peer_id)
-                local_at = Enum.at(local_vector_clock, incoming_peer_id)
-
-                dependency =
-                  if incoming_at > local_at + 1 do
-                    # The sender is genuinely ahead on its own component: wait until we
-                    # have applied the sender's immediately-preceding edit.
-                    {:clock, incoming_peer_id, incoming_at - 1}
-                  else
-                    # The sender's component matches/precedes ours, but the local replica
-                    # is behind on other peers' edits (projection distance > 1): wait,
-                    # in-buffer, until the local clock dominates the sender's recorded
-                    # view. (A blanket re-dispatch-on-every-apply here floods a lagging
-                    # peer's mailbox quadratically — each round re-runs the admission
-                    # check just to re-suspend.)
-                    {:vc_ready, incoming_vc, incoming_peer_id}
-                  end
-
+            cond do
+              # Clock gate. The sender's own progress-vector component counts the inserts
+              # it has authored, and this replica ticks that component once per insert it
+              # applies from the sender. The sender's k-th insert (incoming_at == k) is
+              # therefore deliverable only once this replica has applied its (k-1)-th
+              # (local_at == k-1). If the sender is further ahead, suspend on the arrival
+              # of its immediately-preceding insert.
+              incoming_at > local_at + 1 ->
                 get_metadata(peer)
                 |> inc_insert_distance_greater_than_one
                 |> update_metadata(peer)
                 |> suspend_operation(
                   {:receive_insert_broadcast, insert_payload, alpha},
-                  dependency,
+                  {:clock, incoming_peer_id, incoming_at - 1},
                   &inc_insert_request_limit_counter/1
                 )
                 |> loop
 
-              {_, true} ->
-                # Component-wise vector-clock partial order.
-                # True ⇒ local ≤ incoming: incoming is in our future, deliver directly.
-                # False ⇒ incoming < local OR concurrent: route to stash so the edit-block
-                # protection logic decides how to merge. The previous sum-based comparison
-                # misclassified concurrent pairs (e.g. [2,0] vs [0,2]) as ordered.
-                order_vc =
-                  happens_before_or_equal?(
-                    local_vector_clock,
-                    incoming_vc
-                  )
+              incoming_at <= local_at ->
+                # An insert from this sender at this sequence position has already been
+                # applied here: a stale duplicate that outlived the bounded seen-set. Drop
+                # it without effect.
+                reject_replay(peer)
 
-                document = get_peer_document(peer)
+              true ->
+                # Clock gate satisfied (incoming_at == local_at + 1). Parent gate: locate
+                # both authored parents by identity. A missing parent is simply not present
+                # here yet — its insert (authored by any peer, not only the sender) is still
+                # in flight — so suspend on that parent's arrival rather than dropping.
+                left_parent = get_line_by_op_id(peer, left_parent_op_id)
+                right_parent = get_line_by_op_id(peer, right_parent_op_id)
 
-                line_index =
-                  get_document_new_index_by_incoming_line_id(provisional_line, document)
+                cond do
+                  left_parent == nil ->
+                    suspend_insert_on_parent(peer, insert_payload, alpha, left_parent_op_id)
 
-                # line_index is a SPLICE index (the right neighbor's position), so the
-                # candidate parents are the pair around it — not get_parents_by_index/2,
-                # whose git-calibrated append case returns the wrong pair when the right
-                # neighbor is the second-to-last line. This matches the stash path, whose
-                # nearest candidate pair is exactly this adjacent pair.
-                [left_parent, right_parent] = get_splice_parents(document, line_index)
+                  right_parent == nil ->
+                    suspend_insert_on_parent(peer, insert_payload, alpha, right_parent_op_id)
 
-                case order_vc do
-                  # local_vc ≤ incoming_vc — deliver
                   true ->
-                    valid_line? =
-                      check_tag_insert(left_parent, provisional_line, right_parent, insert_tag)
-
-                    case valid_line? do
-                      true ->
-                        # The wire tag verified against these parents: seal the stored
-                        # signature computed from the same pair (:doc domain).
-                        # The wire tag verified against this pair, so by the unique-verifier
-                        # property it is the authored parent pair: seal the locally computed
-                        # stored signature together with the line's op_id and its parents'
-                        # op_ids, reconstructable identically at every replica.
-                        sealed_line =
-                          seal_line_authored(
-                            provisional_line,
-                            create_signature_doc(
-                              get_signature(left_parent),
-                              content,
-                              get_signature(right_parent),
-                              incoming_peer_id
-                            ),
-                            op_id,
-                            get_line_op_id(left_parent),
-                            get_line_op_id(right_parent)
-                          )
-
-                        get_metadata(peer)
-                        |> inc_insert_valid_counter
-                        |> update_metadata(peer)
-                        |> add_valid_line_to_document_and_loop(
-                          sealed_line,
-                          incoming_peer_id,
-                          op_id
-                        )
-
-                      false ->
-                        # The wire tag does not verify against the current local
-                        # neighbors. local ≤ incoming does NOT mean the authored parents
-                        # are present here — it means the SENDER's causal past contains
-                        # ours, so the sender may have authored against lines we have not
-                        # applied yet. Rejecting in that state permanently stalls the
-                        # sender's clock at this replica (head-of-line blocking every
-                        # later insert from it). Only when we hold the sender's full
-                        # causal context (incoming ≤ local on every other component) is a
-                        # mismatch a definite forged/garbled edit; otherwise suspend and
-                        # re-evaluate as local applies land, horizon-bounded.
-                        if missing_causal_context?(
-                             local_vector_clock,
-                             incoming_vc,
-                             incoming_peer_id
-                           ) do
-                          suspend_operation(
-                            peer,
-                            {:receive_insert_broadcast, insert_payload, alpha},
-                            {:vc_ready, incoming_vc, incoming_peer_id},
-                            &inc_insert_request_limit_counter/1
-                          )
-                          |> loop
-                        else
-                          # Terminal drop of an admitted insert: this gaps the sender's
-                          # sequence at this replica forever (every later op of that
-                          # sender head-of-line blocks on the missing clock tick), so it
-                          # must be loud.
-                          debug_print(
-                            "insert TERMINAL DROP (direct path)",
-                            %{
-                              op_id: op_id,
-                              local_vc: local_vector_clock,
-                              incoming_vc: incoming_vc,
-                              line_index: line_index
-                            }
-                          )
-
-                          get_metadata(peer)
-                          |> inc_insert_request_counter
-                          |> update_metadata(peer)
-                          |> loop
-                        end
-                    end
-
-                  # local_vc > incoming_vc
-                  false ->
-                    {valid_line?, {stash_left_parent, stash_right_parent}} =
-                      stash_document_lines_insert(
-                        document,
-                        provisional_line,
-                        local_vector_clock,
-                        incoming_vc,
-                        insert_tag
+                    provisional_line =
+                      create_line_from_wire(
+                        line_id,
+                        content,
+                        incoming_peer_id,
+                        length(incoming_vc)
                       )
 
-                    case valid_line? do
-                      true ->
-                        # The windowed search located the authored parent pair: seal the
-                        # stored signature from it, exactly as on the direct path.
-                        # Same seal as the direct path: the windowed search located the
-                        # authored pair (unique verifier), so its op_ids are this line's
-                        # authored parents.
-                        sealed_line =
-                          seal_line_authored(
-                            provisional_line,
-                            create_signature_doc(
-                              get_signature(stash_left_parent),
-                              content,
-                              get_signature(stash_right_parent),
-                              incoming_peer_id
-                            ),
-                            op_id,
-                            get_line_op_id(stash_left_parent),
-                            get_line_op_id(stash_right_parent)
-                          )
-
-                        get_metadata(peer)
-                        |> inc_insert_stash_counter
-                        |> update_metadata(peer)
-                        |> add_valid_line_to_document_and_loop(
-                          sealed_line,
-                          incoming_peer_id,
-                          op_id
+                    if check_tag_insert(left_parent, provisional_line, right_parent, insert_tag) do
+                      # The wire tag verifies against the located parents. By the
+                      # unique-verifier property they are the authored pair, so seal the
+                      # stored signature derived from them together with the line's authored
+                      # identity (op_id and the two parent op_ids the message carried).
+                      sealed_line =
+                        seal_line_authored(
+                          provisional_line,
+                          create_signature_doc(
+                            get_signature(left_parent),
+                            content,
+                            get_signature(right_parent),
+                            incoming_peer_id
+                          ),
+                          op_id,
+                          left_parent_op_id,
+                          right_parent_op_id
                         )
 
-                      false ->
-                        # Same reasoning as the direct-path mismatch: if the clocks are
-                        # concurrent the sender saw lines we still lack, so the windowed
-                        # search may simply be missing the authored parents — suspend and
-                        # retry on progress. Only a strictly-dominated incoming clock
-                        # (we hold everything the sender saw) makes the failure definite.
-                        if missing_causal_context?(
-                             local_vector_clock,
-                             incoming_vc,
-                             incoming_peer_id
-                           ) do
-                          suspend_operation(
-                            peer,
-                            {:receive_insert_broadcast, insert_payload, alpha},
-                            {:vc_ready, incoming_vc, incoming_peer_id},
-                            &inc_insert_request_limit_counter/1
-                          )
-                          |> loop
-                        else
-                          # Terminal drop of an admitted insert (see the direct-path
-                          # drop above): must be loud.
-                          debug_print(
-                            "insert TERMINAL DROP (stash path)",
-                            %{
-                              op_id: op_id,
-                              local_vc: local_vector_clock,
-                              incoming_vc: incoming_vc,
-                              window: projection_distance(local_vector_clock, incoming_vc)
-                            }
-                          )
-
-                          get_metadata(peer)
-                          |> inc_insert_stash_fail_counter
-                          |> update_metadata(peer)
-                          |> loop
-                        end
+                      get_metadata(peer)
+                      |> inc_insert_valid_counter
+                      |> update_metadata(peer)
+                      |> add_valid_line_to_document_and_loop(
+                        sealed_line,
+                        incoming_peer_id,
+                        op_id
+                      )
+                    else
+                      # Both authored parents are present but the wire tag does not verify
+                      # against them: a forgery that slipped past admission (unreachable for
+                      # the modeled outsider), not a reordering. Reject it. No honest insert
+                      # can reach this branch — its parents are located by the very op_ids it
+                      # names, and their stored signatures are immutable — so an honest
+                      # operation is never dropped here.
+                      get_metadata(peer)
+                      |> inc_insert_request_counter
+                      |> update_metadata(peer)
+                      |> loop
                     end
                 end
-
-              {_, _} ->
-                IO.puts("Something happen")
-                loop(peer)
             end
         end
 

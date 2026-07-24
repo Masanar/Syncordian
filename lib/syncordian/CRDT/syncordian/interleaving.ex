@@ -60,13 +60,12 @@ defmodule Syncordian.Interleaving do
   the fresh, disjoint sub-interval the new chain is placed into, and `wall` — the document
   line immediately to the right of `gap_left` (the first superseded member inside the gap,
   or `gap_right` itself when the gap holds none). The writer authors the re-issued chain
-  between `gap_left` and `wall`: the interval `(gap_left, wall)` is empty by definition of
-  successor, so every authored parent pair is *adjacent* in the writer's document at
-  authoring time — the invariant the receivers' parent locator (adjacent pair on the
-  direct path, L1-clock-bounded window on the stash path) is sound against. All re-issued
-  lines still sort strictly below `wall <= gap_right`, i.e. strictly left of the
-  higher-priority block, so the non-interleaving postcondition (`theo:nonint`) is
-  unchanged.
+  between `gap_left` and `wall`, which fixes the new lines' *positions*: they all sort
+  strictly below `wall <= gap_right`, i.e. strictly left of the higher-priority block, so
+  the non-interleaving postcondition (`theo:nonint`) is unchanged. Receivers locate each
+  re-issued insert's authored parents by identity (op_id) through their op_index, so the
+  re-issue is delivered wherever its named parents are present, independently of their
+  current adjacency.
   """
   @type replacement :: %{
           writer: Syncordian.Basic_Types.peer_id(),
@@ -331,5 +330,4 @@ defmodule Syncordian.Interleaving do
       end
     end)
   end
-
 end

@@ -280,7 +280,7 @@ defmodule Syncordian.Line do
     between them: its position is allocated strictly between the parents' PathIds
     (`Syncordian.PathId.between/3`, total — a fresh position always exists), and its
     stored signature σ is derived from the parents' stored signatures, the content, and
-    the authoring peer id (`Syncordian.Byzantine.create_signature_doc/4`).
+    the authoring peer id (`Syncordian.Byzantine.create_signature_doc/8`).
   """
   @spec create_line_between_two_lines(
           content :: Syncordian.Basic_Types.content(),
@@ -307,9 +307,13 @@ defmodule Syncordian.Line do
     signature =
       create_signature_doc(
         get_signature(left_parent),
+        get_line_op_id(left_parent),
         content,
         get_signature(right_parent),
-        peer_id
+        get_line_op_id(right_parent),
+        peer_id,
+        op_id,
+        new_line_id
       )
 
     line(

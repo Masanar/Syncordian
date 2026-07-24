@@ -43,7 +43,7 @@ defmodule Syncordian.BoundarySecretTest do
     secret = Byzantine.generate_boundary_secret()
     Byzantine.install_boundary_secret!(secret)
 
-    payload = {:some_line_id, "content", 3, "tag", [0, 0, 0], {3, 1}}
+    payload = {{:path, [{1, 3}]}, "content", 3, "tag", [0, 0, 0], {3, 1}}
 
     # The attacker's best guesses: the public default pair (what the constants used to
     # be, i.e. the pre-fix vacuous case) and a random pair of its own.

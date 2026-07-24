@@ -1,17 +1,18 @@
 defmodule Syncordian.WireSignatureTest do
   @moduledoc """
-  Pins the dual domain-separated signature scheme and the admission authenticator of
+  Pins the dual keyed-MAC signature scheme and the admission authenticator of
   `Syncordian.Byzantine`, mirroring the paper's formal model:
 
-    * stored signature σ under `:doc` — never transmitted, sealed locally by every
+    * stored signature σ under the `:doc` key — never transmitted, sealed locally by every
       replica from the parent pair that verifies the insert wire tag;
-    * wire tags under `:ins` / `:del` / `:ack` — what actually travels;
-    * admission authenticator α under `:adm` — keyed by the boundary secret, bound to
-      the full message payload, checked before anything else at receipt.
+    * wire tags under the `:ins` / `:del` / `:ack` keys — what actually travels, each
+      binding the operation's authored identity (op_id) and, for inserts, the position;
+    * admission authenticator α under the `:adm` key — keyed by the boundary secret, bound
+      to the full message payload, checked before anything else at receipt.
 
-  The central convergence invariant is pinned end-to-end at unit level: the direct
-  receive path and the windowed (stash) path accept the same parent pair and seal the
-  *same* stored signature the author computed, without σ ever riding a message.
+  The central convergence invariant is pinned end-to-end at unit level: a receiver that
+  locates the authored parents by identity seals the *same* stored signature the author
+  computed, without σ ever riding a message.
   """
   use ExUnit.Case, async: true
 
@@ -22,40 +23,61 @@ defmodule Syncordian.WireSignatureTest do
 
   @network_size 3
   @author_peer 1
+  @author_op {@author_peer, 1}
   @boundary {"Infimum", "Supremum"}
 
+  # Author side for a single line placed between the boundary sentinels. Returns the
+  # authored line (carrying the σ the author computed), the insert wire tag it broadcasts,
+  # and the two boundary lines.
   defp author_side(content) do
     infimum = create_infimum_line(0, @network_size)
     supremum = create_supremum_line(0, @network_size)
 
     authored_line =
-      create_line_between_two_lines(content, infimum, supremum, @author_peer, {@author_peer, 1})
+      create_line_between_two_lines(content, infimum, supremum, @author_peer, @author_op)
 
     insert_tag =
       Byzantine.create_tag_insert(
         get_signature(infimum),
+        get_line_op_id(infimum),
         content,
         get_signature(supremum),
-        @author_peer
+        get_line_op_id(supremum),
+        @author_peer,
+        @author_op,
+        get_line_id(authored_line)
       )
 
     {authored_line, insert_tag, infimum, supremum}
   end
 
-  describe "domain separation" do
+  describe "domain (key) separation" do
     test "the insert wire tag never equals the stored signature on identical fields" do
-      fields = {"LEFT_SIG", "content", "RIGHT_SIG", @author_peer}
-      {l, c, r, w} = fields
+      # Identical eight-field input under two different domain keys (:doc vs :ins). The
+      # tags differ because the keys differ, not because of any prefix byte in the encoding.
+      fields = [
+        "LEFT_SIG",
+        {-1, 0},
+        "content",
+        "RIGHT_SIG",
+        {-1, 1},
+        @author_peer,
+        @author_op,
+        {:path, [{1, @author_peer}]}
+      ]
 
-      assert Byzantine.create_signature_doc(l, c, r, w) !=
-               Byzantine.create_tag_insert(l, c, r, w)
+      assert apply(Byzantine, :create_signature_doc, fields) !=
+               apply(Byzantine, :create_tag_insert, fields)
     end
 
     test "tags of different kinds are pairwise distinct on overlapping inputs" do
       sig = "SOME_STORED_SIGNATURE"
-      t_del = Byzantine.create_tag_delete(sig)
-      t_ack = Byzantine.create_tag_ack(sig, @author_peer)
-      t_ins = Byzantine.create_tag_insert(sig, "", sig, @author_peer)
+      op = {1, 1}
+      t_del = Byzantine.create_tag_delete(sig, op, {1, 2})
+      t_ack = Byzantine.create_tag_ack(sig, op, @author_peer)
+
+      t_ins =
+        Byzantine.create_tag_insert(sig, op, "", sig, op, @author_peer, {1, 1}, {:path, [{1, 1}]})
 
       assert t_del != t_ack
       assert t_del != t_ins
@@ -64,44 +86,76 @@ defmodule Syncordian.WireSignatureTest do
 
     test "an observed insert tag cannot be replayed as a delete authorization" do
       {authored_line, insert_tag, _infimum, _supremum} = author_side("payload")
-      refute Byzantine.check_tag_delete(insert_tag, authored_line)
+      refute Byzantine.check_tag_delete(insert_tag, authored_line, {@author_peer, 2})
     end
   end
 
   describe "insert wire tag (t_ins) and local sealing of σ" do
     test "the genuine tag verifies against the authored parents and only them" do
-      {_authored_line, insert_tag, infimum, supremum} = author_side("hello world")
+      {authored_line, insert_tag, infimum, supremum} = author_side("hello world")
 
       provisional =
-        create_line_from_wire({:path, [{1, @author_peer}]}, "hello world", @author_peer, 3)
+        create_line_from_wire(get_line_id(authored_line), "hello world", @author_peer, 3)
 
-      assert Byzantine.check_tag_insert(infimum, provisional, supremum, insert_tag)
+      assert Byzantine.check_tag_insert(infimum, provisional, supremum, @author_op, insert_tag)
 
       # A different candidate pair — e.g. one guessed by an observer who never learns
       # stored signatures — does not verify.
       other_line = create_line_between_two_lines("other", infimum, supremum, 2, {2, 1})
-      refute Byzantine.check_tag_insert(other_line, provisional, supremum, insert_tag)
-      refute Byzantine.check_tag_insert(infimum, provisional, other_line, insert_tag)
+      refute Byzantine.check_tag_insert(other_line, provisional, supremum, @author_op, insert_tag)
+      refute Byzantine.check_tag_insert(infimum, provisional, other_line, @author_op, insert_tag)
+    end
+
+    test "a tag verifying under the wrong op_id or position is rejected" do
+      {authored_line, insert_tag, infimum, supremum} = author_side("bind me")
+
+      provisional =
+        create_line_from_wire(get_line_id(authored_line), "bind me", @author_peer, 3)
+
+      # Right parents and content, but a different claimed op_id: the tag binds the op_id,
+      # so it no longer verifies.
+      refute Byzantine.check_tag_insert(
+               infimum,
+               provisional,
+               supremum,
+               {@author_peer, 2},
+               insert_tag
+             )
+
+      # Right parents and op_id, but the line arrives at a different position: the tag binds
+      # the position too.
+      shifted = create_line_from_wire({:path, [{9, @author_peer}]}, "bind me", @author_peer, 3)
+      refute Byzantine.check_tag_insert(infimum, shifted, supremum, @author_op, insert_tag)
     end
 
     test "missing parents never verify" do
-      {_authored_line, insert_tag, infimum, supremum} = author_side("x")
-      provisional = create_line_from_wire({:path, [{1, @author_peer}]}, "x", @author_peer, 3)
+      {authored_line, insert_tag, infimum, supremum} = author_side("x")
+      provisional = create_line_from_wire(get_line_id(authored_line), "x", @author_peer, 3)
 
-      refute Byzantine.check_tag_insert(nil, provisional, supremum, insert_tag)
-      refute Byzantine.check_tag_insert(infimum, provisional, nil, insert_tag)
+      refute Byzantine.check_tag_insert(nil, provisional, supremum, @author_op, insert_tag)
+      refute Byzantine.check_tag_insert(infimum, provisional, nil, @author_op, insert_tag)
     end
 
     test "a tag forged without knowledge of the stored signatures does not verify" do
-      {_authored_line, _genuine, infimum, supremum} = author_side("target")
+      {authored_line, _genuine, infimum, supremum} = author_side("target")
       # The forgery is in the guessed parent signatures, not the claimed author: the id
       # must be a valid index into the per-peer response checklist (peer_id < network_size).
-      provisional = create_line_from_wire({:path, [{1, 2}]}, "target", 2, @network_size)
+      provisional =
+        create_line_from_wire(get_line_id(authored_line), "target", @author_peer, @network_size)
 
       forged =
-        Byzantine.create_tag_insert("guessed_left", "target", "guessed_right", 2)
+        Byzantine.create_tag_insert(
+          "guessed_left",
+          {-1, 0},
+          "target",
+          "guessed_right",
+          {-1, 1},
+          @author_peer,
+          @author_op,
+          get_line_id(authored_line)
+        )
 
-      refute Byzantine.check_tag_insert(infimum, provisional, supremum, forged)
+      refute Byzantine.check_tag_insert(infimum, provisional, supremum, @author_op, forged)
     end
 
     test "a receiver locating the authored parents by identity seals the author's σ (convergence)" do
@@ -123,53 +177,30 @@ defmodule Syncordian.WireSignatureTest do
                receiver_infimum,
                provisional,
                receiver_supremum,
+               @author_op,
                insert_tag
              )
 
       sigma_sealed =
         Byzantine.create_signature_doc(
           get_signature(receiver_infimum),
+          get_line_op_id(receiver_infimum),
           content,
           get_signature(receiver_supremum),
-          @author_peer
+          get_line_op_id(receiver_supremum),
+          @author_peer,
+          @author_op,
+          get_line_id(authored_line)
         )
 
       # The receiver seals exactly the author's σ — without σ ever traveling.
       assert sigma_sealed == get_signature(authored_line)
     end
 
-    test "a wire tag forged over the wrong authored parent op_ids never verifies" do
-      # The identity-based delivery locates parents by the op_ids the message names; a
-      # forger who does not know the parents' stored signatures cannot produce a wire tag
-      # that verifies against them, whatever op_ids it claims.
-      {_authored_line, _genuine, infimum, supremum} = author_side("payload")
-
-      provisional =
-        create_line_from_wire(
-          {:path, [{1, @author_peer}]},
-          "payload",
-          @author_peer,
-          @network_size
-        )
-
-      forged =
-        Byzantine.create_tag_insert(
-          "guessed_left_sig",
-          "payload",
-          "guessed_right_sig",
-          @author_peer
-        )
-
-      refute Byzantine.check_tag_insert(infimum, provisional, supremum, forged)
-    end
-
     test "direct path verifies an insert whose right neighbor is the second-to-last line" do
       # Regression for the splice-index/git-index confusion: the author inserts between
       # (infimum, a) in a document whose only live line is `a`, so at the receiver the
-      # incoming line's right neighbor sits at index len-2. Feeding the splice index into
-      # get_parents_by_index/2 (git semantics, `distance == 2` append case) mislocated the
-      # pair as (a, supremum), failed the tag check, and permanently dropped the honest
-      # insert once the receiver held the sender's full causal context — divergence.
+      # incoming line's right neighbor sits at index len-2.
       infimum = create_infimum_line(0, @network_size)
       supremum = create_supremum_line(0, @network_size)
 
@@ -180,16 +211,21 @@ defmodule Syncordian.WireSignatureTest do
         })
 
       content = "inserted at top"
+      op = {@author_peer, 2}
 
       authored_line =
-        create_line_between_two_lines(content, infimum, line_a, @author_peer, {@author_peer, 2})
+        create_line_between_two_lines(content, infimum, line_a, @author_peer, op)
 
       insert_tag =
         Byzantine.create_tag_insert(
           get_signature(infimum),
+          get_line_op_id(infimum),
           content,
           get_signature(line_a),
-          @author_peer
+          get_line_op_id(line_a),
+          @author_peer,
+          op,
+          get_line_id(authored_line)
         )
 
       receiver_document = [infimum, line_a, supremum]
@@ -200,14 +236,18 @@ defmodule Syncordian.WireSignatureTest do
       line_index = get_document_new_index_by_incoming_line_id(provisional, receiver_document)
       [left_parent, right_parent] = get_splice_parents(receiver_document, line_index)
 
-      assert Byzantine.check_tag_insert(left_parent, provisional, right_parent, insert_tag)
+      assert Byzantine.check_tag_insert(left_parent, provisional, right_parent, op, insert_tag)
 
       sealed_sigma =
         Byzantine.create_signature_doc(
           get_signature(left_parent),
+          get_line_op_id(left_parent),
           content,
           get_signature(right_parent),
-          @author_peer
+          get_line_op_id(right_parent),
+          @author_peer,
+          op,
+          get_line_id(authored_line)
         )
 
       assert sealed_sigma == get_signature(authored_line)
@@ -215,17 +255,24 @@ defmodule Syncordian.WireSignatureTest do
   end
 
   describe "delete authorization tag (t_del)" do
-    test "binds the target line's stored signature" do
+    test "binds the target line's stored signature and identity" do
       {authored_line, _t_ins, infimum, _sup} = author_side("to delete")
-      tag = Byzantine.create_tag_delete(get_signature(authored_line))
+      del_op = {@author_peer, 7}
 
-      assert Byzantine.check_tag_delete(tag, authored_line)
+      tag =
+        Byzantine.create_tag_delete(
+          get_signature(authored_line),
+          get_line_op_id(authored_line),
+          del_op
+        )
+
+      assert Byzantine.check_tag_delete(tag, authored_line, del_op)
       # The same tag authorizes no other line.
-      refute Byzantine.check_tag_delete(tag, infimum)
+      refute Byzantine.check_tag_delete(tag, infimum, del_op)
     end
 
     test "a missing target never verifies" do
-      refute Byzantine.check_tag_delete("ANY_TAG", nil)
+      refute Byzantine.check_tag_delete("ANY_TAG", nil, {1, 1})
     end
 
     test "lines differing in one character of content yield different delete tags" do
@@ -237,11 +284,50 @@ defmodule Syncordian.WireSignatureTest do
           infimum,
           supremum,
           @author_peer,
-          {@author_peer, 1}
+          {@author_peer, 2}
         )
 
-      tag_a = Byzantine.create_tag_delete(get_signature(line_a))
-      refute Byzantine.check_tag_delete(tag_a, line_b)
+      del_op = {@author_peer, 9}
+      tag_a = Byzantine.create_tag_delete(get_signature(line_a), get_line_op_id(line_a), del_op)
+      refute Byzantine.check_tag_delete(tag_a, line_b, del_op)
+    end
+  end
+
+  describe "response tag (t_ack)" do
+    test "binds the acknowledged line and the acknowledging peer" do
+      {authored_line, _t_ins, infimum, _sup} = author_side("acked line")
+
+      tag =
+        Byzantine.create_tag_ack(get_signature(authored_line), get_line_op_id(authored_line), 2)
+
+      assert Byzantine.check_tag_ack(tag, authored_line, 2)
+      # A different acker, or a different line, does not verify.
+      refute Byzantine.check_tag_ack(tag, authored_line, 3)
+      refute Byzantine.check_tag_ack(tag, infimum, 2)
+    end
+  end
+
+  describe "canonical encoding is injective" do
+    test "a boundary shift across two string fields yields a different stored signature" do
+      # ["ab", "c"] and ["a", "bc"] share the naive concatenation "abc"; the length-prefixed
+      # canonical encoding keeps their field boundaries distinct, so the tags differ.
+      op = {@author_peer, 1}
+      pos = {:path, [{1, @author_peer}]}
+
+      a = Byzantine.create_signature_doc("ab", op, "c", "R", op, @author_peer, op, pos)
+      b = Byzantine.create_signature_doc("a", op, "bc", "R", op, @author_peer, op, pos)
+
+      assert a != b
+    end
+
+    test "moving a byte between content and a parent signature yields a different tag" do
+      op = {@author_peer, 1}
+      pos = {:path, [{1, @author_peer}]}
+
+      a = Byzantine.create_tag_insert("LX", op, "content", "R", op, @author_peer, op, pos)
+      b = Byzantine.create_tag_insert("L", op, "Xcontent", "R", op, @author_peer, op, pos)
+
+      assert a != b
     end
   end
 

@@ -49,7 +49,16 @@ defmodule Syncordian.ProgressSemanticsTest do
     line = create_line_between_two_lines(content, left, right, @author, op_id)
 
     tag =
-      Byzantine.create_tag_insert(get_signature(left), content, get_signature(right), @author)
+      Byzantine.create_tag_insert(
+        get_signature(left),
+        get_line_op_id(left),
+        content,
+        get_signature(right),
+        get_line_op_id(right),
+        @author,
+        op_id,
+        get_line_id(line)
+      )
 
     payload =
       {get_line_id(line), content, @author, tag, vector, op_id, get_line_op_id(left),
@@ -61,7 +70,13 @@ defmodule Syncordian.ProgressSemanticsTest do
 
   # The broadcast an author produces to retract `target_line`.
   defp delete_msg(target_line, del_op_id) do
-    tag = Byzantine.create_tag_delete(get_signature(target_line))
+    tag =
+      Byzantine.create_tag_delete(
+        get_signature(target_line),
+        get_line_op_id(target_line),
+        del_op_id
+      )
+
     payload = {get_line_op_id(target_line), get_line_id(target_line), tag, del_op_id}
     alpha = Byzantine.create_admission(@secret, :del, payload)
     {:receive_delete_broadcast, payload, alpha}

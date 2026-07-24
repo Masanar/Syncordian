@@ -296,7 +296,7 @@ defmodule Syncordian.Document do
     {line, applied, rejected} =
       Enum.reduce(entries, {line, 0, 0}, fn
         {{_line_id, acker_peer_id, ack_tag}, _alpha}, {line_acc, applied, rejected} ->
-          if check_tag_ack(ack_tag, get_signature(line_acc), acker_peer_id) do
+          if check_tag_ack(ack_tag, line_acc, acker_peer_id) do
             {update_line_commit_at(line_acc, acker_peer_id), applied + 1, rejected}
           else
             {line_acc, applied, rejected + 1}

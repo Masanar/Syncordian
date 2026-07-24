@@ -15,8 +15,9 @@ config :syncordian,
   git_repo_path: "../../ohmyzsh",
   # git_tracked_file: "README.md"
   git_tracked_file: "plugins/git/git.plugin.zsh"
-  # git_repo_path: "../../repos/linux",
-  # git_tracked_file: "MAINTAINERS"
+
+# git_repo_path: "../../repos/linux",
+# git_tracked_file: "MAINTAINERS"
 
 # Configures the endpoint
 config :syncordian, SyncordianWeb.Endpoint,

@@ -597,7 +597,7 @@ defmodule Syncordian.Peer do
 
     Like every message, the response carries an admission authenticator keyed by the
     boundary secret, plus a response tag binding the acknowledged line's stored signature
-    and the acknowledging peer id (`Syncordian.Byzantine.create_tag_ack/2`). The author
+    and the acknowledging peer id (`Syncordian.Byzantine.create_tag_ack/3`). The author
     rejects any response that fails either check, so a distrusted node cannot forge a
     response on behalf of a trusted peer. Responses carry no op_id: their effect is
     idempotent, so a replayed response is harmless by construction.
@@ -739,7 +739,7 @@ defmodule Syncordian.Peer do
     # author's — and our peer id; the admission authenticator proves we hold the boundary
     # secret, so a distrusted node cannot forge a response on our behalf. Broadcast only
     # after the add succeeded, so a duplicate delivery never emits a fresh ack.
-    ack_tag = create_tag_ack(get_signature(line), peer_id)
+    ack_tag = create_tag_ack(get_signature(line), get_line_op_id(line), peer_id)
     ack_payload = {line_id, peer_id, ack_tag}
     ack_alpha = create_admission(get_boundary_secret(peer), :ack, ack_payload)
 
@@ -914,9 +914,13 @@ defmodule Syncordian.Peer do
     insert_tag =
       create_tag_insert(
         get_signature(left_parent),
+        get_line_op_id(left_parent),
         content,
         get_signature(right_parent),
-        my_id
+        get_line_op_id(right_parent),
+        my_id,
+        op_id,
+        get_line_id(new_line)
       )
 
     # The op_id is fresh, so the add cannot find a duplicate identity; a position-level
@@ -952,7 +956,9 @@ defmodule Syncordian.Peer do
     # (2) Retract the superseded line: tombstone locally, broadcast the target-bound delete.
     {del_op_id, peer} = next_op_id(peer)
     document = get_peer_document(peer)
-    delete_tag = create_tag_delete(get_signature(old_line))
+
+    delete_tag =
+      create_tag_delete(get_signature(old_line), get_line_op_id(old_line), del_op_id)
 
     peer =
       case get_document_index_by_line_id(document, get_line_id(old_line)) do
@@ -1109,9 +1115,13 @@ defmodule Syncordian.Peer do
       # target by identity (its op_id), keeping the line_id as a position hint. Deletes
       # carry no vector clock: their deliverability depends only on the target's
       # presence, which transitively inherits the target insert's clock gating.
-      delete_tag = create_tag_delete(get_signature(line_deleted))
+      # Mint the delete's op_id before building the tag: the tag binds the delete's own
+      # identity as well as the target's stored signature and identity.
       {op_id, peer} = next_op_id(peer)
       peer = record_seen(peer, op_id)
+
+      delete_tag =
+        create_tag_delete(get_signature(line_deleted), get_line_op_id(line_deleted), op_id)
 
       send(
         get_peer_pid(peer),
@@ -1161,9 +1171,13 @@ defmodule Syncordian.Peer do
       insert_tag =
         create_tag_insert(
           get_signature(left_parent),
+          get_line_op_id(left_parent),
           content,
           get_signature(right_parent),
-          peer_id
+          get_line_op_id(right_parent),
+          peer_id,
+          op_id,
+          get_line_id(new_line)
         )
 
       # The op_id is freshly minted, so the identity-tiebroken add cannot report a
@@ -1282,7 +1296,7 @@ defmodule Syncordian.Peer do
                 )
                 |> loop
 
-              not check_tag_delete(delete_tag, target_line) ->
+              not check_tag_delete(delete_tag, target_line, op_id) ->
                 # The target is present but the tag does not verify against its stored
                 # signature. The check is intrinsic, so this is a forgery that slipped
                 # past admission (unreachable for the modeled outsider), not a
@@ -1394,7 +1408,13 @@ defmodule Syncordian.Peer do
                         length(incoming_vc)
                       )
 
-                    if check_tag_insert(left_parent, provisional_line, right_parent, insert_tag) do
+                    if check_tag_insert(
+                         left_parent,
+                         provisional_line,
+                         right_parent,
+                         op_id,
+                         insert_tag
+                       ) do
                       # The wire tag verifies against the located parents. By the
                       # unique-verifier property they are the authored pair, so seal the
                       # stored signature derived from them together with the line's authored
@@ -1404,9 +1424,13 @@ defmodule Syncordian.Peer do
                           provisional_line,
                           create_signature_doc(
                             get_signature(left_parent),
+                            get_line_op_id(left_parent),
                             content,
                             get_signature(right_parent),
-                            incoming_peer_id
+                            get_line_op_id(right_parent),
+                            incoming_peer_id,
+                            op_id,
+                            line_id
                           ),
                           op_id,
                           left_parent_op_id,

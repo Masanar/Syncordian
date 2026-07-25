@@ -504,7 +504,14 @@ defmodule Syncordian.Peer do
 
         origin_pid ->
           alpha = create_admission(get_boundary_secret(peer), :fetch, {requester_id, want})
-          send_measured(origin_pid, {:fetch_request, requester_id, want, alpha})
+
+          Syncordian.Network.unicast(
+            requester_id,
+            origin_pid,
+            writer,
+            {:fetch_request, requester_id, want, alpha}
+          )
+
           get_metadata(peer) |> inc_fetch_request_sent |> update_metadata(peer)
       end
     end
@@ -801,17 +808,17 @@ defmodule Syncordian.Peer do
   @spec perform_broadcast_peer(peer(), any) :: peer()
   defp perform_broadcast_peer(peer, message) do
     peer = ensure_broadcast_pids(peer)
-    # Per-recipient network-jitter range. Defaults to no delay; tests/experiments can widen
-    # it (e.g. to force concurrent, same-interval authoring) without a global sleep.
-    delay = Application.get_env(:syncordian, :broadcast_delay, 0..0)
-    broadcast_to(peer(peer, :broadcast_pids), message, delay)
+    # The delay model, the adversary's control of delivery, and the accounting all live in
+    # Syncordian.Network, so that one description of the network holds for every message the
+    # experiment sends and for every implementation it compares.
+    Syncordian.Network.broadcast(get_peer_id(peer), peer(peer, :broadcast_pids), message)
     peer
   end
 
   @spec ensure_broadcast_pids(peer()) :: peer()
   defp ensure_broadcast_pids(peer) do
     case peer(peer, :broadcast_pids) do
-      nil -> peer(peer, broadcast_pids: broadcast_recipients(get_peer_pid(peer)))
+      nil -> peer(peer, broadcast_pids: broadcast_targets(get_peer_pid(peer)))
       _ -> peer
     end
   end
@@ -1684,8 +1691,16 @@ defmodule Syncordian.Peer do
             messages = serve_fetch(peer, want)
 
             case :global.whereis_name(requester_id) do
-              :undefined -> :ok
-              requester_pid -> Enum.each(messages, &send_measured(requester_pid, &1))
+              :undefined ->
+                :ok
+
+              requester_pid ->
+                origin_id = get_peer_id(peer)
+
+                Enum.each(
+                  messages,
+                  &Syncordian.Network.unicast(origin_id, requester_pid, requester_id, &1)
+                )
             end
 
             get_metadata(peer)
@@ -1991,8 +2006,13 @@ defmodule Syncordian.Peer do
 
         loop(peer)
 
-      # ✅
-      {:save_pid, info} ->
+      # ✅ The first message every peer receives, sent before the peer is reachable by any
+      # other process, so it is where the peer seeds its own generator for the run. Position
+      # allocation is the draw that matters here: it is the one random choice the protocol
+      # itself makes, and a run cannot be reproduced without it.
+      {:save_pid, info = {_pid, _network_size, peer_id}} ->
+        Syncordian.Rng.seed_process!(:peer, peer_id)
+
         info
         |> update_peer_pid(peer)
         |> loop
@@ -2033,7 +2053,8 @@ defmodule Syncordian.Peer do
       # buffer, the local-edit FIFO, and the clock. Written on demand by experiment
       # drivers when the network fails to reach a fixpoint.
       {:write_pending_dump} ->
-        File.mkdir_p!("debug/documents/syncordian/pending")
+        pending_dir = Syncordian.Run.path("documents/syncordian/pending")
+        File.mkdir_p!(pending_dir)
 
         pending = get_pending(peer)
 
@@ -2057,7 +2078,7 @@ defmodule Syncordian.Peer do
         # exact sizes; the truncated inspect shows the oldest entries, which are the
         # diagnostically relevant ones.
         File.write!(
-          "debug/documents/syncordian/pending/pending_peer_#{get_peer_id(peer)}",
+          Path.join(pending_dir, "pending_peer_#{get_peer_id(peer)}"),
           summary <> inspect(dump, limit: 1_000, printable_limit: 10_000, pretty: true)
         )
 
@@ -2069,8 +2090,9 @@ defmodule Syncordian.Peer do
         # |> Enum.map(fn line -> "#{inspect(line)}" end)
         # |> Enum.join("\n")
 
-        file_path = "debug/documents/syncordian/raw/"
-        File.write(file_path <> "document", document_str)
+        file_path = Syncordian.Run.path("documents/syncordian/raw")
+        File.mkdir_p!(file_path)
+        File.write(Path.join(file_path, "document"), document_str)
         loop(peer)
 
       test ->

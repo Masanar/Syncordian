@@ -356,6 +356,13 @@ defmodule Syncordian.Supervisor do
     commit_hash = Enum.at(list_of_commits, commit_count)
     parent_hash = if commit_count > 0, do: Enum.at(list_of_commits, commit_count - 1)
 
+    apply_scenario_window(
+      commit_count,
+      length(list_of_commits),
+      author_peer_id(commit_group_map, map_peer_id_authors, commit_hash),
+      length(pid_list_author_peers)
+    )
+
     author_id =
       edit(
         commit_hash,
@@ -368,6 +375,46 @@ defmodule Syncordian.Supervisor do
 
     response = {:commit_inserted, %{hash: commit_hash, author: author_id}}
     send(live_view_pid, response)
+  end
+
+  defp author_peer_id(commit_group_map, map_peer_id_authors, commit_hash) do
+    [commit_group] = Map.get(commit_group_map, commit_hash)
+    Map.get(map_peer_id_authors, Map.get(commit_group, :author_id))
+  end
+
+  # Two scenarios disturb the middle third of the history and leave the rest of it alone.
+  #
+  # The offline window cuts one replica off from the network and later reconnects it, so the
+  # operations it missed have to be recovered rather than received. The peer cut off is the
+  # last one, and it is reconnected for any commit it authors: the replay holds each commit
+  # until its authoring replica has materialized the parent state, so an author that cannot
+  # receive anything would hold the replay forever. Skipping the window for the commits that
+  # peer authors keeps the window an outage rather than a deadlock, and it is the honest
+  # description of what the scenario tests, which is a replica that falls behind while others
+  # write.
+  #
+  # Bounded loss suppresses messages on every link for the same stretch. Bounding it in time
+  # as well as in rate is what leaves eventual delivery intact: after the window closes, the
+  # traffic of the remaining commits reveals every gap, and the operations behind those gaps
+  # are recovered by asking their origin for them.
+  @spec apply_scenario_window(integer(), integer(), integer(), integer()) :: :ok
+  defp apply_scenario_window(commit_count, total_commits, author_peer_id, peer_count) do
+    window = div(total_commits, 3)..div(2 * total_commits, 3)
+    inside? = commit_count in window
+
+    case Syncordian.Run.scenario() do
+      :offline_window when peer_count > 1 ->
+        offline_peer = peer_count - 1
+        Syncordian.Network.partition(offline_peer, inside? and author_peer_id != offline_peer)
+
+      :bounded_loss ->
+        Syncordian.Network.disturb(inside?)
+
+      _scenario ->
+        :ok
+    end
+
+    :ok
   end
 
   # Initializes the peers for the Syncordian system based on the list of authors.
@@ -452,6 +499,26 @@ defmodule Syncordian.Supervisor do
     # Delete the all the files of the debug directory
     # delete_contents("debug/documents")
 
+    # The run's description comes first, before the boundary secret is drawn and before any
+    # peer exists, so that no process can observe a half-configured run. It fixes the seed,
+    # the delay model, the adversary's capabilities, and the output root for everything that
+    # follows, and it is written out so that the configuration a run reports is the one it
+    # used (Syncordian.Run).
+    run =
+      Syncordian.Run.install!(
+        adversary: %{count: byzantine_nodes},
+        workload: %{crdt: crdt_id}
+      )
+
+    Syncordian.Rng.seed_process!(:supervisor, 0)
+    Syncordian.Network.create()
+    Syncordian.Run.write_manifest!(run)
+
+    IO.puts(
+      "Run #{run.run_id}: delay #{Syncordian.Run.delay_to_string(run.delay)}, " <>
+        "scenario #{run.scenario}, seed #{inspect(run.seed)}"
+    )
+
     # Read the commit history live from the cloned git repository (see Syncordian.GitLog),
     # instead of a static fixture. Fetch the log once and feed both derivations, so a single
     # `git log` invocation drives the whole run.
@@ -509,7 +576,16 @@ defmodule Syncordian.Supervisor do
     IO.puts("Byzantine nodes to start #{byzantine_nodes}")
     init_byzantine_peers(byzantine_nodes)
 
-    pid = spawn(__MODULE__, :supervisor_loop, [supervisor])
+    # The loop runs in its own process, so it seeds its own generator there. Seeding the
+    # process that calls init/2 is not enough: the choice of which replica is compared
+    # against the ground truth is made inside the loop, and a run whose comparison target
+    # varies with the scheduler is not a reproducible run.
+    pid =
+      spawn(fn ->
+        Syncordian.Rng.seed_process!(:supervisor, 0)
+        supervisor_loop(supervisor)
+      end)
+
     :global.register_name(:supervisor, pid)
     pid
   end
@@ -591,6 +667,11 @@ defmodule Syncordian.Supervisor do
           )
         else
           IO.puts("All commits processed")
+
+          # The disturbance ends before the settle window opens. What eventual consistency
+          # claims is that the replicas agree once the network goes quiet, so that is what the
+          # settle window has to measure (Syncordian.Network.calm/0).
+          Syncordian.Network.calm()
 
           # The final commit's broadcasts (and any suspended-op cascades they release)
           # are still propagating when the loop reaches this point — the barrier only

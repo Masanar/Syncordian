@@ -22,7 +22,9 @@ defmodule Syncordian.CRDT.Fugue.Info do
   """
   @spec save_tree_content(Tree.tree(), Syncordian.Basic_Types.peer_id()) :: :ok
   def save_tree_content(tree, peer_id) do
-    File.write!("debug/documents/fugue/tree_peer_#{peer_id}", string_tree_content(tree))
+    path = Syncordian.Run.path("documents/fugue/tree_peer_#{peer_id}")
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, string_tree_content(tree))
   end
 
   @doc """

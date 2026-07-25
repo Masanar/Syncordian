@@ -209,11 +209,18 @@ defmodule Syncordian.CRDT.Logoot.Peer do
 
   ########################################################################################
 
+  # The delay model is the run's, not this module's. A comparison against a baseline that
+  # runs on a quiet network while Syncordian runs on a delayed one measures the networks
+  # rather than the implementations.
   @spec perform_broadcast_peer(peer_logoot(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    delay = 0..0
-    Utilities.perform_broadcast(peer_pid, message, delay)
+
+    Syncordian.Network.broadcast(
+      get_peer_id(peer),
+      Utilities.broadcast_targets(peer_pid),
+      message
+    )
   end
 
   @spec save_peer_metadata_edit(peer_logoot()) :: :ok
@@ -381,7 +388,7 @@ defmodule Syncordian.CRDT.Logoot.Peer do
 
         raw_document = helper_raw.(document)
 
-        file_path = "debug/documents/logoot/raw/"
+        file_path = Syncordian.Run.path("documents/logoot/raw") <> "/"
 
         # Ensure the directory exists
         unless File.dir?(file_path) do
@@ -399,7 +406,12 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         set_peer_supervisor_pid(peer, supervisor_pid)
         |> loop
 
+      # The first message this peer receives, and so where it seeds its generator for the
+      # run. Logoot allocates its positions at random, so this is what makes a Logoot
+      # replay reproducible (see Syncordian.Rng).
       {:save_pid, info} ->
+        Syncordian.Rng.seed_process!(:logoot_peer, get_peer_id(peer))
+
         info
         |> update_peer_pid(peer)
         |> loop

@@ -125,10 +125,24 @@ defmodule Syncordian.Byzantine do
   @spec generate_boundary_secret() ::
           {Syncordian.Basic_Types.signature(), Syncordian.Basic_Types.signature()}
   def generate_boundary_secret do
-    {random_secret(), random_secret()}
+    case Syncordian.Run.seed() do
+      nil -> {random_secret(), random_secret()}
+      seed -> {seeded_secret(seed, "infimum"), seeded_secret(seed, "supremum")}
+    end
   end
 
   defp random_secret, do: :crypto.strong_rand_bytes(32) |> Base.encode16()
+
+  # A seeded run derives its boundary pair from the seed instead of drawing it, so that the
+  # same seed reproduces the replica state down to the stored signatures, which every line
+  # carries and which root in this pair. This is a property of the experiment, not of the
+  # construction: a deployed document draws its secret from the system generator, which is
+  # what the branch above still does whenever a run is not seeded. The run manifest records
+  # which of the two produced the pair.
+  defp seeded_secret(seed, label) do
+    :crypto.mac(:hmac, :sha256, "syncordian-seeded-boundary-v1", "#{label}:#{seed}")
+    |> Base.encode16()
+  end
 
   @doc """
     Publishes the boundary secret to the admitted peers (the out-of-band distribution of

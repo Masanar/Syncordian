@@ -56,193 +56,264 @@ mix setup            # = deps.get + assets.setup + assets.build
 mkdir -p debug/documents
 ```
 
-## Running the web UI
+## What a run is
 
-There is no separate compile step — `mix phx.server` builds and serves the app:
+Everything below produces or checks a **run**. A run is one execution of the
+system under one setting. A run is described by four things.
 
-```bash
-mix phx.server                 # or: iex -S mix phx.server
-```
+| Part | What it means | Default |
+| ---- | ------------- | ------- |
+| **seed** | One number that fixes every random choice the system makes. Two runs with the same seed do the same thing. | none, so the run cannot be repeated |
+| **delay** | How long each message waits before it arrives. Written as `uniform:5:50`, meaning every message waits a random time between 5 and 50 milliseconds. | `none`, no delay at all |
+| **scenario** | What goes wrong during the run. One of `baseline`, `reorder_storm`, `offline_window`, `post_collection_replay`, `bounded_loss`. The last four are explained under Live tests. | `baseline`, nothing goes wrong |
+| **adversaries** | How many distrusted nodes join the network and attack it. | `0` |
 
-Then open <http://localhost:4000>. The dev endpoint binds loopback only
-(`127.0.0.1:4000`); to expose it on your LAN, set the endpoint IP to `{0,0,0,0}`
-in `config/dev.exs`.
+A run writes everything it did into one folder. That folder holds:
 
-### LiveView pages
+- `manifest.json`, the four things above plus the machine and the versions used.
+  If you want to know how a number was produced, read this file.
+- `documents/`, the final document of every peer.
+- `metadata/`, counters taken during the run.
+- `result.json`, whether the run converged and how long it took.
 
-| Route         | Module                     | What it does |
-| ------------- | -------------------------- | ------------ |
-| `/`           | `SyncordianWeb.About`      | Static about page. |
-| `/supervisor` | `SyncordianWeb.Supervisor` | **Experiment control panel** — pick a CRDT and Byzantine node count, launch the network, replay commits, dump documents, collect metadata. |
-| `/node`       | `SyncordianWeb.Node`       | Raw document dump (including tombstones/sentinels) for a single peer. |
-| `/readmelog`  | `SyncordianWeb.ReadmeLog`  | Visual view of the test git-commit log that drives the experiment. |
+The default folder is `debug/`. You can point a run somewhere else with `--out`.
 
-In development, `/dev/dashboard` (Phoenix LiveDashboard) and `/dev/mailbox`
-(Swoosh mailbox preview) are also mounted.
-
-## Driving an experiment
-
-### From the UI (`/supervisor`)
-
-1. Open <http://localhost:4000/supervisor>.
-2. Pick a CRDT module (`:syncordian`, `:fugue`, `:logoot`; `:treedoc` is an
-   incomplete stub) and a Byzantine node count.
-3. **Launch** — spawns one peer per author in the test git log (30 author peers
-   from the Oh My Zsh README history) plus the chosen number of Byzantine peers,
-   all registered via `:global`.
-4. **Next commit** / **All commits** — replays commits one at a time or in a loop.
-5. **Write current peers document** — dumps every peer's materialized document to
-   `debug/documents/<crdt>/document_peer_N` (or `tree_peer_N` for Fugue).
-
-### Headless (no browser)
-
-The same evaluation can be driven from scripts with `mix run --no-start`
-(`--no-start` avoids booting the Phoenix/esbuild app, which is unnecessary and
-crashes a script run). Each script under `code/scripts/` exercises a different
-slice of the experiment:
-
-- **`run_full_experiment.exs`** — the full paper experiment. Prints the source
-  repo/tracked file, author (peer) count, commit count, and the last replayed
-  commit's hash up front (a manual `git show <hash>:<file>` reference point —
-  handy when pointing the run at a repo other than OhMyZsh, where you don't
-  already know what convergence should look like), then replays every commit
-  of the tracked file's mainline log across the resulting author peers (plus
-  an optional number of Byzantine peers), waits for the network to settle,
-  dumps every peer's document, and checks byte-for-byte convergence inline.
-  Wall time is ~3 min for the 71-commit OhMyZsh log.
-
-  Per-commit network-wide metadata snapshots (`debug/metadata/supervisor/syncordian/`,
-  input to `scripts/data_visualization.py`) and per-edit single-peer snapshots
-  (`debug/metadata/individual_peer/syncordian/`, input to
-  `scripts/heap_size_visualization.py`) get written automatically as the replay
-  runs. Once the network reaches quiescence, the script also triggers one final
-  metadata collect + save — the same `{:collect_metadata_from_peers}` /
-  `{:print_supervisor_metadata}` pair the `/supervisor` LiveView's "Collect
-  Metadata" / "Save Metadata" buttons send — so every headless run leaves a
-  fully-settled final JSON snapshot on disk too, without needing the UI.
-
-  ```bash
-  mix run --no-start scripts/run_full_experiment.exs           # 0 byzantine
-  mix run --no-start scripts/run_full_experiment.exs 5         # 5 byzantine
-  ```
-
-  Add `--observer` (in either argument position) to also launch the Erlang
-  `:observer` GUI right before the peers spawn, so you can watch peer process
-  count, mailbox sizes, and memory live during the replay. It needs a display
-  and an Erlang build with `:wx` compiled in; if either is missing the script
-  logs why and continues without it. With `--observer`, the script waits for
-  an Enter keypress at the end instead of exiting immediately, so the window
-  stays open for inspection:
-
-  ```bash
-  mix run --no-start scripts/run_full_experiment.exs --observer
-  mix run --no-start scripts/run_full_experiment.exs 5 --observer
-  ```
-
-- **`three_peer_smoke.exs`** — a fast, git-log-free smoke test. Spawns 3 peers,
-  issues a handful of manual inserts and one delete, settles, and dumps each
-  peer's document so you can diff peer 0 against peers 1 and 2. Useful as a
-  quick sanity check after touching the core CRDT (PathId, vector clocks) without
-  waiting for a full replay.
-
-  ```bash
-  mix run scripts/three_peer_smoke.exs
-  ```
-
-- **`interleaving_smoke.exs`** — targets the non-interleaving theorem
-  specifically. Forces two peers to author overlapping edit blocks concurrently
-  into the same interval (widening the broadcast delay so neither sees the
-  other until both blocks are fully authored), then asserts both that the
-  network converges and that each author's block stays contiguous (no
-  interleaved lines).
-
-  ```bash
-  mix run --no-start scripts/interleaving_smoke.exs
-  ```
-
-- **`verify_convergence.exs`** — the canonical post-hoc check, meant to run
-  after "Write current peers document" (from the UI or from
-  `run_full_experiment.exs`). Unlike `identical.sh`, it derives the expected
-  final document dynamically from the same live git source the experiment
-  replayed (`Syncordian.GitLog` / `Syncordian.GitParser`), so it stays correct
-  regardless of which clone or tracked file the run used. It checks, in order:
-  (1) all peer documents are byte-identical to each other; (2) the converged
-  document is byte-identical to the tracked file at the last replayed mainline
-  commit (`git show <commit>:<file>`); (3) if a raw dump exists, no line is
-  still `:aura` (i.e. every line settled to a final status at quiescence).
-
-  ```bash
-  mix run --no-start scripts/verify_convergence.exs
-  ```
-
-- Mix task entry point (drives `Syncordian.Supervisor.init/2` directly):
-
-  ```bash
-  mix syncordian.eval
-  ```
-
-Two small shell helpers round out the `scripts/` directory but aren't part of
-the CRDT evaluation itself — they inspect the git history that drives the
-replay: `analyze-commits.sh` lists the most frequently touched files across the
-whole log, and `number-of-commits.sh <file_path>` counts commits touching a
-given path.
-
-### Checking convergence
-
-`verify_convergence.exs` (above) is the preferred, dynamic check. The older
-`scripts/identical.sh` remains for a simpler, fixture-free pairwise byte-equality
-check across whatever's under `debug/documents/`:
-
-```bash
-cd code
-scripts/identical.sh
-```
-
-## Visualizing results
-
-The plotting scripts need Python with `matplotlib` (and `numpy`):
-
-```bash
-pip install -r scripts/requirements.txt          # add --break-system-packages on
-                                                 # PEP 668 / Debian-managed Python
-python3 scripts/data_visualization.py            # metrics vs commit / byzantine count
-python3 scripts/heap_size_visualization.py       # writes figures/heap_size_plot.pdf
-```
-
-`data_visualization.py` reads JSON from `debug/metadata/`; `heap_size_visualization.py`
-reads per-edit heap sizes from `debug/metadata/individual_peer/` and writes a PDF
-to `figures/`.
+The seed matters more than it looks. With a seed, two runs produce the same
+document, the same identifiers, and the same signatures. Without one, they do
+not. The seed does not control the order in which Erlang schedules the peers, and
+nothing can, so the timing of a run still varies. That is why results are
+reported over many runs instead of one.
 
 ## Testing
 
+There are two kinds of test. Both are ordinary ExUnit tests, run with `mix test`.
+
+### Fast tests
+
+These do not start peers and do not need a git clone. They take about ten
+seconds.
+
 ```bash
-mix test                                   # all tests
-mix test test/syncordian/path_id_test.exs  # a single file
-mix test test/syncordian/path_id_test.exs:42  # a single test by line
+mix test                                       # every fast test
+mix test test/syncordian/path_id_test.exs      # one file
+mix test test/syncordian/path_id_test.exs:42   # one test, by line number
 ```
 
-`code/test/` is organized by what it exercises:
+| File | What it checks |
+| ---- | -------------- |
+| `path_id_test.exs` | Picking a position identifier between two existing lines. |
+| `document_test.exs` | Inserting and deleting lines in a document. |
+| `interleaving_test.exs` | The rule that keeps each author's block of lines together. |
+| `reissue_alias_test.exs` | What happens when a line is moved and deleted at the same time. |
+| `vector_clock_test.exs` | Deciding which edit happened before which. |
+| `progress_semantics_test.exs` | When an edit is allowed to be applied. |
+| `pending_ops_test.exs` | The buffer that holds an edit until the edit it depends on arrives. |
+| `seen_ops_test.exs` | Remembering which edits were already applied, so a repeat is ignored. |
+| `op_log_test.exs` | The log a peer keeps so it can send an edit again if someone lost it. |
+| `wire_signature_test.exs` | The tags that travel with a message. |
+| `ack_signature_test.exs` | The tags on acknowledgements. |
+| `boundary_secret_test.exs` | The shared secret that decides who is allowed in. |
+| `insider_scope_test.exs` | Writes down what the system does not protect against, on purpose. |
+| `instrumentation_test.exs` | The counters that measure cost. |
+| `run_config_test.exs` | **New.** Seeds, the delay setting, and the description of a run. |
+| `network_test.exs` | **New.** The simulated network, and what an attacker can do to a message. |
+| `supervisor/gitparser_test.exs` | Turning a git log into edits. |
+| `supervisor/gitlog_test.exs` | Reading the git log from a real clone. |
 
-- **`test/syncordian/`** — unit tests for the Syncordian CRDT's internals, one
-  file per concern: `path_id_test.exs` (dense identifier allocation between two
-  existing lines), `document_test.exs` (line insertion/deletion bookkeeping),
-  `interleaving_test.exs` (the re-placement logic that keeps concurrently
-  authored blocks contiguous), `vector_clock_test.exs` (causal ordering),
-  `pending_ops_test.exs` / `seen_ops_test.exs` (the buffers that hold
-  out-of-order/duplicate remote edits until they're applicable), and
-  `ack_signature_test.exs` / `wire_signature_test.exs` /
-  `boundary_secret_test.exs` (the Byzantine-resistant signing scheme edits carry
-  over the wire). A `supervisor/` subdirectory covers the commit-replay/edit-index
-  accounting done by `Syncordian.Supervisor` and `Syncordian.GitParser`.
-- **`test/syncordian_web/controllers/`** — Phoenix controller/endpoint tests for
-  the LiveView routes.
-- **`test/git_log/`** — legacy fixture git logs
-  (`ohmyzsh_README_git_log`, `ohmyzsh_README_full_git_log`) kept for ad-hoc
-  parser testing via `parser_git_log/1`; real experiment runs now read the log
-  live from the configured clone through `Syncordian.GitLog` instead of these
-  fixtures.
+### Live tests
 
-Code is formatted with `mix format` (config in `.formatter.exs`).
+These start real peer processes and let them talk to each other. They take about
+fifty seconds, so they are skipped unless you ask for them.
+
+```bash
+mix test --include live          # the fast tests plus the live ones
+```
+
+| File | What it checks |
+| ---- | -------------- |
+| `live/recovery_test.exs` | A peer that missed an edit asks for it again and gets it. |
+| `live/difficult_executions_test.exs` | **New.** The four hard situations below. |
+
+The four hard situations are the interesting part, so here is what each one does.
+
+| Situation | Name to pass to `--scenario` | What happens | What must still be true |
+| --------- | ---------------------------- | ------------ | ----------------------- |
+| **Reorder storm** | `reorder_storm` | Messages are delayed, sent twice, and mixed up, while an attacker sends fake ones. Almost nothing arrives in the order it was sent. | Every peer ends with the same document, no fake message is accepted, and no line is left unfinished. |
+| **Offline window** | `offline_window` | One peer is cut off, misses edits, and is later reconnected. Nobody resends anything to it. | It asks for what it missed and catches up. |
+| **Post-collection replay** | `post_collection_replay` | An attacker records real messages and sends them again much later, after the peers have stopped remembering them. These messages are genuine, so they pass every security check. | The document does not change. No line appears twice, and a deleted line does not come back. |
+| **Bounded loss** | `bounded_loss` | Messages are thrown away at random on every link for a while, and then the network heals. | The peers ask for what was lost and end up with the same document. |
+
+The third one is the important one. Those messages are real, so checking
+signatures cannot stop them. What stops them is that every edit carries an
+identity, and that a deleted line stays deleted.
+
+### Smoke scripts
+
+These are not ExUnit tests. They are small programs that set up one situation and
+print `PASS` or `FAIL`. Use them for a quick check after changing the CRDT,
+without waiting for a full replay.
+
+```bash
+mix run --no-start scripts/three_peer_smoke.exs    # three peers, a few edits
+mix run --no-start scripts/interleaving_smoke.exs  # two peers writing at the same spot
+mix run --no-start scripts/cascade_smoke.exs       # three peers, and a delete during a repair
+```
+
+Use `--no-start` so Mix does not boot the web app, which a script does not need.
+
+Code is formatted with `mix format`.
+
+## Running one experiment
+
+An experiment replays a real git history. Each contributor becomes one peer, and
+each commit becomes a set of edits. At the end, every peer's document must match
+the file as git holds it.
+
+```bash
+mix run --no-start scripts/run_full_experiment.exs
+```
+
+Some useful options:
+
+```bash
+# A repeatable run under a real delay.
+mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50
+
+# Five distrusted nodes attacking during the replay.
+mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50 --adversaries 5
+
+# One of the hard situations, over the whole history.
+mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50 \
+  --scenario reorder_storm --adversaries 5
+
+# Write somewhere other than debug/.
+mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50 --out /tmp/run1
+```
+
+The script first prints the repository, the tracked file, the number of peers,
+the number of commits, and the hash of the last commit. It then replays
+everything, waits for the network to go quiet, and checks two things. First, that
+all peers agree with each other. Second, that they agree with
+`git show <hash>:<file>`. Agreement on its own is not enough, because peers that
+all made the same mistake still agree with each other.
+
+Add `--observer` to open the Erlang observer window and watch the peers while
+they work. It needs a graphical display. If it cannot start, the run continues
+without it.
+
+To choose which repository and file to replay, set these before the command:
+
+```bash
+SYNCORDIAN_REPO_PATH=../../ohmyzsh \
+SYNCORDIAN_TRACKED_FILE=README.md \
+SYNCORDIAN_MAX_COMMITS=20 \
+mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50
+```
+
+`SYNCORDIAN_MAX_COMMITS` is useful while trying things out, because a short
+history finishes in seconds instead of minutes.
+
+There is also a Mix task that does a simpler version of the same thing:
+
+```bash
+mix syncordian.eval --crdt syncordian --byzantine 0
+```
+
+And a separate checker you can run after any experiment:
+
+```bash
+mix run --no-start scripts/verify_convergence.exs
+```
+
+It checks that all peer documents are identical, that they match the file in git,
+and that no line was left unfinished.
+
+## Running many experiments
+
+One run tells you very little. The timing of a concurrent system changes from run
+to run, so a single number is one observation and not a property of the system.
+Each setting is therefore run ten times, with ten different seeds, and reported as
+an average with a confidence interval.
+
+```bash
+mix run --no-start scripts/run_repetitions.exs \
+  --reps 10 --seed-base 1 --delay uniform:5:50 \
+  --scenarios baseline,reorder_storm --adversaries 5 --root debug/runs
+```
+
+Each repetition runs as its own operating system process. This matters, because
+two runs inside one Erlang node would share state, and then the runs would not be
+independent.
+
+The sweep can be stopped and started again. A repetition that already has a
+`result.json` is skipped, so no work is repeated.
+
+Two things the driver refuses to do, on purpose.
+
+- It refuses `--delay none`. The paper says peers exchange messages under a
+  delay, so a run whose numbers are reported has to apply one.
+- It refuses `offline_window` and `bounded_loss` over a git history. In those two
+  situations a peer can fall behind with nothing to tell it so, and the replay
+  then waits for that peer forever instead of failing. Both are checked by the
+  live tests instead. Pass `--allow-stalling-scenarios` to try anyway.
+
+### Reading the numbers
+
+```bash
+pip install -r scripts/requirements.txt     # matplotlib and numpy
+
+python3 scripts/aggregate_runs.py --runs debug/runs --out debug/aggregate
+python3 scripts/data_visualization.py
+python3 scripts/heap_size_visualization.py
+```
+
+`aggregate_runs.py` reads every run folder and writes one table,
+`debug/aggregate/summary.csv`, plus the same data as JSON. Each row is one
+measurement at one point, with the number of runs behind it, the average, the
+spread, and a 95% confidence interval. Two rules keep those numbers honest.
+
+- **One run is one sample.** Each run is reduced to a single value first, and the
+  interval is taken over those ten values. Pouring every message of every run
+  into one pile would give a much narrower interval, for a reason that has
+  nothing to do with how repeatable the experiment is.
+- **Some quantities cannot vary.** Under the same workload the number of edits,
+  and the bytes they take, are the same every time. Those are marked and drawn
+  without a band, because a band there would suggest a doubt that does not exist.
+
+The two plotting scripts read that table and draw the average, the confidence
+band, and the individual runs behind it. They write PDFs into `figures/`.
+
+One note on `heap_size_visualization.py`. Only one peer records the size of its
+document after every edit, so the plot needs a run with enough peers for that one
+to exist. A short history with only three or four peers produces no data for it,
+and the script says so instead of drawing an empty figure.
+
+## Web UI (optional)
+
+The web app is not needed for anything above. It is a control panel for running
+an experiment by hand.
+
+```bash
+mix phx.server
+```
+
+Then open <http://localhost:4000>.
+
+| Route | What it does |
+| ----- | ------------ |
+| `/` | About page. |
+| `/supervisor` | Pick a CRDT and a number of distrusted nodes, launch the network, replay commits, dump documents. |
+| `/node` | The raw document of one peer, including deleted lines. |
+| `/readmelog` | The git commit log that drives the experiment. |
+
+## Other helpers
+
+`scripts/analyze-commits.sh` lists the files a repository changes most often, and
+`scripts/number-of-commits.sh <path>` counts the commits touching one file. They
+help you pick a history to replay. Neither is part of the evaluation.
+
+`test/git_log/` holds two captured git logs. Some tests still read them. Real
+runs read the log live from a clone instead.
 
 ## API documentation
 
@@ -274,14 +345,18 @@ Project layout:
 
 - `lib/syncordian/` — CRDT backend and the experiment driver.
   - `CRDT/syncordian/` — the Syncordian CRDT (peer, document, line, path id,
-    Byzantine signatures, interleaving handling, pending/seen-op buffers).
+    signatures, interleaving handling, pending/seen-op buffers, origin log).
   - `CRDT/fugue/`, `CRDT/logoot/`, `CRDT/treedoc/` — the comparison CRDTs.
-  - `CRDT/{utilities,metadata,vector_clock,types}.ex` — shared infrastructure.
+  - `CRDT/{utilities,metadata,vector_clock,instrument,op_times,types}.ex` —
+    shared infrastructure and the cost measurements.
+  - `run.ex`, `rng.ex`, `network.ex` — the description of a run, the randomness a
+    seed fixes, and the simulated network every message crosses.
   - `supervisor/` — `Syncordian.Supervisor` (hand-rolled receive loop) and the
     `Syncordian.GitParser` that turns commit logs into edits.
 - `lib/syncordian_web/` — Phoenix LiveView UI.
-- `scripts/` — convergence (`identical.sh`), headless experiments (`*.exs`), and
-  the Python plotting scripts.
+- `scripts/` — one run (`run_full_experiment.exs`), many runs
+  (`run_repetitions.exs`), the post-hoc check (`verify_convergence.exs`), the
+  smoke programs, and the Python aggregation and plotting.
 
 ### Module dependency graph
 
@@ -315,6 +390,7 @@ flowchart LR
     Intl[Syncordian.Interleaving]
     Pend[Syncordian.PendingOps]
     Seen[Syncordian.SeenOps]
+    OpLog[Syncordian.OpLog]
     Info[Syncordian.Info]
   end
   subgraph Infra["Shared infrastructure"]
@@ -322,6 +398,13 @@ flowchart LR
     Meta[Syncordian.Metadata]
     VC[Syncordian.Vector_Clock]
     Types[Syncordian.Basic_Types]
+    Instr[Syncordian.Instrument]
+    OpT[Syncordian.OpTimes]
+  end
+  subgraph RunCfg["A run and its network"]
+    RunM[Syncordian.Run]
+    RngM[Syncordian.Rng]
+    Net[Syncordian.Network]
   end
   subgraph Fugue["Fugue"]
     FP[Fugue.Peer] --> FT[Fugue.Tree] --> FN[Fugue.Node]
@@ -340,8 +423,13 @@ flowchart LR
   Eval --> Sup
   WSup --> Sup
   WNode --> LObj
-  Sup --> Meta & GP & Util & BPeer & Peer
+  Sup --> Meta & GP & Util & BPeer & Peer & RunM & Net & RngM
   Peer --> Meta & Info & Line & Doc & Byz & LObj & Util & VC & Pend & Seen & Intl
+  Peer --> Net & RngM & OpLog & OpT
+  BPeer --> Net & RngM & RunM
+  Net --> RunM & RngM & Instr
+  RngM --> RunM
+  Byz --> RunM & Instr
   Doc --> LObj & Line & VC & Byz & PathId
   Line --> Byz & PathId & Pend
   Byz --> LObj

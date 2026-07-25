@@ -67,6 +67,27 @@ defmodule Syncordian.Utilities do
   end
 
   @doc """
+  Recipients of a broadcast paired with the identity each one is registered under.
+
+  `Syncordian.Network` decides a message's delivery from the run's seed together with the
+  sender, the recipient, and the message, so it needs a name for the recipient that is the
+  same in every run. A process identifier is not one: it is assigned by the virtual machine
+  and differs between two runs of the same seed. The registry name is the peer's own
+  identifier, which is stable, so the pair is resolved once per peer here and kept.
+  """
+  @spec broadcast_targets(pid()) :: [{pid(), term()}]
+  def broadcast_targets(sender_pid) do
+    supervisor_pid = :global.whereis_name(:supervisor)
+    swoosh_pid = :global.whereis_name(Swoosh.Adapters.Local.Storage.Memory)
+
+    :global.registered_names()
+    |> Enum.map(fn name -> {:global.whereis_name(name), name} end)
+    |> Enum.filter(fn {pid, _name} ->
+      is_pid(pid) and pid != sender_pid and pid != supervisor_pid and pid != swoosh_pid
+    end)
+  end
+
+  @doc """
   Sends `message` to every pid with an independent per-recipient delay drawn from
   `range` — the network-jitter model. The degenerate `0..0` range short-circuits to a
   plain `send`: `Process.send_after/3` with delay 0 has the same delivery semantics

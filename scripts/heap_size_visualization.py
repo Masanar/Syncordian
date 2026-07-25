@@ -1,144 +1,131 @@
-import os
+"""Document growth per implementation, drawn from the aggregate of repeated runs.
+
+Shows how a replica's document grows as it applies edits, for each implementation that was
+replayed, as a mean over the runs of that implementation with a 95% confidence interval.
+
+Reads the long-format summary that ``aggregate_runs.py`` writes. The earlier version of this
+script also read a file of per-commit source sizes that no code in the project produces,
+which made it raise before drawing anything. That series is gone: the baseline it provided
+is the ``crdt-memory-usage`` table in the paper, which is measured rather than reconstructed.
+
+Run from ``Code/``, after ``aggregate_runs.py``::
+
+    python scripts/aggregate_runs.py
+    python scripts/heap_size_visualization.py
+
+The figure is written to ``Code/figures/heap_size_plot.pdf``.
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
+import os
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
-import re
 from matplotlib.ticker import FuncFormatter
 
-# Function to extract the edit number from the filename
-def extract_edit_number(filename):
-    match = re.search(r"edit_(\d+)\.json", filename)
-    if match:
-        return int(match.group(1))
-    return None
+IMPLEMENTATIONS = {
+    "syncordian": {"name": "Syncordian", "color": "#2a78d6"},
+    "fugue": {"name": "Fugue", "color": "#eb6834"},
+    "logoot": {"name": "Logoot", "color": "#008300"},
+    "treedoc": {"name": "Treedoc", "color": "#4a3aa7"},
+}
 
-# Function to read JSON files and extract edit numbers and heap sizes
-def read_json_files(directory):
-    x_axis = []
-    heap_sizes = []
 
-    files = [f for f in os.listdir(directory) if f.endswith(".json")]
-    files.sort(key=lambda f: extract_edit_number(f))  # Sort by edit number
+def format_kilobytes(value, _position):
+    return f"{value / 1000:.0f}K" if value >= 1000 else f"{value:.0f}"
 
-    for filename in files:
-        filepath = os.path.join(directory, filename)
-        with open(filepath, "r") as file:
-            data = json.load(file)
-            edit_number = extract_edit_number(filename)
-            if edit_number is not None:
-                x_axis.append(edit_number)
-                heap_sizes.append(data["heap_size"])
-    
 
-    return x_axis, heap_sizes
+def load(path: str) -> list[dict]:
+    with open(path) as handle:
+        return json.load(handle)
 
-# Function to read data from commit_sizes_with_edits.json
-def read_commit_sizes_with_edits(filepath):
-    x_axis = []
-    heap_sizes = []
 
-    with open(filepath, "r") as file:
-        data = json.load(file)
-        for entry in data:
-            x_axis.append(entry["edit_number"])  # Use "edit_number" for the x-axis
-            heap_sizes.append(entry["heap_size"])  # Use "heap_size" for the y-axis
+def growth_series(rows: list[dict]) -> dict[str, list[dict]]:
+    """The per-edit heap size of each implementation, ordered by edit number."""
+    by_implementation = defaultdict(list)
 
-    return x_axis, heap_sizes
+    for row in rows:
+        if row["axis"] == "edit" and row["metric"] == "heap_size":
+            by_implementation[row["crdt"]].append(row)
 
-# Function to format y-axis labels
-def format_y_axis(value, _):
-    if value >= 1000:
-        return f"{int(value / 1000)}kB"  # Convert to 'K' format
-    return str(int(value))  # Keep smaller values as-is
+    return {
+        implementation: sorted(points, key=lambda row: row["point"])
+        for implementation, points in by_implementation.items()
+    }
 
-# Function to plot the graph
-def plot_heap_sizes(fugue_data, syncordian_data, logoot_data, commit_data, output_path="../figures/heap_size_plot.pdf"):
-    fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Plot Fugue data
-    ax.plot(
-        fugue_data[0], fugue_data[1],
-        label="Fugue",
-        color="blue",
-        linestyle="-",
-        linewidth=2
-    )
+def plot(series: dict[str, list[dict]], output: str) -> None:
+    figure, axes = plt.subplots(figsize=(8, 6))
+    repetitions = 0
 
-    # Plot Syncordian data
-    ax.plot(
-        syncordian_data[0], syncordian_data[1],
-        label="Syncordian",
-        color="green",
-        linestyle="--",
-        linewidth=2
-    )
+    for implementation, points in sorted(series.items()):
+        if not points:
+            continue
 
-    # Plot Logoot data
-    ax.plot(
-        logoot_data[0], logoot_data[1],
-        label="Logoot",
-        color="orange",
-        linestyle="-.",
-        linewidth=2
-    )
+        properties = IMPLEMENTATIONS.get(
+            implementation, {"name": implementation, "color": "black"}
+        )
+        x = [row["point"] for row in points]
+        repetitions = max(repetitions, max(row["n"] for row in points))
 
-    # Plot Commit data (Original README)
-    ax.plot(
-        commit_data[0], commit_data[1],
-        label="Original README",
-        color="red",
-        linestyle=":",
-        linewidth=2
-    )
-
-    # Add vertical lines for the commit points
-    for x in commit_data[0]:  # Iterate over the x-axis values (edit numbers) for commits
-        ax.axvline(
-            x=x,
-            color="lightgray",  # Use a lighter color for the lines
-            linestyle="--",
-            linewidth=0.5,  # Make the lines thinner
-            alpha=0.5  # Add transparency
+        axes.plot(
+            x,
+            [row["mean"] for row in points],
+            label=properties["name"],
+            color=properties["color"],
+            linewidth=1.6,
         )
 
-    # Customize the y-axis to display values in 'K' format
-    ax.yaxis.set_major_formatter(FuncFormatter(format_y_axis))
+        # No band where the size does not vary across runs.
+        if any(not row["deterministic"] for row in points):
+            axes.fill_between(
+                x,
+                [row["ci_low"] for row in points],
+                [row["ci_high"] for row in points],
+                color=properties["color"],
+                alpha=0.18,
+                linewidth=0,
+            )
 
-    # Customize the plot
-    ax.set_xlabel("Edit Number")
-    ax.set_ylabel("Document Size")
-    ax.legend(loc="upper left")
-    ax.grid(True)
+    if repetitions == 0:
+        plt.close(figure)
+        raise SystemExit("the aggregate holds no per-edit document sizes")
 
-    # Save the plot to a file
-    plt.tight_layout()
-    plt.savefig(output_path)
-    print(f"Plot saved to {output_path}")
-
-# Main function
-def main():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    fugue_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/fugue")
-    syncordian_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/syncordian")
-    logoot_dir = os.path.join(script_dir, "../debug/metadata/individual_peer/logoot")  # New directory for Logoot
-    commit_sizes_path = os.path.join(script_dir, "../debug/README_versions/commit_sizes_with_edits.json")
-    output_path = os.path.join(script_dir, "../figures/heap_size_plot.pdf")
-
-    # Read data for Fugue, Syncordian, and Logoot
-    fugue_x, fugue_heap_sizes = read_json_files(fugue_dir)
-    syncordian_x, syncordian_heap_sizes = read_json_files(syncordian_dir)
-    logoot_x, logoot_heap_sizes = read_json_files(logoot_dir)  # Read Logoot data
-
-    # Read data for Commit Sizes
-    commit_x, commit_heap_sizes = read_commit_sizes_with_edits(commit_sizes_path)
-
-    # Plot the data and save the graph as a PDF
-    plot_heap_sizes(
-        (fugue_x, fugue_heap_sizes),
-        (syncordian_x, syncordian_heap_sizes),
-        (logoot_x, logoot_heap_sizes),  # Pass Logoot data
-        (commit_x, commit_heap_sizes),
-        output_path
+    axes.yaxis.set_major_formatter(FuncFormatter(format_kilobytes))
+    axes.set_xlabel("Edit number")
+    axes.set_ylabel("Document size")
+    axes.legend(loc="upper left")
+    axes.grid(True)
+    axes.set_title(
+        f"mean of {repetitions} runs, shaded 95% confidence interval", fontsize=9, loc="right"
     )
+
+    plt.tight_layout()
+    plt.savefig(output)
+    plt.close(figure)
+    print(f"Plot saved to {output}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--aggregate", default="debug/aggregate/summary.json")
+    parser.add_argument("--figures", default="figures")
+    arguments = parser.parse_args()
+
+    if not os.path.exists(arguments.aggregate):
+        raise SystemExit(
+            f"no aggregate at {arguments.aggregate}; run scripts/aggregate_runs.py first"
+        )
+
+    os.makedirs(arguments.figures, exist_ok=True)
+    plot(
+        growth_series(load(arguments.aggregate)),
+        os.path.join(arguments.figures, "heap_size_plot.pdf"),
+    )
+
 
 if __name__ == "__main__":
     main()

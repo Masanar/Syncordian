@@ -5,7 +5,7 @@ defmodule Syncordian.CRDT.Logoot.Info do
   Materializes a `Syncordian.CRDT.Logoot.Sequence` into plain text and writes it
   to `debug/documents/logoot/document_<peer_id>` so that, after a run, every
   peer's document can be compared for byte-for-byte convergence with
-  `scripts/identical.sh`.
+  `scripts/verify_convergence.exs`.
   """
   alias Syncordian.CRDT.Logoot.Sequence
 
@@ -15,7 +15,7 @@ defmodule Syncordian.CRDT.Logoot.Info do
   """
   @spec save_tree_content(Sequence.t(), Syncordian.Basic_Types.peer_id()) :: :ok
   def save_tree_content(sequence, peer_id) do
-    file_path = "debug/documents/logoot/"
+    file_path = Syncordian.Run.path("documents/logoot") <> "/"
 
     # Ensure the directory exists
     unless File.dir?(file_path) do

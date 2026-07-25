@@ -10,7 +10,7 @@ defmodule Syncordian.Info do
   for debugging.
 
   Output goes to `debug/documents/syncordian/document_peer_<id>`; run
-  `scripts/identical.sh` afterwards to assert all peers converged byte-for-byte.
+  `scripts/verify_convergence.exs` afterwards to assert all peers converged byte-for-byte.
   """
   # use TypeCheck
   import Syncordian.Utilities
@@ -28,7 +28,7 @@ defmodule Syncordian.Info do
           :ok
   def save_document_content(document, peer_id) do
     File.write!(
-      "debug/documents/syncordian/document_peer_#{peer_id}",
+      Syncordian.Run.path("documents/syncordian/document_peer_#{peer_id}"),
       string_document_content(document)
     )
   end

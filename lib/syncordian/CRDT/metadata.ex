@@ -40,6 +40,11 @@ defmodule Syncordian.Metadata do
     insert_stash_fail_counter: 0,
     byzantine_insert_counter: 0,
     byzantine_delete_counter: 0,
+    # Genuine messages the adversary captured and re-broadcast unchanged. Counted apart from
+    # the two above because they are a different experiment: a forged message is answered by
+    # the admission check, while a verbatim replay passes admission and is answered by
+    # idempotence. A single "attack volume" would hide which of the two a run exercised.
+    byzantine_replay_counter: 0,
     replay_rejected_counter: 0,
     ack_rejected_counter: 0,
     admission_rejected_counter: 0,
@@ -176,6 +181,7 @@ defmodule Syncordian.Metadata do
             insert_stash_fail_counter: integer(),
             byzantine_insert_counter: integer(),
             byzantine_delete_counter: integer(),
+            byzantine_replay_counter: integer(),
             replay_rejected_counter: integer(),
             ack_rejected_counter: integer(),
             admission_rejected_counter: integer(),
@@ -286,6 +292,10 @@ defmodule Syncordian.Metadata do
     nanoseconds / 1_000
   end
 
+  # Every snapshot carries the description of the run that produced it. A measurement is
+  # only readable next to the configuration it was taken under, and a file that has to be
+  # matched to a configuration by its position in a directory tree will eventually be
+  # matched to the wrong one.
   defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
     metadata_map =
       metadata
@@ -294,7 +304,8 @@ defmodule Syncordian.Metadata do
       |> Map.merge(%{
         "byzantine_nodes" => byzantine_nodes,
         "current_commit" => current_commit,
-        "timestamp" => current_date_unix
+        "timestamp" => current_date_unix,
+        "run" => Syncordian.Run.to_map()
       })
 
     Jason.encode!(metadata_map, pretty: true)
@@ -305,7 +316,7 @@ defmodule Syncordian.Metadata do
          metadata,
          current_commit,
          byzantine_nodes,
-         path_prefix,
+         directory,
          name \\ "commit"
        ) do
     current_date_unix = System.os_time(:second) |> to_string()
@@ -313,12 +324,13 @@ defmodule Syncordian.Metadata do
     metadata_json =
       get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes)
 
-    filename =
+    basename =
       if byzantine_nodes == 0,
-        do: "#{path_prefix}#{name}_#{current_commit}.json",
-        else: "#{path_prefix}byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}.json"
+        do: "#{name}_#{current_commit}.json",
+        else: "byzantine_nodes_#{byzantine_nodes}_#{name}_#{current_commit}.json"
 
-    File.write(filename, metadata_json)
+    File.mkdir_p!(directory)
+    File.write(Path.join(directory, basename), metadata_json)
   end
 
   @doc """
@@ -330,7 +342,7 @@ defmodule Syncordian.Metadata do
       metadata,
       current_commit,
       0,
-      "debug/metadata/individual_peer/#{module_name}/",
+      Syncordian.Run.path("metadata/individual_peer/#{module_name}"),
       name
     )
   end
@@ -345,7 +357,7 @@ defmodule Syncordian.Metadata do
       metadata,
       current_commit,
       byzantine_nodes,
-      "debug/metadata/supervisor/#{module_name}"
+      Syncordian.Run.path("metadata/supervisor/#{module_name}")
     )
   end
 
@@ -417,6 +429,22 @@ defmodule Syncordian.Metadata do
     do:
       metadata(metadata,
         byzantine_insert_counter: metadata(metadata, :byzantine_insert_counter) + 1
+      )
+
+  @doc """
+    Counts genuine messages the adversary captured and re-broadcast unchanged.
+
+    These carry a valid admission authenticator, because they were written by an admitted
+    peer, so they are not answered by the admission check. What answers them is the applied
+    operation set and the tombstone, and a replay held long enough to outlive the collection
+    of that set is answered by the tombstone alone. That is the execution this counter
+    reports on.
+  """
+  @spec inc_byzantine_replay_counter(metadata()) :: metadata()
+  def inc_byzantine_replay_counter(metadata),
+    do:
+      metadata(metadata,
+        byzantine_replay_counter: metadata(metadata, :byzantine_replay_counter) + 1
       )
 
   @doc """

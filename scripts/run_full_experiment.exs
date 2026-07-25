@@ -1,114 +1,75 @@
-# Headless run of the paper's full Syncordian evaluation.
+# One run of the evaluation, headless.
 #
-# Drives the same `Syncordian.Supervisor` the `/supervisor` LiveView normally drives,
-# replays the whole mainline git log of the configured tracked file (see
-# `Syncordian.GitLog` — repo/file are overridable via `SYNCORDIAN_REPO_PATH` /
-# `SYNCORDIAN_TRACKED_FILE`, defaulting to the OhMyZsh README) across one author peer
-# per author found in that log and 0 Byzantine peers (mirroring the default LiveView
-# selection), then writes each peer's materialized document to
-# `debug/documents/syncordian/document_peer_N`.
+# Drives the same `Syncordian.Supervisor` the `/supervisor` control panel drives, replays
+# the whole mainline history of the configured tracked file (see `Syncordian.GitLog`), and
+# checks that every peer converged, both to every other peer and to the file git holds at
+# the last replayed commit.
 #
-# Since this is meant to be pointed at different repos (not just the OhMyZsh log this
-# codebase was developed against), the script prints the repo/file, author (peer)
-# count, commit count, and the hash of the last replayed commit up front — that hash
-# is what `git show <hash>:<tracked file>` in the target repo must byte-match for the
-# run to have converged correctly, so it's what to check manually if something looks off.
+# One invocation is one run, in the sense the evaluation reports: one seed, one delay
+# model, one scenario, one adversary count. Repetitions are separate invocations, each in
+# its own operating system process, driven by scripts/run_repetitions.exs. Running them in
+# one virtual machine would let global names, the boundary secret, and the operation-time
+# table of one repetition reach the next.
 #
-# Run from `code/` as:
+# Run from `Code/` as:
 #
 #     mix run --no-start scripts/run_full_experiment.exs
+#     mix run --no-start scripts/run_full_experiment.exs --seed 1 --delay uniform:5:50
+#     mix run --no-start scripts/run_full_experiment.exs --adversaries 5 --scenario reorder_storm
 #
-# Pass `--observer` (in addition to, or instead of, the byzantine-count argument, in
-# either order) to also launch the Erlang :observer GUI right before the peers spawn, so
-# you can watch peer process count/mailbox/memory live while the replay runs:
+# Options:
 #
-#     mix run --no-start scripts/run_full_experiment.exs --observer
-#     mix run --no-start scripts/run_full_experiment.exs 5 --observer
+#   --seed N          fixes every random choice the protocol and the environment make.
+#                     Without it the run is unseeded and cannot be reproduced.
+#   --delay SPEC      "none" or "uniform:<low_ms>:<high_ms>". A reported run must not use
+#                     "none": see scripts/run_repetitions.exs and the guard test.
+#   --scenario NAME   baseline, reorder_storm, offline_window, post_collection_replay, or
+#                     bounded_loss.
+#   --adversaries N   number of distrusted nodes (also accepted as a bare integer).
+#   --crdt NAME       syncordian, fugue, logoot, or treedoc.
+#   --out DIR         output root. Defaults to debug/, which is where the control panel and
+#                     the convergence checker look.
+#   --observer        launch the Erlang observer before the peers spawn, and wait for Enter
+#                     at the end so the window stays open. Needs a display and a :wx build;
+#                     a failure here is not fatal to the run.
 #
-# :observer needs a display (X11/Wayland/etc.) and an Erlang build with :wx compiled in —
-# if either is missing, starting it raises and the script prints why, then continues the
-# experiment without it. With --observer, the script pauses after finishing and waits for
-# Enter before exiting, so the window stays open for you to inspect at your own pace
-# instead of disappearing the instant the run completes.
-#
-# Approximate wall time: ~3 min for the 71-commit OhMyZsh log (71 commits × ~2s
-# dispatch + settle time); scales with however many commits the configured repo/file has.
-#
-# Once the network reaches quiescence, the script also triggers a final metadata
-# collect + save — the same {:collect_metadata_from_peers} / {:print_supervisor_metadata}
-# pair the /supervisor LiveView's "Collect Metadata" / "Save Metadata" buttons send — so
-# every run leaves a fully-settled JSON snapshot under debug/metadata/supervisor/syncordian/
-# for scripts/data_visualization.py, on top of the per-commit snapshots and the per-edit
-# ones under debug/metadata/individual_peer/syncordian/ (for
-# scripts/heap_size_visualization.py) that get written automatically as the replay runs.
-#
-# After it completes, the script invokes scripts/identical.sh, which exits 0
-# iff every dumped peer document is byte-identical.
-#
-# `debug/` is largely git-ignored, so on a fresh clone none of its subdirectories exist
-# yet. Before replaying, the script creates (and, for the ones this run itself populates,
-# wipes stale contents from) every debug/documents and debug/metadata directory consumed
-# by this script, scripts/data_visualization.py, and scripts/heap_size_visualization.py —
-# not just the ones this run writes to — so neither a metadata write nor a follow-up plot
-# script silently fails/crashes for want of a directory.
+# The run writes, under the output root: manifest.json (the full description of the run),
+# documents/, metadata/, latency_*.json, and result.json (what was asserted and what
+# happened). Everything a reader needs to tell which configuration produced a number is in
+# manifest.json, so no number has to be matched to a configuration by its position in a
+# directory tree.
 
 defmodule FullExperiment do
-  def run(byzantine_count, observer?) do
-    out_dir = "debug/documents/syncordian"
-    IO.puts("Cleaning #{out_dir}/document_peer_* …")
-    File.mkdir_p!(out_dir)
+  def run(options) do
+    started_at = System.monotonic_time(:millisecond)
 
-    Path.wildcard(Path.join(out_dir, "document_peer_*"))
-    |> Enum.each(&File.rm!/1)
+    # The run's description has to be in force before the supervisor builds anything, so the
+    # driver publishes its options where Syncordian.Run.install!/1 will find them.
+    configure(options)
 
-    # Stale JSONs from a prior run (possibly over a different commit range/repo) would
-    # otherwise mix with this run's snapshots in scripts/data_visualization.py's
-    # "no byzantine nodes" plot, so start each run from an empty directory.
-    metadata_dir = "debug/metadata/supervisor/syncordian"
-    IO.puts("Cleaning #{metadata_dir}/*.json …")
-    File.mkdir_p!(metadata_dir)
+    root = Application.get_env(:syncordian, :run_root, "debug")
+    out_dir = Path.join(root, "documents/syncordian")
 
-    Path.wildcard(Path.join(metadata_dir, "*.json"))
-    |> Enum.each(&File.rm!/1)
+    clean(out_dir, "document_peer_*")
+    clean(Path.join(root, "metadata/supervisor/syncordian"), "*.json")
+    clean(Path.join(root, "metadata/individual_peer/syncordian"), "*.json")
 
-    # Same staleness concern as above, but for the per-edit snapshots
-    # scripts/heap_size_visualization.py reads: Syncordian.Peer writes one on every edit
-    # (peer.ex, off the critical path in a detached spawn — if this dir is missing on a
-    # fresh clone, that write fails silently and the whole run's heap-size data goes
-    # missing without any error surfacing).
-    individual_peer_dir = "debug/metadata/individual_peer/syncordian"
-    IO.puts("Cleaning #{individual_peer_dir}/*.json …")
-    File.mkdir_p!(individual_peer_dir)
+    if options[:observer], do: start_observer()
 
-    Path.wildcard(Path.join(individual_peer_dir, "*.json"))
-    |> Enum.each(&File.rm!/1)
+    crdt = options[:crdt]
+    adversaries = options[:adversaries]
 
-    # This run only replays :syncordian, so it never populates these — but
-    # data_visualization.py and heap_size_visualization.py os.listdir() them
-    # unconditionally (for the other CRDTs' comparison series, and for the byzantine-node
-    # sweep plot respectively), which raises FileNotFoundError on a fresh clone if the
-    # directory is simply absent. Just make sure they exist; leave their contents alone.
-    ensure_dirs_exist([
-      "debug/metadata/individual_peer/fugue",
-      "debug/metadata/individual_peer/logoot",
-      "debug/metadata/byzantine_nodes"
-    ])
-
-    if observer?, do: start_observer()
-
-    IO.puts("Initializing supervisor with crdt=:syncordian, byzantine=#{byzantine_count} …")
-    sup_pid = Syncordian.Supervisor.init(byzantine_count, :syncordian)
+    IO.puts("Initializing supervisor with crdt=#{inspect(crdt)}, adversaries=#{adversaries} …")
+    sup_pid = Syncordian.Supervisor.init(adversaries, crdt)
     IO.puts("Supervisor pid: #{inspect(sup_pid)}")
     print_source_summary()
 
     # Give peers a moment to fully register with :global and bind to the supervisor.
     Process.sleep(500)
 
-    IO.puts("Sending {:send_all_commits, self, 0} — replaying full git log…")
-    send(sup_pid, {:send_all_commits, self(), 0})
+    IO.puts("Replaying the full history …")
+    send(sup_pid, {:send_all_commits, self(), adversaries})
 
-    # The supervisor sends {:limit_reached, _} to live_view_pid (= self()) when done.
-    # It also queues a {:write_current_peers_document} to itself at completion.
     wait_for_limit_reached()
 
     # Fixed sleeps are NOT enough here: a straggling replica can still be catching up
@@ -121,21 +82,140 @@ defmodule FullExperiment do
 
     files = Path.wildcard(Path.join(out_dir, "document_peer_*")) |> Enum.sort()
     IO.puts("Dumped #{length(files)} peer documents:")
-    Enum.each(files, &IO.puts("  #{&1}"))
 
     save_final_metadata(sup_pid)
     print_source_summary()
 
-    IO.puts("\nRunning scripts/identical.sh from code/ …")
-    # identical.sh is written assuming CWD = code/scripts and FOLDER=../debug/documents,
-    # so it walks debug/documents/* at the top level. To make it check the Syncordian
-    # subtree specifically, we do the byte-equality check inline instead.
-    verify_convergence(files, observer?)
+    elapsed = System.monotonic_time(:millisecond) - started_at
+
+    files
+    |> check_convergence()
+    |> report(root, elapsed, options)
   end
 
-  defp ensure_dirs_exist(dirs) do
-    Enum.each(dirs, &File.mkdir_p!/1)
+  # The driver's options reach the run descriptor through the application environment, which
+  # is where Syncordian.Run.install!/1 looks after the process environment. Setting them
+  # here rather than building the descriptor directly keeps a single place where a run's
+  # configuration is resolved.
+  defp configure(options) do
+    if options[:seed], do: Application.put_env(:syncordian, :rng_seed, options[:seed])
+    Application.put_env(:syncordian, :delay, options[:delay])
+    Application.put_env(:syncordian, :scenario, options[:scenario])
+    Application.put_env(:syncordian, :run_root, options[:out])
   end
+
+  defp clean(dir, pattern) do
+    File.mkdir_p!(dir)
+    Path.wildcard(Path.join(dir, pattern)) |> Enum.each(&File.rm!/1)
+  end
+
+  ########################################################################################
+  # Convergence
+  ########################################################################################
+
+  # Two questions, and the second is the one that matters. Are the replicas identical to each
+  # other, and are they identical to what git holds at the last replayed commit? Agreement
+  # alone is not correctness: replicas that all applied the same wrong order agree with each
+  # other and with nothing else.
+  defp check_convergence([]), do: %{status: :error, reason: "no peer documents were written"}
+
+  defp check_convergence(files) do
+    [reference | rest] = files
+    reference_bytes = File.read!(reference)
+
+    diverged =
+      Enum.reject(rest, fn path -> File.read!(path) == reference_bytes end)
+
+    IO.puts(
+      "Reference: #{reference}  sha256=#{short_hash(reference_bytes)}  " <>
+        "size=#{byte_size(reference_bytes)}"
+    )
+
+    cond do
+      diverged != [] ->
+        IO.puts("\nMISMATCHES (#{length(diverged)} of #{length(rest)} peers diverged):")
+        Enum.each(diverged, &IO.puts("  #{&1}  sha256=#{short_hash(File.read!(&1))}"))
+
+        %{
+          status: :diverged,
+          peers: length(files),
+          diverged: length(diverged),
+          reason: "replicas do not agree with each other"
+        }
+
+      true ->
+        IO.puts("\nALL #{length(files)} PEER DOCUMENTS ARE BYTE-IDENTICAL.")
+        against_git(reference_bytes, length(files))
+    end
+  end
+
+  defp against_git(reference_bytes, peers) do
+    expected = expected_from_git()
+
+    if expected == nil do
+      %{status: :ok, peers: peers, ground_truth: "unavailable", sha256: hash(reference_bytes)}
+    else
+      if expected == reference_bytes do
+        IO.puts("Converged document matches the tracked file at the last replayed commit.")
+        %{status: :ok, peers: peers, ground_truth: "matched", sha256: hash(reference_bytes)}
+      else
+        IO.puts(
+          "\nDIVERGED FROM GROUND TRUTH: the replicas agree with each other but not with " <>
+            "the tracked file at the last replayed commit " <>
+            "(expected #{byte_size(expected)} bytes, got #{byte_size(reference_bytes)})."
+        )
+
+        %{
+          status: :diverged,
+          peers: peers,
+          ground_truth: "mismatched",
+          reason: "replicas agree with each other but not with git"
+        }
+      end
+    end
+  end
+
+  # The line-based document cannot represent a missing final newline, so a git state that
+  # ends without one is compared as if it had one. This mirrors the supervisor's own
+  # materialization barrier.
+  defp expected_from_git do
+    last_commit =
+      Syncordian.GitLog.log_lines() |> Syncordian.GitParser.commits_from_lines() |> List.last()
+
+    content = Syncordian.GitLog.file_at(last_commit)
+
+    if content != "" and not String.ends_with?(content, "\n"), do: content <> "\n", else: content
+  rescue
+    _error -> nil
+  end
+
+  defp hash(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
+  defp short_hash(bytes), do: bytes |> hash() |> String.slice(0, 12)
+
+  ########################################################################################
+  # Reporting
+  ########################################################################################
+
+  # Every run leaves a verdict beside its data. The repetition driver reads it to decide
+  # whether a repetition has already been done, and the aggregation reads it to leave a
+  # failed run out of a mean rather than silently averaging it in.
+  defp report(result, root, elapsed_ms, options) do
+    result =
+      result
+      |> Map.put(:elapsed_ms, elapsed_ms)
+      |> Map.put(:run, Syncordian.Run.to_map())
+
+    File.mkdir_p!(root)
+    File.write!(Path.join(root, "result.json"), Jason.encode!(result, pretty: true))
+
+    IO.puts("\nRun finished in #{div(elapsed_ms, 1000)}s: #{result.status}")
+
+    finish(if(result.status == :ok, do: 0, else: 1), options[:observer])
+  end
+
+  ########################################################################################
+  # Waiting
+  ########################################################################################
 
   # Total queued messages across all globally registered processes must be 0 on two
   # consecutive samples 1s apart. (Mailbox emptiness misses in-flight send_after timers,
@@ -199,9 +279,53 @@ defmodule FullExperiment do
     end
   end
 
-  # Starts the Erlang :observer GUI (process list, mailbox sizes, memory, etc.) so peer
-  # activity can be watched live during the replay. Requires an Erlang build with :wx and
-  # a display to render to; failures here are non-fatal to the experiment itself.
+  defp wait_for_limit_reached do
+    receive do
+      {:limit_reached, msg} ->
+        IO.puts(">>> Supervisor signalled limit_reached: #{inspect(msg)}")
+        :ok
+
+      _other ->
+        # Drain any unrelated metadata-forwarding messages without action.
+        wait_for_limit_reached()
+    after
+      600_000 ->
+        raise "Timeout waiting for {:limit_reached, _} from supervisor"
+    end
+  end
+
+  ########################################################################################
+  # Reporting helpers
+  ########################################################################################
+
+  # Reads the same live git source Syncordian.Supervisor.init/2 replays, and reports
+  # repo/file, author (peer) count, commit count, and the last commit's hash.
+  defp print_source_summary do
+    repo = Syncordian.GitLog.repo_path()
+    file = Syncordian.GitLog.tracked_file()
+    log_lines = Syncordian.GitLog.log_lines()
+
+    commits = Syncordian.GitParser.commits_from_lines(log_lines)
+
+    {_, authors_list} =
+      log_lines |> Syncordian.GitParser.parse_lines() |> Syncordian.GitParser.group_by_author()
+
+    IO.puts("Source repo:      #{Path.expand(repo)}")
+    IO.puts("Tracked file:     #{file}")
+    IO.puts("Author peers:     #{length(authors_list)}")
+    IO.puts("Commits to replay: #{length(commits)}")
+    IO.puts("Last commit hash: #{List.last(commits)}")
+  end
+
+  # Mirrors the control panel's collect and save actions, so a headless run leaves the same
+  # final, fully-settled network-wide snapshot the panel produces.
+  defp save_final_metadata(sup_pid) do
+    send(sup_pid, {:collect_metadata_from_peers})
+    Process.sleep(1_000)
+    send(sup_pid, {:print_supervisor_metadata})
+    Process.sleep(500)
+  end
+
   defp start_observer do
     IO.puts("Starting :observer …")
 
@@ -212,9 +336,7 @@ defmodule FullExperiment do
             IO.puts("Observer launched — look under the \"Processes\" tab for the peer PIDs.")
 
           {:error, reason} ->
-            IO.puts(
-              "Could not start the Observer window (#{inspect(reason)}) — continuing without it."
-            )
+            IO.puts("Could not start the Observer window (#{inspect(reason)}) — continuing.")
         end
 
       {:error, reason} ->
@@ -228,132 +350,47 @@ defmodule FullExperiment do
       IO.puts("Could not start :observer (#{Exception.message(error)}) — continuing without it.")
   end
 
-  # With --observer, keep the VM (and the Observer window) alive until the user is done
-  # looking, instead of System.halt-ing the instant the run finishes.
   defp finish(code, observer?) do
-    if observer? do
-      IO.gets("\nObserver is still running — press Enter here to exit… ")
-    end
-
+    if observer?, do: IO.gets("\nObserver is still running — press Enter here to exit… ")
     System.halt(code)
-  end
-
-  # Reads the same live git source Syncordian.Supervisor.init/2 is about to replay, and
-  # reports repo/file, author (peer) count, commit count, and the last commit's hash —
-  # the manual reference point for `git show <hash>:<file>` when eyeballing an unfamiliar
-  # repo's converged document.
-  defp print_source_summary do
-    repo = Syncordian.GitLog.repo_path()
-    file = Syncordian.GitLog.tracked_file()
-    log_lines = Syncordian.GitLog.log_lines()
-
-    commits = Syncordian.GitParser.commits_from_lines(log_lines)
-
-    {_, authors_list} =
-      log_lines |> Syncordian.GitParser.parse_lines() |> Syncordian.GitParser.group_by_author()
-
-    last_commit = List.last(commits)
-
-    IO.puts("Source repo:      #{Path.expand(repo)}")
-    IO.puts("Tracked file:     #{file}")
-    IO.puts("Author peers:     #{length(authors_list)}")
-    IO.puts("Commits to replay: #{length(commits)}")
-    IO.puts("Last commit hash: #{last_commit}")
-  end
-
-  # Mirrors the /supervisor LiveView's "Collect Metadata" + "Save Metadata" buttons
-  # (`{:collect_metadata_from_peers}` then `{:print_supervisor_metadata}`), so a headless
-  # run gets the same final, fully-settled network-wide metadata JSON under
-  # `debug/metadata/supervisor/syncordian/` that those buttons produce from the UI —
-  # not just the earlier per-commit snapshots the supervisor's own replay loop already
-  # writes automatically while commits are still in flight. Individual-peer metadata
-  # (`debug/metadata/individual_peer/syncordian/`) needs no equivalent trigger: peers
-  # write one snapshot per edit as they apply it, with no separate collect/save step.
-  defp save_final_metadata(sup_pid) do
-    send(sup_pid, {:collect_metadata_from_peers})
-    Process.sleep(1_000)
-    send(sup_pid, {:print_supervisor_metadata})
-    Process.sleep(500)
-  end
-
-  defp wait_for_limit_reached do
-    receive do
-      {:limit_reached, msg} ->
-        IO.puts(">>> Supervisor signalled limit_reached: #{inspect(msg)}")
-        :ok
-
-      _other ->
-        # Drain any unrelated metadata-forwarding messages without action.
-        wait_for_limit_reached()
-    after
-      # Generous timeout: 71 × 2s dispatch + per-commit broadcast settle. 10 min cap.
-      600_000 ->
-        raise "Timeout waiting for {:limit_reached, _} from supervisor"
-    end
-  end
-
-  defp verify_convergence([], observer?) do
-    IO.puts("ERROR: no peer documents found")
-    finish(2, observer?)
-  end
-
-  defp verify_convergence([single], observer?) do
-    IO.puts("Only one peer document (#{single}) — trivially identical.")
-    finish(0, observer?)
-  end
-
-  defp verify_convergence([ref | rest], observer?) do
-    ref_bytes = File.read!(ref)
-    ref_sha = :crypto.hash(:sha256, ref_bytes) |> Base.encode16(case: :lower)
-
-    IO.puts(
-      "Reference: #{ref}  sha256=#{String.slice(ref_sha, 0, 12)}…  size=#{byte_size(ref_bytes)}"
-    )
-
-    {ok, mismatches} =
-      Enum.reduce(rest, {0, []}, fn path, {ok_count, bad} ->
-        bytes = File.read!(path)
-
-        if bytes == ref_bytes do
-          {ok_count + 1, bad}
-        else
-          sha = :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
-          {ok_count, [{path, sha, byte_size(bytes)} | bad]}
-        end
-      end)
-
-    cond do
-      mismatches == [] ->
-        IO.puts("\nALL #{length(rest) + 1} PEER DOCUMENTS ARE BYTE-IDENTICAL.")
-        finish(0, observer?)
-
-      true ->
-        IO.puts("\nMISMATCHES (#{length(mismatches)} of #{length(rest)} peers diverged):")
-
-        Enum.each(mismatches, fn {path, sha, size} ->
-          IO.puts("  #{path}  sha256=#{String.slice(sha, 0, 12)}…  size=#{size}")
-        end)
-
-        IO.puts("\n#{ok} peers matched the reference.")
-        finish(1, observer?)
-    end
   end
 end
 
-# CLI arguments (either order): an optional integer = number of Byzantine peers
-# (default 0), and an optional `--observer` flag to launch the :observer GUI. With
-#   mix run --no-start scripts/run_full_experiment.exs 3
-# the supervisor spawns author peers plus 3 Byzantine peers; the convergence check still
-# ranges over the honest author documents (Byzantine peers hold no document and write no
-# dump), so byte-identity to the 0-Byzantine baseline shows every forged message was
-# dropped at admission.
-{flags, positional} = Enum.split_with(System.argv(), &(&1 in ["--observer", "-o"]))
-observer? = flags != []
+########################################################################################
+# Options
+########################################################################################
 
-byzantine_count =
-  case positional do
-    [n | _] -> String.to_integer(n)
-    _ -> 0
-  end
+{parsed, positional, _invalid} =
+  OptionParser.parse(System.argv(),
+    strict: [
+      seed: :integer,
+      delay: :string,
+      scenario: :string,
+      adversaries: :integer,
+      crdt: :string,
+      out: :string,
+      observer: :boolean
+    ],
+    aliases: [s: :seed, o: :observer]
+  )
 
-FullExperiment.run(byzantine_count, observer?)
+# The adversary count used to be the only argument, given bare. Both forms are accepted so
+# that the habit and the scripts built on it keep working.
+adversaries =
+  parsed[:adversaries] ||
+    case positional do
+      [n | _] -> String.to_integer(n)
+      _ -> 0
+    end
+
+options = [
+  seed: parsed[:seed],
+  delay: Syncordian.Run.parse_delay(parsed[:delay] || "none"),
+  scenario: parsed[:scenario] || "baseline",
+  adversaries: adversaries,
+  crdt: String.to_existing_atom(parsed[:crdt] || "syncordian"),
+  out: parsed[:out] || "debug",
+  observer: parsed[:observer] || false
+]
+
+FullExperiment.run(options)

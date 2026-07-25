@@ -151,7 +151,7 @@ defmodule Syncordian.OpTimes do
   @spec dump(String.t()) :: {:ok, Path.t()} | :inactive
   def dump(label) do
     if active?() do
-      directory = "debug/metadata"
+      directory = Syncordian.Run.path("metadata")
       File.mkdir_p!(directory)
       path = Path.join(directory, "latency_#{label}.json")
       File.write!(path, Jason.encode!(samples(), pretty: true))

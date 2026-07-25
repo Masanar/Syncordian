@@ -284,12 +284,14 @@ defmodule Syncordian.CRDT.Fugue.Peer do
   # except the current peer. or the supervisor. This one is define here because here the
   # delay makes sense to be define and then use the perform_broadcast function of the
   # utilities module.
+  # The delay model is the run's, not this module's. A comparison against a baseline that
+  # runs on a quiet network while Syncordian runs on a delayed one measures the networks
+  # rather than the implementations.
   @spec perform_broadcast_peer(peer_fugue(), any) :: any
   defp perform_broadcast_peer(peer, message) do
     peer_pid = get_peer_pid(peer)
-    # delay = 10..30
-    delay = 0..0
-    perform_broadcast(peer_pid, message, delay)
+
+    Syncordian.Network.broadcast(get_peer_id(peer), broadcast_targets(peer_pid), message)
   end
 
   ########################################################################################
@@ -463,7 +465,11 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         send(live_view_pid, {:receive_live_view_document, list_document, handler_function})
         loop(peer)
 
+      # The first message this peer receives, and so where it seeds its generator for the
+      # run (see Syncordian.Rng).
       {:save_pid, info} ->
+        Syncordian.Rng.seed_process!(:fugue_peer, get_peer_id(peer))
+
         info
         |> update_peer_pid(peer)
         |> loop
@@ -525,7 +531,7 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         # end)
         # |> Enum.join("\n")
 
-        file_path = "debug/documents/fugue/raw/"
+        file_path = Syncordian.Run.path("documents/fugue/raw") <> "/"
         File.write(file_path <> "tree", raw_tree_content)
         File.write(file_path <> "traverse", raw_traverse)
         File.write(file_path <> "full_traverse", raw_full_traverse)

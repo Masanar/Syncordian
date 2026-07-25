@@ -1,0 +1,33 @@
+{
+  "adversary": {
+    "count": 0,
+    "drop_rate": 0.0,
+    "duplicate_rate": 0.0,
+    "inject_rate": 0.09,
+    "reorder_extra_ms": 0,
+    "reorder_rate": 0.0,
+    "replay_hold_ms": 0,
+    "replay_rate": 0.0,
+    "tamper_content": false
+  },
+  "delay": "none",
+  "environment": {
+    "elixir": "1.18.4",
+    "host": "mateosa",
+    "otp": "28",
+    "schedulers": 14,
+    "started_at": "2026-07-25T20:38:24.073190Z"
+  },
+  "root": "debug",
+  "run_id": "syncordian_README-md_baseline_adv0_seed0",
+  "scenario": "baseline",
+  "secret_source": "system",
+  "seed": null,
+  "workload": {
+    "crdt": "syncordian",
+    "max_commits": 5,
+    "max_peers": null,
+    "repository": "../../ohmyzsh",
+    "tracked_file": "README.md"
+  }
+}

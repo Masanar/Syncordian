@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
   Headless driver for a Syncordian experiment.
 
   Replays the configured git-log fixture through the supervisor, dumps every peer's
-  document to `debug/documents/<crdt>/`, then runs `scripts/identical.sh` to assert
+  document to `debug/documents/<crdt>/`, then compares those documents to assert
   byte-for-byte convergence. Equivalent to the `/supervisor` LiveView's
   "Launch → All commits → Write current peers document" sequence, but suitable for CI
   and for quick regression checks while iterating on the CRDT modules.
@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
       mix syncordian.eval                          # syncordian, 0 byzantine
       mix syncordian.eval --crdt fugue             # one of: syncordian | fugue | treedoc | logoot
       mix syncordian.eval --byzantine 3
-      mix syncordian.eval --skip-identical         # skip the cmp pass (faster smoke run)
+      mix syncordian.eval --skip-identical         # skip the comparison (faster smoke run)
       mix syncordian.eval --commit-timeout 600000  # ms allowed per commit before giving up
                                                    # (default 120000; the materialization
                                                    # barrier legitimately waits a while on
@@ -80,13 +80,15 @@ defmodule Mix.Tasks.Syncordian.Eval do
       dir |> Path.join("*.json") |> Path.wildcard() |> Enum.each(&File.rm!/1)
     end
 
-    # The plot scripts os.listdir() these unconditionally (comparison series / the
-    # byzantine sweep); make sure they exist on a fresh clone, but leave contents alone.
+    # The comparison series the plot scripts read; make sure they exist on a fresh clone,
+    # but leave contents alone. There used to be a third directory here,
+    # debug/metadata/byzantine_nodes, which the sweep plot read and which no code ever
+    # wrote. The adversary count now travels in each run's manifest, so the sweep is
+    # assembled from the runs themselves and the empty directory is gone.
     Enum.each(
       [
         "debug/metadata/individual_peer/fugue",
-        "debug/metadata/individual_peer/logoot",
-        "debug/metadata/byzantine_nodes"
+        "debug/metadata/individual_peer/logoot"
       ],
       &File.mkdir_p!/1
     )
@@ -118,7 +120,7 @@ defmodule Mix.Tasks.Syncordian.Eval do
     send(supervisor_pid, {:kill})
 
     if skip_identical do
-      IO.puts("[eval] --skip-identical set, not running scripts/identical.sh")
+      IO.puts("[eval] --skip-identical set, not comparing the peer documents")
     else
       run_identical(crdt)
     end

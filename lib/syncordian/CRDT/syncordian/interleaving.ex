@@ -37,6 +37,41 @@ defmodule Syncordian.Interleaving do
   chain inside `(gap_left, gap_right)` — a sub-interval of the shared parent interval chosen
   strictly to the left of the higher-priority block and containing no other live line — so
   the moved block can no longer lie between two lines of the block it conflicted with.
+
+  ## Why equal anchors is exactly concurrency
+
+  The anchor test is not a heuristic for concurrency, it is a characterization of it. A
+  writer's authored parents are the lines immediately surrounding the point it typed at, so
+  two blocks carrying the same anchors `(l, r)` were each typed when `l` and `r` were
+  *adjacent*, that is, when the interval between them was empty. Neither writer had applied
+  the other's block. Equal anchors therefore mean the two blocks were allocated concurrently
+  into the same empty gap, which is the anomaly, and the rule reports no other pair. In
+  particular a line typed *inside* another writer's block, after applying it, has that block's
+  lines among its anchors, so preserving that nesting is intention preservation rather than an
+  interleaving to repair.
+
+  Detection is sound in this sense, and incomplete in exactly one shape: when a writer types
+  a second concurrent block anchored on its own concurrently authored line, its anchors are
+  `(l, own_line)` rather than `(l, r)`, so two writers doing this concurrently carry different
+  anchor pairs and their overlap is not reported. Closing that case needs one immutable
+  authored field per line, the number of foreign inserts the writer had applied at authoring,
+  which tells whether one of its own lines belongs to the same authoring session and may be
+  normalized away. It is stated as future work in `sec:interleavings` rather than guessed at
+  here: a rule that merely drops the anchor test admits causally ordered pairs and moves
+  deliberate edits.
+
+  ## The gap invariant, which the termination argument rests on
+
+  `nearest_left_non_member/3` picks the nearest line left of `gap_right` that is not a member
+  of the moving block, and `successor_line/3` picks the line immediately after it *in the
+  document list*. So `gap_left` and `wall` are **adjacent**: the position interval they bound
+  holds no line at all, live or tombstoned, foreign or own. A re-issued block therefore lands
+  where nothing else sits, disjoint from every block currently visible rather than only from
+  the one it conflicted with, and its anchors are a fresh pair. That, with the priority rule,
+  is what makes re-placement terminate: the writer of a moving block always has a greater peer
+  id than the writer whose operation triggered the move, so a chain of triggers strictly
+  descends the priority order and cannot cycle, and there are finitely many writers. The
+  argument is written out in `sec:interleavings` and `theo:nonint`.
   """
 
   import Syncordian.Line_Object
@@ -88,35 +123,26 @@ defmodule Syncordian.Interleaving do
 
   @doc """
   Reconstructs the authored blocks (`def:editblock`) present in `document`. Returns one
-  `block/0` per maximal same-writer authored chain among the live lines, each with its
-  lines in position order. O(n) in the document length.
+  `block/0` per (writer, authoring session) among the live lines, each with its lines in
+  position order. O(n) in the document length.
+
+  A line records the session it was authored in, so a block is exactly the set of live lines
+  a writer authored into one interval during one run of inserts. Grouping is preferred to
+  following the parent chain because the chain does not survive the two events a repair has
+  to keep working across: a re-placement gives every moved line a fresh parent pair, and a
+  delete inside a block breaks its chain in two. In both cases the session is unchanged, so
+  the block is still recognised and its remaining interleavings can still be repaired.
   """
   @spec blocks(Syncordian.Basic_Types.document()) :: [block()]
   def blocks(document) do
-    # The document is already ⋖-sorted, so each live line's index IS its position in
-    # the replica-independent total order. Carrying that integer lets block lines be
-    # ordered by plain integer comparison instead of PathId.compare/2 — this function
-    # runs on EVERY applied remote insert, and re-sorting a large single-writer block
-    # (e.g. a file-creating commit) with list-structured PathId comparisons dominated
-    # whole replays.
-    live =
-      document
-      |> Enum.filter(&live_block_line?/1)
-      |> Enum.with_index()
-
-    by_opid = Map.new(live, fn {l, _pos} -> {get_line_op_id(l), l} end)
-
-    # Successor index: a line keyed by (writer, right anchor, its left parent) is the unique
-    # next link of the chain whose current line has that op_id.
-    succ_index =
-      Map.new(live, fn {l, pos} ->
-        {{get_line_peer_id(l), get_line_parent_right_op_id(l), get_line_parent_left_op_id(l)},
-         {l, pos}}
-      end)
-
-    live
-    |> Enum.filter(fn {l, _pos} -> block_head?(l, by_opid) end)
-    |> Enum.map(fn head -> build_block(head, succ_index) end)
+    # The document is already ⋖-sorted, so grouping preserves position order within each
+    # block, and no PathId comparison is needed here: this function runs on EVERY applied
+    # insert and delete, and sorting large blocks with list-structured PathId comparisons
+    # dominated whole replays.
+    document
+    |> Enum.filter(&live_block_line?/1)
+    |> Enum.group_by(fn line -> {get_line_peer_id(line), get_line_session(line)} end)
+    |> Enum.map(fn {{writer, session}, lines} -> build_block(writer, session, lines) end)
   end
 
   @doc """
@@ -142,74 +168,39 @@ defmodule Syncordian.Interleaving do
 
   # ----- block reconstruction -------------------------------------------------------------
 
-  # A line heads a block iff its authored left parent is not a present line of the same
-  # writer and the same right anchor (i.e. the left parent is a boundary or anchor outside
-  # the block, so the chain starts here).
-  @spec block_head?(Syncordian.Line_Object.line(), map()) :: boolean()
-  defp block_head?(line, by_opid) do
-    case Map.get(by_opid, get_line_parent_left_op_id(line)) do
-      nil ->
-        true
-
-      parent ->
-        not (get_line_peer_id(parent) == get_line_peer_id(line) and
-               get_line_parent_right_op_id(parent) == get_line_parent_right_op_id(line))
-    end
-  end
-
-  @spec build_block({Syncordian.Line_Object.line(), non_neg_integer()}, map()) :: block()
-  defp build_block({head, head_pos}, succ_index) do
-    lines =
-      unfold_chain({head, head_pos}, succ_index, [{head, head_pos}], MapSet.new([head_pos]))
-      |> Enum.sort_by(fn {_line, pos} -> pos end)
-      |> Enum.map(fn {line, _pos} -> line end)
+  # One block from a (writer, session) group. `lines` arrives in document order, which is
+  # position order, and the session pair is the block's authored interval: the anchors its
+  # writer began the run between. A line with no session (only the boundary sentinels, which
+  # live_block_line?/1 already excludes) would carry a nil pair.
+  @spec build_block(
+          Syncordian.Basic_Types.peer_id(),
+          Syncordian.Basic_Types.session() | nil,
+          [Syncordian.Line_Object.line()]
+        ) :: block()
+  defp build_block(writer, session, lines) do
+    {left_anchor, right_anchor} = session || {nil, nil}
 
     %{
-      writer: get_line_peer_id(head),
-      left_anchor: get_line_parent_left_op_id(head),
-      right_anchor: get_line_parent_right_op_id(head),
+      writer: writer,
+      left_anchor: left_anchor,
+      right_anchor: right_anchor,
       lines: lines
     }
   end
 
-  # Follows the authored chain from `current`, accumulating {line, document position}
-  # pairs. `seen` (positions) guards against a pathological cycle (never expected: the
-  # authored chain is linear).
-  @spec unfold_chain(
-          {Syncordian.Line_Object.line(), non_neg_integer()},
-          map(),
-          [{Syncordian.Line_Object.line(), non_neg_integer()}],
-          MapSet.t()
-        ) ::
-          [{Syncordian.Line_Object.line(), non_neg_integer()}]
-  defp unfold_chain({current, _pos}, succ_index, acc, seen) do
-    key =
-      {get_line_peer_id(current), get_line_parent_right_op_id(current), get_line_op_id(current)}
-
-    case Map.get(succ_index, key) do
-      nil ->
-        acc
-
-      {next, next_pos} ->
-        if MapSet.member?(seen, next_pos) do
-          acc
-        else
-          unfold_chain(
-            {next, next_pos},
-            succ_index,
-            [{next, next_pos} | acc],
-            MapSet.put(seen, next_pos)
-          )
-        end
-    end
-  end
-
   # ----- conflict detection ---------------------------------------------------------------
 
-  # Within one parent-interval group (blocks sharing the same authored anchors), emit a
-  # re-placement for each block that is interleaved by a higher-priority (smaller peer id)
-  # block of a distinct writer. The moved block is re-packed strictly left of every
-  # higher-priority block it overlaps.
+  # Within one parent-interval group (blocks sharing the same authored anchors, hence
+  # concurrently allocated into the same empty gap — see the module doc), emit a re-placement
+  # for each block that is interleaved by a higher-priority (smaller peer id) block of a
+  # distinct writer. The moved block is re-packed strictly left of every higher-priority block
+  # it overlaps.
+  #
+  # `gap_right` is the LEAST position over the lines of ALL the higher-priority blocks this
+  # block overlaps, not just one of them, so a single move settles every conflict the block
+  # currently has: afterwards each of those blocks lies entirely to its right. This, and the
+  # gap invariant recorded on nearest_left_non_member/3, are the two facts the termination
+  # argument of theo:nonint uses; keep them when touching this function.
   #
   # Note a deliberate, conservative deviation from the formal model's wording: the model
   # re-issues only the *conflicting suffix* of the lower-priority block, while we move the
@@ -308,6 +299,15 @@ defmodule Syncordian.Interleaving do
   # therefore contains only the moving block's superseded lines, so the re-issued chain
   # lands in a clean, disjoint gap. Always finds at least the infimum sentinel; nil only if
   # `gap_right` is the leftmost line (not reachable for a real block line).
+  #
+  # THE GAP INVARIANT (theo:nonint depends on it). Because every line between the result and
+  # `gap_right` is a member of the moving block, and successor_line/3 then takes the document
+  # line immediately after the result, the pair (gap_left, wall) the caller hands to the writer
+  # is *adjacent in the document*: the interval it bounds holds no line at all, live or
+  # tombstoned, of any writer. The re-issued block is therefore disjoint from every block
+  # currently visible, not merely from the one it conflicted with, and it carries a fresh
+  # anchor pair. The filter is over ALL lines, tombstones included, which is what makes the
+  # interval empty rather than merely free of live lines; do not narrow it to live lines.
   @spec nearest_left_non_member(
           Syncordian.Basic_Types.document(),
           Syncordian.Line_Object.line(),

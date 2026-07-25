@@ -32,7 +32,20 @@ defmodule Syncordian.Line_Object do
     # belong to no block. Immutable, like the stored signature.
     op_id: nil,
     parent_left_op_id: nil,
-    parent_right_op_id: nil
+    parent_right_op_id: nil,
+    # Authoring session: the pair of identities bounding the interval this line's writer was
+    # typing into when it began the run of inserts this line belongs to. The writer sets it
+    # once and never changes it: a line that continues the writer's own chain inherits it, a
+    # line that starts a run takes its own authored parents, and a re-issued line inherits it
+    # from the line it supersedes.
+    #
+    # It is what identifies an authored block (def:editblock) for interleaving detection.
+    # Reconstructing blocks from the parent chain alone loses the block whenever it is
+    # re-placed (a move gives every line a fresh parent pair) or whenever a delete tombstones
+    # a line in the middle of it (the chain breaks in two), and a block that is no longer
+    # recognised is a block whose interleavings can no longer be repaired. The session pair
+    # survives both. nil on the boundary sentinels, which belong to no block.
+    session: nil
   )
 
   @type line ::
@@ -47,7 +60,8 @@ defmodule Syncordian.Line_Object do
             commit_at: Syncordian.Basic_Types.commit_list(),
             op_id: Syncordian.Basic_Types.op_id() | nil,
             parent_left_op_id: Syncordian.Basic_Types.op_id() | nil,
-            parent_right_op_id: Syncordian.Basic_Types.op_id() | nil
+            parent_right_op_id: Syncordian.Basic_Types.op_id() | nil,
+            session: Syncordian.Basic_Types.session() | nil
           )
 
   @spec get_commit_at(Syncordian.Line_Object.line()) ::
@@ -116,6 +130,16 @@ defmodule Syncordian.Line_Object do
     do: line(line, :parent_right_op_id)
 
   @doc """
+    Getter for the line's authoring session: the interval its writer began the run of inserts
+    in (nil on the boundary sentinels). See the record definition for why blocks are
+    identified by this pair rather than by the per-line parents.
+  """
+  @spec get_line_session(Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.session() | nil
+  def get_line_session(line),
+    do: line(line, :session)
+
+  @doc """
     Seals a remotely received line's authored identity in one step: its stored signature
     (computed locally from the accepted parent pair) together with its op_id and the op_ids
     of its authored parents (that same accepted pair, which up to a hash collision is the
@@ -128,14 +152,23 @@ defmodule Syncordian.Line_Object do
           Syncordian.Basic_Types.signature(),
           Syncordian.Basic_Types.op_id(),
           Syncordian.Basic_Types.op_id() | nil,
-          Syncordian.Basic_Types.op_id() | nil
+          Syncordian.Basic_Types.op_id() | nil,
+          Syncordian.Basic_Types.session() | nil
         ) :: line()
-  def seal_line_authored(line, signature, op_id, parent_left_op_id, parent_right_op_id) do
+  def seal_line_authored(
+        line,
+        signature,
+        op_id,
+        parent_left_op_id,
+        parent_right_op_id,
+        session
+      ) do
     line(line,
       signature: signature,
       op_id: op_id,
       parent_left_op_id: parent_left_op_id,
-      parent_right_op_id: parent_right_op_id
+      parent_right_op_id: parent_right_op_id,
+      session: session
     )
   end
 
@@ -276,25 +309,74 @@ defmodule Syncordian.Line do
   alias Syncordian.PathId
 
   @doc """
+    The authoring session a line takes when its writer creates it between `left_parent` and
+    `right_parent`: the interval the writer began its current run of inserts in
+    (`def:editblock`).
+
+    A line *continues* the writer's own run when its left parent is a line of the same writer and
+    it inherits that line's right parent, which is exactly the successor condition of
+    `def:editblock`. It then belongs to the run its left parent belongs to and inherits that
+    line's session. Any other line begins a new run, in the interval bounded by its own authored
+    parents. In particular a line authored next to a boundary sentinel begins a run, since the
+    sentinels carry no session.
+
+    The condition is deliberately one-directional. Mirroring it, so that a line authored just
+    *left* of the writer's own line joins that line's run, would also group the run a writer
+    produces by typing each new line above the previous one, which is the one shape whose
+    overlaps detection currently misses (see `Syncordian.Interleaving`). We measured that
+    variant on the full git replay and it does not hold up: a writer that inserts above a line
+    it wrote in an earlier commit then joins a session it is causally far after, blocks that no
+    longer belong together are paired, deliberate edits are moved, and the replay stops matching
+    its ground truth. The one-directional rule keeps the sound reading, that a run's session is
+    the interval the run was allocated into.
+
+    The rule reads only immutable data of the two parents, so a receiver derives the same
+    session from its own copies of the parents, and the session never has to travel on the
+    wire. A re-issued line is the exception: it inherits the session of the line it supersedes,
+    which its receiver reads from that line (`Syncordian.Peer`).
+  """
+  @spec session_for(
+          left_parent :: Syncordian.Line_Object.line(),
+          right_parent :: Syncordian.Line_Object.line(),
+          peer_id :: Syncordian.Basic_Types.peer_id()
+        ) :: Syncordian.Basic_Types.session()
+  def session_for(left_parent, right_parent, peer_id) do
+    continues_own_run? =
+      get_line_peer_id(left_parent) == peer_id and
+        get_line_session(left_parent) != nil and
+        get_line_parent_right_op_id(left_parent) == get_line_op_id(right_parent)
+
+    if continues_own_run?,
+      do: get_line_session(left_parent),
+      else: {get_line_op_id(left_parent), get_line_op_id(right_parent)}
+  end
+
+  @doc """
     Given two lines, left_parent and right_parent, this function creates a new line
     between them: its position is allocated strictly between the parents' PathIds
     (`Syncordian.PathId.between/3`, total — a fresh position always exists), and its
     stored signature σ is derived from the parents' stored signatures, the content, and
     the authoring peer id (`Syncordian.Byzantine.create_signature_doc/8`).
+
+    `session` is the authoring session to stamp on the line. Passing `nil` derives it with
+    `session_for/3`, which is what an ordinary insert does; the interleaving repair passes the
+    session of the line it supersedes, so a moved block keeps its identity.
   """
   @spec create_line_between_two_lines(
           content :: Syncordian.Basic_Types.content(),
           left_parent :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line(),
           peer_id :: Syncordian.Basic_Types.peer_id(),
-          op_id :: Syncordian.Basic_Types.op_id()
+          op_id :: Syncordian.Basic_Types.op_id(),
+          session :: Syncordian.Basic_Types.session() | nil
         ) :: Syncordian.Line_Object.line()
   def create_line_between_two_lines(
         content,
         left_parent,
         right_parent,
         peer_id,
-        op_id
+        op_id,
+        session \\ nil
       ) do
     left_parent_id = get_line_id(left_parent)
     right_parent_id = get_line_id(right_parent)
@@ -324,7 +406,8 @@ defmodule Syncordian.Line do
       commit_at: update_list_value(empty_commit_list, peer_id, true),
       op_id: op_id,
       parent_left_op_id: get_line_op_id(left_parent),
-      parent_right_op_id: get_line_op_id(right_parent)
+      parent_right_op_id: get_line_op_id(right_parent),
+      session: session || session_for(left_parent, right_parent, peer_id)
     )
   end
 

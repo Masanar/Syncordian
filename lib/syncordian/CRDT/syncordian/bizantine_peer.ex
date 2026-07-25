@@ -147,7 +147,7 @@ defmodule Syncordian.ByzantinePeer do
 
       {:receive_insert_broadcast,
        {line_id, content, peer_id, insert_tag, incoming_vc, op_id, left_parent_op_id,
-        right_parent_op_id}, alpha} ->
+        right_parent_op_id, replaces_op_id}, alpha} ->
         if String.length(insert_tag) != 10 and send?() do
           byzantine_tag = generate_string()
 
@@ -159,7 +159,7 @@ defmodule Syncordian.ByzantinePeer do
             byzantine_peer,
             {:receive_insert_broadcast,
              {line_id, content, peer_id, byzantine_tag, incoming_vc, op_id, left_parent_op_id,
-              right_parent_op_id}, alpha}
+              right_parent_op_id, replaces_op_id}, alpha}
           )
 
           IO.puts("Byzantine peer #{get_peer_id(byzantine_peer)} is sending an insert broadcast")

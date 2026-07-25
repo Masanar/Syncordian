@@ -34,7 +34,8 @@ defmodule Syncordian.Byzantine do
     only *wire tags*, MACs of the same fields under keys distinct from `:doc` and distinct
     per operation kind:
 
-        t_ins = mac(:ins, [σ(left), o(left), content, σ(right), o(right), w, o, p])
+        t_ins = mac(:ins, [σ(left), o(left), content, σ(right), o(right), w, o, p,
+                           σ(superseded), o(superseded)])
         t_del = mac(:del, [σ(target), o(target), o_del])
         t_ack = mac(:ack, [σ(target), o(target), acker])
 
@@ -44,6 +45,21 @@ defmodule Syncordian.Byzantine do
     signature, hence nothing about the boundary secret in which every stored signature is
     rooted (the signature-chain and opacity lemma of the formal model). Folding the op_id
     and position into every tag binds each operation to the exact line it acts on.
+
+    ## The supersede link of a re-issued insert
+
+    An insert issued by the interleaving repair (`Syncordian.Interleaving`) supersedes the
+    line it moves: applying it adds the new line and retracts the superseded one in a
+    single step, so no replica ever holds two live copies of moved content. Retracting a
+    line is an authorization, so the last two fields of `t_ins` bind the superseded line's
+    stored signature and identity, exactly as `t_del` binds the target of a delete. A
+    re-issue therefore proves knowledge of the superseded line's σ, which an observer of
+    the wire never learns. An ordinary insert supersedes nothing and passes `nil` for both
+    fields, which the canonical encoding maps to its own reserved byte.
+
+    The stored signature is deliberately *not* extended: a re-issued line is an ordinary
+    line, identified by the same eight fields as any other, and the supersede link belongs
+    to the operation rather than to the line it creates.
 
     ## Admission authenticator
 
@@ -228,9 +244,22 @@ defmodule Syncordian.Byzantine do
   end
 
   # One reserved byte per atom drawn from the fixed table (message kinds, the two position
-  # sentinels, and the two fetch-request selectors). Atoms are the only fields whose value
-  # space is not self-evidently a byte string, so the table pins each to a distinct byte.
-  @atom_table %{ins: 1, del: 2, ack: 3, infimum: 4, supremum: 5, fetch: 6, op: 7, ops_of: 8}
+  # sentinels, the two fetch-request selectors, and the absent supersede link). Atoms are
+  # the only fields whose value space is not self-evidently a byte string, so the table
+  # pins each to a distinct byte. `nil` is the absent link of an ordinary insert: a single
+  # reserved byte, which no op_id encoding can equal (those are 16 bytes), so the field
+  # stays injective at its position.
+  @atom_table %{
+    ins: 1,
+    del: 2,
+    ack: 3,
+    infimum: 4,
+    supremum: 5,
+    fetch: 6,
+    op: 7,
+    ops_of: 8,
+    nil: 9
+  }
 
   # Encodes a single field to bytes by its runtime shape. Order matters: the tagged tuples
   # ({:path, _}, {:op, _}, {:ops_of, ...}) are matched before the generic {w, s} op_id tuple.
@@ -303,9 +332,13 @@ defmodule Syncordian.Byzantine do
 
   @doc """
     Builds the insert wire tag t_ins under the `:ins` key, over the same fields as the
-    stored signature. The tag travels in the insert broadcast *in place of* the stored
-    signature; a receiver that locates a parent pair verifying the tag recomputes σ itself
-    from that pair (`create_signature_doc/8`).
+    stored signature, followed by the superseded line's stored signature and identity. The
+    tag travels in the insert broadcast *in place of* the stored signature; a receiver that
+    locates a parent pair verifying the tag recomputes σ itself from that pair
+    (`create_signature_doc/8`).
+
+    `superseded` is the line a re-issued insert retracts (see the module doc), given as its
+    line record, or `nil` for an ordinary insert, which supersedes nothing.
   """
   @spec create_tag_insert(
           left_parent_signature :: Syncordian.Basic_Types.signature(),
@@ -315,10 +348,30 @@ defmodule Syncordian.Byzantine do
           right_parent_op_id :: Syncordian.Basic_Types.op_id(),
           peer_id :: Syncordian.Basic_Types.peer_id(),
           op_id :: Syncordian.Basic_Types.op_id(),
-          position :: Syncordian.Basic_Types.line_id()
+          position :: Syncordian.Basic_Types.line_id(),
+          superseded :: Syncordian.Line_Object.line() | nil
         ) :: Syncordian.Basic_Types.signature()
-  def create_tag_insert(sig_l, op_l, content, sig_r, op_r, peer_id, op_id, position),
-    do: mac(:ins, [sig_l, op_l, content, sig_r, op_r, peer_id, op_id, position])
+  def create_tag_insert(
+        sig_l,
+        op_l,
+        content,
+        sig_r,
+        op_r,
+        peer_id,
+        op_id,
+        position,
+        superseded \\ nil
+      ) do
+    {sig_s, op_s} = superseded_fields(superseded)
+    mac(:ins, [sig_l, op_l, content, sig_r, op_r, peer_id, op_id, position, sig_s, op_s])
+  end
+
+  # The two supersede fields of t_ins: the retracted line's stored signature and identity,
+  # or nil for an ordinary insert.
+  @spec superseded_fields(Syncordian.Line_Object.line() | nil) ::
+          {Syncordian.Basic_Types.signature() | nil, Syncordian.Basic_Types.op_id() | nil}
+  defp superseded_fields(nil), do: {nil, nil}
+  defp superseded_fields(line), do: {get_signature(line), get_line_op_id(line)}
 
   @doc """
     Verifies an insert wire tag against the parent pair a receiver located by identity (the
@@ -328,18 +381,35 @@ defmodule Syncordian.Byzantine do
     authored one — so every replica seals the same stored signature. A genuine insert always
     verifies, since its parents are resolved by the very op_ids it carries; a mismatch is
     therefore a forgery. Missing candidates never verify.
+
+    `superseded` is the line the message claims to retract, located by the receiver through
+    the identity the message names, or `nil` for an ordinary insert. A re-issue whose sender
+    does not hold the superseded line's stored signature therefore never verifies.
   """
   @spec check_tag_insert(
           left_parent :: Syncordian.Line_Object.line() | nil,
           to_check_line :: Syncordian.Line_Object.line(),
           right_parent :: Syncordian.Line_Object.line() | nil,
           op_id :: Syncordian.Basic_Types.op_id(),
-          insert_tag :: Syncordian.Basic_Types.signature()
+          insert_tag :: Syncordian.Basic_Types.signature(),
+          superseded :: Syncordian.Line_Object.line() | nil
         ) :: boolean()
-  def check_tag_insert(nil, _to_check_line, _right_parent, _op_id, _insert_tag), do: false
-  def check_tag_insert(_left_parent, _to_check_line, nil, _op_id, _insert_tag), do: false
+  def check_tag_insert(
+        left_parent,
+        to_check_line,
+        right_parent,
+        op_id,
+        insert_tag,
+        superseded \\ nil
+      )
 
-  def check_tag_insert(left_parent, to_check_line, right_parent, op_id, insert_tag) do
+  def check_tag_insert(nil, _to_check_line, _right_parent, _op_id, _insert_tag, _superseded),
+    do: false
+
+  def check_tag_insert(_left_parent, _to_check_line, nil, _op_id, _insert_tag, _superseded),
+    do: false
+
+  def check_tag_insert(left_parent, to_check_line, right_parent, op_id, insert_tag, superseded) do
     insert_tag ==
       create_tag_insert(
         get_signature(left_parent),
@@ -349,7 +419,8 @@ defmodule Syncordian.Byzantine do
         get_line_op_id(right_parent),
         get_line_peer_id(to_check_line),
         op_id,
-        get_line_id(to_check_line)
+        get_line_id(to_check_line),
+        superseded
       )
   end
 

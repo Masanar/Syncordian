@@ -20,7 +20,7 @@ defmodule Syncordian.AckSignatureTest do
   # A minimal acknowledged line carrying a known stored signature and op_id.
   defp acked_line(signature \\ @line_signature, op_id \\ @line_op) do
     create_line_from_wire({:path, [{1, 0}]}, "content", 0, 3)
-    |> seal_line_authored(signature, op_id, nil, nil)
+    |> seal_line_authored(signature, op_id, nil, nil, nil)
   end
 
   describe "create_tag_ack/3 and check_tag_ack/3" do

@@ -94,6 +94,12 @@ defmodule Syncordian.Peer do
     # names its authored parents by op_id and a delete names its target by op_id, and
     # this map resolves each to the local line (see get_line_by_op_id/2).
     op_index: %{},
+    # Alias map A of the interleaving repair: superseded line identity -> the identity that
+    # replaced it. An entry is written when a re-issued insert (one carrying a supersede
+    # link) is applied. A delete follows this map forward to reach the live copy of moved
+    # content, and a move carries a tombstone forward to the copy it creates, which is what
+    # keeps deleted content from reappearing (see resolve_alias/2).
+    aliases: %{},
     # Origin log of this peer's own authored broadcasts (Syncordian.OpLog), keyed by op_id.
     # It lets the peer retransmit any operation it authored, verbatim, when a replica that
     # is missing it asks (the anti-entropy fetch path).
@@ -123,6 +129,9 @@ defmodule Syncordian.Peer do
             broadcast_pids: [pid()] | nil,
             op_index: %{
               optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.line_id()
+            },
+            aliases: %{
+              optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.op_id()
             },
             op_log: Syncordian.OpLog.t() | nil,
             drop_next_broadcasts: non_neg_integer()
@@ -328,6 +337,65 @@ defmodule Syncordian.Peer do
       line_id -> get_document_line_by_line_id(get_peer_document(peer), line_id)
     end
   end
+
+  # --- Alias map of the interleaving repair (the A component of def:state) ---------------
+  #
+  # A re-issued insert carries a *supersede link* naming the line it moves. Applying it adds
+  # the new line, retracts the named one, and records the link here, all in one step. Two
+  # consequences hold at every replica, at every moment, and together they are what keeps a
+  # concurrent delete from losing track of moved content (lem:no-resurrection):
+  #
+  #   * at most ONE line of an alias chain is live, since the operation that creates the new
+  #     copy retracts the old one, so moved content is never duplicated;
+  #   * a delete of an old identity reaches the current copy by following the chain forward
+  #     (resolve_alias/2), and a move that happens after a delete inherits the retracted
+  #     status of the line it supersedes.
+  #
+  # The map is grow-only with distinct keys: only the block's writer ever supersedes its own
+  # lines, and it supersedes each of them at most once, so entries never conflict and
+  # applying them in any order gives the same map.
+
+  @spec get_aliases(peer()) :: %{
+          optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.op_id()
+        }
+  defp get_aliases(peer), do: peer(peer, :aliases)
+
+  # Records that `new_op_id` supersedes `old_op_id`.
+  @spec record_alias(peer(), Syncordian.Basic_Types.op_id(), Syncordian.Basic_Types.op_id()) ::
+          peer()
+  defp record_alias(peer, old_op_id, new_op_id),
+    do: peer(peer, aliases: Map.put(get_aliases(peer), old_op_id, new_op_id))
+
+  # Follows the alias chain from `op_id` to its end: the identity of the line that currently
+  # carries this content at this replica. Returns `op_id` itself when nothing superseded it.
+  # The walk terminates because a link always points from a lower to a higher sequence
+  # number of the same writer, so a chain is strictly increasing and cannot cycle.
+  @spec resolve_alias(peer(), Syncordian.Basic_Types.op_id()) :: Syncordian.Basic_Types.op_id()
+  defp resolve_alias(peer, op_id), do: follow_alias(get_aliases(peer), op_id)
+
+  @spec follow_alias(map(), Syncordian.Basic_Types.op_id()) :: Syncordian.Basic_Types.op_id()
+  defp follow_alias(aliases, op_id) do
+    case Map.get(aliases, op_id) do
+      nil -> op_id
+      next -> follow_alias(aliases, next)
+    end
+  end
+
+  # How many alias pairs have both of their lines live at this replica. The answer is 0 at
+  # every reachable state, because the insert that creates the replacement retracts the line
+  # it supersedes in the same step, so this is the witness of the single-live-copy invariant
+  # rather than a quantity that varies. Computed only at a metadata snapshot, over the alias
+  # map, which holds one entry per moved line.
+  @spec count_live_duplicates(peer()) :: non_neg_integer()
+  defp count_live_duplicates(peer) do
+    Enum.count(get_aliases(peer), fn {old_op_id, new_op_id} ->
+      live?(get_line_by_op_id(peer, old_op_id)) and live?(get_line_by_op_id(peer, new_op_id))
+    end)
+  end
+
+  @spec live?(Syncordian.Line_Object.line() | nil) :: boolean()
+  defp live?(nil), do: false
+  defp live?(line), do: not is_tombstone?(line)
 
   # --- Origin log and anti-entropy fetch (Syncordian.OpLog) --------------------------
   #
@@ -671,6 +739,7 @@ defmodule Syncordian.Peer do
       |> get_metadata()
       |> update_memory_info(peer_pid, nodes_size)
       |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
+      |> set_alias_gauges(map_size(get_aliases(peer)), count_live_duplicates(peer))
       |> update_metadata(peer)
 
     # The file write happens off the peer's critical path: this peer saves a metadata
@@ -817,15 +886,26 @@ defmodule Syncordian.Peer do
           peer(),
           Syncordian.Line_Object.line(),
           Syncordian.Basic_Types.peer_id(),
-          Syncordian.Basic_Types.op_id()
+          Syncordian.Basic_Types.op_id(),
+          Syncordian.Line_Object.line() | nil
         ) :: any
-  defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id, op_id) do
+  defp add_valid_line_to_document_and_loop(peer, line, incoming_peer_id, op_id, superseded) do
     document = get_peer_document(peer)
     peer_id = get_peer_id(peer)
 
     # This peer now holds the line, so record its own projection in the response checklist
     # before adding it (create_line_from_wire already set the author's projection).
     line = update_line_commit_at(line, peer_id)
+
+    # A re-issued line inherits the status of the line it supersedes. If a delete has already
+    # reached that line here, the moved copy is born a tombstone, so content deleted
+    # concurrently with a move never comes back, whichever of the two arrives first
+    # (lem:no-resurrection). Every other line starts :aura, as create_line_from_wire set it.
+    line =
+      if superseded != nil and is_tombstone?(superseded),
+        do: set_line_status(line, :tombstone),
+        else: line
+
     line_id = get_line_id(line)
 
     case add_line_to_document(line, document) do
@@ -837,7 +917,15 @@ defmodule Syncordian.Peer do
         reject_replay(peer)
 
       {:ok, document} ->
-        add_applied_line_and_loop(peer, document, line, line_id, incoming_peer_id, op_id)
+        add_applied_line_and_loop(
+          peer,
+          document,
+          line,
+          line_id,
+          incoming_peer_id,
+          op_id,
+          superseded
+        )
     end
   end
 
@@ -847,9 +935,18 @@ defmodule Syncordian.Peer do
           Syncordian.Line_Object.line(),
           Syncordian.Basic_Types.line_id(),
           Syncordian.Basic_Types.peer_id(),
-          Syncordian.Basic_Types.op_id()
+          Syncordian.Basic_Types.op_id(),
+          Syncordian.Line_Object.line() | nil
         ) :: any
-  defp add_applied_line_and_loop(peer, document, line, line_id, incoming_peer_id, op_id) do
+  defp add_applied_line_and_loop(
+         peer,
+         document,
+         line,
+         line_id,
+         incoming_peer_id,
+         op_id,
+         superseded
+       ) do
     peer_id = get_peer_id(peer)
 
     # Acknowledge the insertion to the whole network, not just the author: acks are
@@ -868,6 +965,12 @@ defmodule Syncordian.Peer do
 
     {document, settled?} = settle_line_if_complete(document, line_id)
 
+    # The retraction half of a supersede link: applying a re-issued insert also tombstones
+    # the line it replaces, in this very step, so at most one line of an alias chain is live
+    # at this replica at any moment.
+    document =
+      if superseded == nil, do: document, else: tombstone_superseded(document, superseded)
+
     peer =
       document
       |> update_peer_document(peer)
@@ -875,6 +978,18 @@ defmodule Syncordian.Peer do
       |> tick_edit_count()
       |> record_seen(op_id)
       |> index_op(op_id, line_id)
+
+    # The alias entry itself, which is how a delete of the superseded identity later reaches
+    # this copy (resolve_alias/2).
+    peer =
+      if superseded == nil,
+        do: peer,
+        else: record_alias(peer, get_line_op_id(superseded), op_id)
+
+    peer =
+      if superseded != nil and is_tombstone?(line),
+        do: get_metadata(peer) |> inc_reissue_superseded_deleted() |> update_metadata(peer),
+        else: peer
 
     peer =
       if settled?,
@@ -909,44 +1024,79 @@ defmodule Syncordian.Peer do
     loop(peer_ud)
   end
 
-  @spec delete_valid_line_to_document_and_loop(
-          peer :: peer(),
-          document :: Syncordian.Basic_Types.document(),
-          line_deleted_id :: Syncordian.Basic_Types.line_id(),
-          op_id :: Syncordian.Basic_Types.op_id()
+  # Applies an admitted, tag-verified delete to the line it names and to the live end of that
+  # line's alias chain, which are the same line unless the interleaving repair moved the
+  # content. When both are already tombstones the delete has nothing left to do: it is a
+  # redelivery (a replay that outlived the seen-set, or a concurrent delete of the same
+  # content), so it is recorded and dropped WITHOUT ticking the edit or deleted counters.
+  # That is what keeps a post-GC replay from inflating those counts.
+  @spec apply_or_skip_delete(
+          peer(),
+          Syncordian.Line_Object.line(),
+          Syncordian.Line_Object.line() | nil,
+          Syncordian.Basic_Types.op_id()
         ) :: any
-  defp delete_valid_line_to_document_and_loop(peer, document, line_deleted_id, op_id) do
-    peer_id = get_peer_id(peer)
+  defp apply_or_skip_delete(peer, target_line, live_line, op_id) do
+    followed_alias? = live_line != nil and get_line_id(live_line) != get_line_id(target_line)
 
-    # The caller located the target by id in this same document, so the index is present;
-    # the nil guard is defense-in-depth against a bad id ever reaching this point — it
-    # must not fall through to tombstoning an arbitrary line.
-    case get_document_index_by_line_id(document, line_deleted_id) do
-      nil ->
-        debug_print(
-          "delete_valid_line_to_document_and_loop",
-          "target line id vanished between lookup and apply"
-        )
+    to_tombstone =
+      [target_line, live_line]
+      |> Enum.reject(&(&1 == nil or is_tombstone?(&1)))
+      |> Enum.uniq_by(&get_line_id/1)
+      |> Enum.map(&get_line_id/1)
 
-        loop(peer)
+    case to_tombstone do
+      [] ->
+        peer
+        |> record_seen(op_id)
+        |> then(fn p ->
+          get_metadata(p) |> inc_replay_rejected_counter |> update_metadata(p)
+        end)
+        |> loop
 
-      index_position ->
-        do_delete_valid_line(peer, document, index_position, op_id, peer_id)
+      line_ids ->
+        metadata = get_metadata(peer) |> inc_delete_valid_counter
+
+        metadata =
+          if followed_alias?, do: inc_delete_followed_alias(metadata), else: metadata
+
+        metadata
+        |> update_metadata(peer)
+        |> delete_valid_lines_and_loop(line_ids, op_id)
     end
   end
 
-  @spec do_delete_valid_line(
-          peer(),
-          Syncordian.Basic_Types.document(),
-          integer(),
-          Syncordian.Basic_Types.op_id(),
-          Syncordian.Basic_Types.peer_id()
+  @spec delete_valid_lines_and_loop(
+          peer :: peer(),
+          line_ids :: [Syncordian.Basic_Types.line_id()],
+          op_id :: Syncordian.Basic_Types.op_id()
         ) :: any
-  defp do_delete_valid_line(peer, document, index_position, op_id, peer_id) do
+  defp delete_valid_lines_and_loop(peer, line_ids, op_id) do
+    peer_id = get_peer_id(peer)
+
+    # The caller located each line by id in this same document, so every index is present;
+    # the nil guard is defense-in-depth against a bad id ever reaching this point — it must
+    # not fall through to tombstoning an arbitrary line.
+    document =
+      Enum.reduce(line_ids, get_peer_document(peer), fn line_id, document ->
+        case get_document_index_by_line_id(document, line_id) do
+          nil ->
+            debug_print(
+              "delete_valid_lines_and_loop",
+              "target line id vanished between lookup and apply"
+            )
+
+            document
+
+          index_position ->
+            document
+            |> update_document_line_status(index_position, :tombstone)
+            |> update_document_line_peer_id(index_position, peer_id)
+        end
+      end)
+
     peer =
       document
-      |> update_document_line_status(index_position, :tombstone)
-      |> update_document_line_peer_id(index_position, peer_id)
       |> update_peer_document(peer)
       |> tick_edit_count()
       |> record_seen(op_id)
@@ -954,6 +1104,13 @@ defmodule Syncordian.Peer do
     # A delete adds no line and does not advance the progress vector, so it can make no
     # suspended operation deliverable: nothing to wake. (A delete's own target-presence
     # dependency is satisfied by the target insert's apply, not by another delete.)
+
+    # Tombstoning a line can split a live authored block in two, and the part to the right of
+    # the tombstone then carries a fresh left anchor, which may coincide with the anchors of
+    # another writer's block and expose an interleaving. Detection therefore runs after an
+    # applied delete as well as after an applied insert, so a conflict that only a delete
+    # creates is repaired instead of waiting for the next insert to arrive.
+    peer = apply_interleaving_replacements(peer)
 
     peer_up =
       if peer_id == @peer_metadata_id,
@@ -991,9 +1148,9 @@ defmodule Syncordian.Peer do
   # regardless of the parents' current adjacency, so the re-issue is delivered wherever its
   # named parents are present (and suspended on their arrival otherwise). No existing line's
   # position, signature, or identity is rewritten — the new lines are ordinary authored
-  # inserts and the retractions ordinary deletes — so the convergence and signature
-  # invariants are untouched (the re-placement is operation issuance, not state mutation, in
-  # the sense of sec:formal-intention).
+  # inserts, each carrying the supersede link that retracts the line it replaces — so the
+  # convergence and signature invariants are untouched (the re-placement is operation
+  # issuance, not state mutation, in the sense of sec:formal-intention).
   @spec reissue_replacement(peer(), Syncordian.Interleaving.replacement()) :: peer()
   defp reissue_replacement(peer, replacement) do
     %{moving_lines: moving_lines, gap_left: gap_left, wall: wall} = replacement
@@ -1011,12 +1168,13 @@ defmodule Syncordian.Peer do
     peer
   end
 
-  # Re-issues a single superseded line: (1) a fresh authored insert with the same content
-  # between `left_parent` and `right_parent` — new op_id, a new position drawn inside the
-  # disjoint gap, and a freshly derived stored signature — broadcast like any insert; (2) a
-  # retracting delete of the old line, tombstoned locally and broadcast with its target-bound
-  # tag. The new line becomes the left parent of the next link, keeping the re-placed block
-  # contiguous.
+  # Re-issues a single superseded line as ONE operation: a fresh authored insert with the
+  # same content between `left_parent` and `right_parent` — new op_id, a new position drawn
+  # inside the disjoint gap, and a freshly derived stored signature — carrying a *supersede
+  # link* that names the old line. Applying such an insert adds the new line and retracts
+  # the named one in the same step, so the move needs no separate retracting delete and no
+  # replica ever holds two live copies of the moved content. The new line becomes the left
+  # parent of the next link, keeping the re-placed block contiguous.
   @spec reissue_one_line(
           peer(),
           Syncordian.Line_Object.line(),
@@ -1026,11 +1184,28 @@ defmodule Syncordian.Peer do
   defp reissue_one_line(peer, old_line, left_parent, right_parent) do
     my_id = get_peer_id(peer)
     content = get_content(old_line)
+    old_op_id = get_line_op_id(old_line)
 
-    # (1) Fresh authored insert in the disjoint sub-interval.
     {op_id, peer} = next_op_id(peer)
-    new_line = create_line_between_two_lines(content, left_parent, right_parent, my_id, op_id)
 
+    # The re-issued line keeps the authoring session of the line it replaces, so the block it
+    # belongs to is still recognised as the same block after the move. Reconstructing blocks
+    # from the parent chain alone would lose it here: the move gives every line a fresh parent
+    # pair, and a block the detector no longer recognises is a block whose remaining
+    # interleavings can no longer be repaired.
+    new_line =
+      create_line_between_two_lines(
+        content,
+        left_parent,
+        right_parent,
+        my_id,
+        op_id,
+        get_line_session(old_line)
+      )
+
+    # The tag binds the eight fields of an ordinary insert plus the superseded line's stored
+    # signature and identity, so the retraction it carries is authorized exactly as a delete
+    # tag authorizes a delete.
     insert_tag =
       create_tag_insert(
         get_signature(left_parent),
@@ -1040,7 +1215,8 @@ defmodule Syncordian.Peer do
         get_line_op_id(right_parent),
         my_id,
         op_id,
-        get_line_id(new_line)
+        get_line_id(new_line),
+        old_line
       )
 
     # The op_id is fresh, so the add cannot find a duplicate identity; a position-level
@@ -1050,22 +1226,25 @@ defmodule Syncordian.Peer do
 
     peer =
       document
+      |> tombstone_superseded(old_line)
       |> update_peer_document(peer)
       |> tick_individual_peer_clock()
       |> tick_edit_count()
       |> record_seen(op_id)
       |> index_op(op_id, get_line_id(new_line))
+      |> record_alias(old_op_id, op_id)
 
     current_vector_clock = get_peer_vector_clock(peer)
 
     # The insert names its authored parents by identity: create_line_between_two_lines/5
     # already stored them on new_line (left_parent's and right_parent's op_ids), so
-    # receivers locate the same pair and seal the same stored signature.
+    # receivers locate the same pair and seal the same stored signature. The last field is
+    # the supersede link.
     send(
       get_peer_pid(peer),
       {:send_insert_broadcast,
        {get_line_id(new_line), content, my_id, insert_tag, current_vector_clock, op_id,
-        get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line)}}
+        get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line), old_op_id}}
     )
 
     peer =
@@ -1073,39 +1252,24 @@ defmodule Syncordian.Peer do
       |> inc_replacement_issued_counter()
       |> update_metadata(peer)
 
-    # (2) Retract the superseded line: tombstone locally, broadcast the target-bound delete.
-    {del_op_id, peer} = next_op_id(peer)
-    document = get_peer_document(peer)
-
-    delete_tag =
-      create_tag_delete(get_signature(old_line), get_line_op_id(old_line), del_op_id)
-
-    peer =
-      case get_document_index_by_line_id(document, get_line_id(old_line)) do
-        nil ->
-          # Defense-in-depth: the superseded line came from this document moments ago;
-          # if it is somehow gone there is nothing to retract locally, and broadcasting
-          # the delete is still correct (receivers tombstone by target id).
-          debug_print("reissue_one_line", "superseded line no longer present")
-          peer
-
-        old_index ->
-          document
-          |> update_document_line_status(old_index, :tombstone)
-          |> update_peer_document(peer)
-          |> tick_edit_count()
-          |> record_seen(del_op_id)
-      end
-
-    # The retraction names its target by identity (the superseded line's op_id), with its
-    # line_id kept as a position hint.
-    send(
-      get_peer_pid(peer),
-      {:send_delete_broadcast,
-       {get_line_op_id(old_line), get_line_id(old_line), delete_tag, del_op_id}}
-    )
-
     {peer, new_line}
+  end
+
+  # The retraction half of a supersede: tombstones the superseded line. It is present by
+  # construction — a mover re-issues its own live lines, and at a receiver the clock gate
+  # has already applied the superseded insert, which the same writer issued earlier — so a
+  # miss is only defense in depth and must not tombstone anything else.
+  @spec tombstone_superseded(Syncordian.Basic_Types.document(), Syncordian.Line_Object.line()) ::
+          Syncordian.Basic_Types.document()
+  defp tombstone_superseded(document, superseded_line) do
+    case get_document_index_by_line_id(document, get_line_id(superseded_line)) do
+      nil ->
+        debug_print("tombstone_superseded", "superseded line no longer present")
+        document
+
+      index ->
+        update_document_line_status(document, index, :tombstone)
+    end
   end
 
   # ---- Local edits (supervisor git replay) ---------------------------------------------
@@ -1316,12 +1480,14 @@ defmodule Syncordian.Peer do
 
       # The insert carries its authored parent identities (stored on new_line by
       # create_line_between_two_lines/5), so every receiver locates the same parent pair
-      # by identity and seals the same stored signature.
+      # by identity and seals the same stored signature. An ordinary insert supersedes no
+      # line, so its supersede link is nil; only the interleaving repair sets it
+      # (reissue_one_line/4).
       send(
         get_peer_pid(peer),
         {:send_insert_broadcast,
          {get_line_id(new_line), content, peer_id, insert_tag, current_vector_clock, op_id,
-          get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line)}}
+          get_line_parent_left_op_id(new_line), get_line_parent_right_op_id(new_line), nil}}
       )
 
       peer =
@@ -1471,36 +1637,28 @@ defmodule Syncordian.Peer do
                 |> update_metadata(peer)
                 |> loop
 
-              is_tombstone?(target_line) ->
-                # The target is already tombstoned. A delete is idempotent on line status,
-                # so this redelivery (a replay that outlived the seen-set, or a concurrent
-                # delete of the same line by another peer) is a strict no-op: record the
-                # op_id and drop it, WITHOUT ticking the edit or deleted counters. This
-                # closes the post-GC delete-replay asymmetry where a re-applied delete
-                # would inflate those counts.
-                peer
-                |> record_seen(op_id)
-                |> then(fn p ->
-                  get_metadata(p) |> inc_replay_rejected_counter |> update_metadata(p)
-                end)
-                |> loop
-
               true ->
-                get_metadata(peer)
-                |> inc_delete_valid_counter
-                |> update_metadata(peer)
-                |> delete_valid_line_to_document_and_loop(
-                  get_peer_document(peer),
-                  get_line_id(target_line),
-                  op_id
-                )
+                # The delete names one identity, but the interleaving repair may have moved
+                # that content since: a re-issued insert supersedes the named line and links
+                # it to the copy that replaced it. Follow the alias chain to its end, so the
+                # delete lands on the line that currently carries the content, whichever
+                # order the delete and the move arrived in (lem:no-resurrection).
+                live_op_id = resolve_alias(peer, target_op_id)
+
+                live_line =
+                  if live_op_id == target_op_id,
+                    do: target_line,
+                    else: get_line_by_op_id(peer, live_op_id)
+
+                apply_or_skip_delete(peer, target_line, live_line, op_id)
             end
         end
 
       # ✅ Receipt of an insert, evaluated in the formal order: admission, replay, then
       # the two intrinsic deliverability gates. Only public fields travel — position,
-      # content, author, the insert wire tag, the sender's progress vector, the op_id, and
-      # the op_ids of the two authored parents. The line's stored signature is NOT among
+      # content, author, the insert wire tag, the sender's progress vector, the op_id, the
+      # op_ids of the two authored parents, and the supersede link of a re-issue (nil for
+      # an ordinary insert). The line's stored signature is NOT among
       # them: the receiver locates the authored parent pair by identity through the
       # op_index and re-derives the stored signature from that pair. Up to a hash collision
       # exactly one pair verifies (the authored one), so every replica seals the same
@@ -1508,7 +1666,7 @@ defmodule Syncordian.Peer do
       {:receive_insert_broadcast,
        insert_payload =
            {line_id, content, incoming_peer_id, insert_tag, incoming_vc, op_id, left_parent_op_id,
-            right_parent_op_id}, alpha} ->
+            right_parent_op_id, replaces_op_id}, alpha} ->
         cond do
           drop_broadcast?(peer) ->
             # Test-only lossy channel: drop this delivery entirely (see drop_broadcast?/1).
@@ -1560,12 +1718,23 @@ defmodule Syncordian.Peer do
                 left_parent = get_line_by_op_id(peer, left_parent_op_id)
                 right_parent = get_line_by_op_id(peer, right_parent_op_id)
 
+                # A re-issue also names the line it supersedes. That line is an earlier
+                # insert of the same writer, so the clock gate above has already applied it;
+                # the suspension below is defense in depth, never reached in a trusted run.
+                superseded =
+                  if replaces_op_id == nil,
+                    do: nil,
+                    else: get_line_by_op_id(peer, replaces_op_id)
+
                 cond do
                   left_parent == nil ->
                     suspend_insert_on_parent(peer, insert_payload, alpha, left_parent_op_id)
 
                   right_parent == nil ->
                     suspend_insert_on_parent(peer, insert_payload, alpha, right_parent_op_id)
+
+                  replaces_op_id != nil and superseded == nil ->
+                    suspend_insert_on_parent(peer, insert_payload, alpha, replaces_op_id)
 
                   true ->
                     provisional_line =
@@ -1581,12 +1750,23 @@ defmodule Syncordian.Peer do
                          provisional_line,
                          right_parent,
                          op_id,
-                         insert_tag
+                         insert_tag,
+                         superseded
                        ) do
                       # The wire tag verifies against the located parents. By the
                       # unique-verifier property they are the authored pair, so seal the
                       # stored signature derived from them together with the line's authored
                       # identity (op_id and the two parent op_ids the message carried).
+                      # The authoring session is derived locally, never transmitted: for an
+                      # ordinary insert it follows from the located parents and the writer by
+                      # the same rule the author applied (Line.session_for/3), and a re-issue
+                      # inherits it from the line it supersedes, so a moved block keeps the
+                      # identity the interleaving detector knows it by.
+                      session =
+                        if superseded == nil,
+                          do: session_for(left_parent, right_parent, incoming_peer_id),
+                          else: get_line_session(superseded)
+
                       sealed_line =
                         seal_line_authored(
                           provisional_line,
@@ -1602,7 +1782,8 @@ defmodule Syncordian.Peer do
                           ),
                           op_id,
                           left_parent_op_id,
-                          right_parent_op_id
+                          right_parent_op_id,
+                          session
                         )
 
                       get_metadata(peer)
@@ -1611,7 +1792,8 @@ defmodule Syncordian.Peer do
                       |> add_valid_line_to_document_and_loop(
                         sealed_line,
                         incoming_peer_id,
-                        op_id
+                        op_id,
+                        superseded
                       )
                     else
                       # Both authored parents are present but the wire tag does not verify
@@ -1719,6 +1901,7 @@ defmodule Syncordian.Peer do
           |> get_metadata()
           |> update_memory_info(peer_pid, document_size)
           |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
+          |> set_alias_gauges(map_size(get_aliases(peer)), count_live_duplicates(peer))
 
         send(
           get_peer_supervisor_pid(peer),

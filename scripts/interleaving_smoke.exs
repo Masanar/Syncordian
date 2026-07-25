@@ -33,16 +33,25 @@ berries = for i <- 1..block_size, do: "berry-#{i}"
 
 IO.puts("Concurrently authoring two #{block_size}-line blocks in the same interval…")
 
-# Each peer appends its block (git index = current block length) so the lines form one
-# authored chain anchored between the sentinels. Both command streams are queued before the
-# 300 ms broadcast delay elapses, so neither peer has seen the other when it authors.
+# Each peer appends its block so the lines form ONE authored chain (each line naming the
+# previous as its left parent) anchored between the sentinels. Both command streams are
+# queued before the 300 ms broadcast delay elapses, so neither peer has seen the other when
+# it authors.
+#
+# The index is `i + 1`, not `i`: a local edit lands BEFORE the live position it names,
+# counting the infimum as position 0, so appending the i-th line of a block means naming
+# position i + 1. Passing `i` instead inserts every line before the previous one, which
+# anchors the chain on the writer's own first line rather than on the document bound. Two
+# writers doing that produce blocks in *different* authored intervals, which the detector
+# leaves alone by its same-interval rule, so the run exercised no re-placement at all and
+# passed or failed with the random position digits.
 apples
 |> Enum.with_index()
-|> Enum.each(fn {content, i} -> Peer.insert(p0, content, 0, i, 0, 0) end)
+|> Enum.each(fn {content, i} -> Peer.insert(p0, content, 0, i + 1, 0, 0) end)
 
 berries
 |> Enum.with_index()
-|> Enum.each(fn {content, i} -> Peer.insert(p1, content, 0, i, 0, 0) end)
+|> Enum.each(fn {content, i} -> Peer.insert(p1, content, 0, i + 1, 0, 0) end)
 
 IO.puts("Settling network (re-placement + convergence)…")
 Process.sleep(6_000)

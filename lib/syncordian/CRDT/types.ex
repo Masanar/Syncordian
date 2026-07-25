@@ -57,6 +57,15 @@ defmodule Syncordian.Basic_Types do
   @type op_id :: {peer_id(), non_neg_integer()}
 
   @typedoc """
+      Authoring session of a line: the pair of identities bounding the interval its writer was
+      typing into when it started the run of inserts the line belongs to. Together with the
+      writer it identifies an authored block (`def:editblock`), and unlike the per-line parent
+      pair it survives a re-placement of the block and a delete inside it — see
+      `Syncordian.Interleaving`.
+  """
+  @type session :: {op_id() | nil, op_id() | nil}
+
+  @typedoc """
       Position identifier of a Syncordian document line. Variable-length, totally
       ordered, dense — see `Syncordian.PathId` for the constructors, comparator and
       midpoint allocator.

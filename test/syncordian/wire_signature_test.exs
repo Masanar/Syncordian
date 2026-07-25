@@ -254,6 +254,105 @@ defmodule Syncordian.WireSignatureTest do
     end
   end
 
+  describe "the supersede link of a re-issued insert" do
+    # A re-issue of `authored_line` into (infimum, authored_line): a fresh insert of the same
+    # content that also retracts the line it names. Its tag binds that line's stored signature
+    # and identity, exactly as a delete tag binds its target.
+    defp reissue_side(superseded, infimum) do
+      content = get_content(superseded)
+      op = {@author_peer, 2}
+
+      reissued =
+        create_line_between_two_lines(
+          content,
+          infimum,
+          superseded,
+          @author_peer,
+          op,
+          get_line_session(superseded)
+        )
+
+      tag =
+        Byzantine.create_tag_insert(
+          get_signature(infimum),
+          get_line_op_id(infimum),
+          content,
+          get_signature(superseded),
+          get_line_op_id(superseded),
+          @author_peer,
+          op,
+          get_line_id(reissued),
+          superseded
+        )
+
+      {reissued, tag, op}
+    end
+
+    test "the tag verifies only when the superseded line is supplied" do
+      {authored_line, _t_ins, infimum, _sup} = author_side("to move")
+      {reissued, tag, op} = reissue_side(authored_line, infimum)
+
+      assert Byzantine.check_tag_insert(infimum, reissued, authored_line, op, tag, authored_line)
+
+      # Verified as if it were an ordinary insert, the same eight fields no longer match: the
+      # retraction the message carries is part of what the tag authenticates.
+      refute Byzantine.check_tag_insert(infimum, reissued, authored_line, op, tag)
+    end
+
+    test "a sender that does not hold the superseded line's stored signature cannot retract it" do
+      {authored_line, _t_ins, infimum, _sup} = author_side("to move")
+      {reissued, _tag, op} = reissue_side(authored_line, infimum)
+      impostor = line(authored_line, signature: "guessed stored signature")
+
+      forged =
+        Byzantine.create_tag_insert(
+          get_signature(infimum),
+          get_line_op_id(infimum),
+          get_content(reissued),
+          get_signature(authored_line),
+          get_line_op_id(authored_line),
+          @author_peer,
+          op,
+          get_line_id(reissued),
+          impostor
+        )
+
+      refute Byzantine.check_tag_insert(
+               infimum,
+               reissued,
+               authored_line,
+               op,
+               forged,
+               authored_line
+             )
+    end
+
+    test "an ordinary insert supersedes nothing and still verifies" do
+      {authored_line, insert_tag, infimum, supremum} = author_side("ordinary")
+
+      assert Byzantine.check_tag_insert(
+               infimum,
+               authored_line,
+               supremum,
+               @author_op,
+               insert_tag,
+               nil
+             )
+    end
+
+    test "a re-issued line inherits the authoring session of the line it supersedes" do
+      {authored_line, _t_ins, infimum, _sup} = author_side("to move")
+      {reissued, _tag, _op} = reissue_side(authored_line, infimum)
+
+      assert get_line_session(reissued) == get_line_session(authored_line)
+
+      # Its own authored parents differ from that session, which is exactly why the session has
+      # to be carried rather than recomputed from the parents.
+      refute {get_line_parent_left_op_id(reissued), get_line_parent_right_op_id(reissued)} ==
+               get_line_session(reissued)
+    end
+  end
+
   describe "delete authorization tag (t_del)" do
     test "binds the target line's stored signature and identity" do
       {authored_line, _t_ins, infimum, _sup} = author_side("to delete")

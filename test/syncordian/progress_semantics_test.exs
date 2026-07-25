@@ -60,9 +60,11 @@ defmodule Syncordian.ProgressSemanticsTest do
         get_line_id(line)
       )
 
+    # The last field is the supersede link of a re-issued insert (see
+    # `Syncordian.Interleaving`); an ordinary insert supersedes no line, so it is nil.
     payload =
       {get_line_id(line), content, @author, tag, vector, op_id, get_line_op_id(left),
-       get_line_op_id(right)}
+       get_line_op_id(right), nil}
 
     alpha = Byzantine.create_admission(@secret, :ins, payload)
     {line, {:receive_insert_broadcast, payload, alpha}}

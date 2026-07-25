@@ -223,8 +223,7 @@ defmodule Syncordian.PendingOps do
     {clock_deps, clock} = sweep_clock(buf.clock, current_edit, soft_threshold)
     {line_deps, line} = sweep_line(buf.line, current_edit, soft_threshold)
 
-    {clock_deps ++ line_deps,
-     %{buf | clock: clock, line: line, last_sweep_edit: current_edit}}
+    {clock_deps ++ line_deps, %{buf | clock: clock, line: line, last_sweep_edit: current_edit}}
   end
 
   # An entry is due for a fetch once it has aged past the soft threshold and has not been

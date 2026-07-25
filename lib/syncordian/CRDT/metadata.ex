@@ -49,7 +49,22 @@ defmodule Syncordian.Metadata do
     # of this peer's origin log.
     fetch_request_sent: 0,
     fetch_served: 0,
-    origin_log_bytes: 0
+    origin_log_bytes: 0,
+    # Interleaving repair, alias side (the A component of the replica state). A re-issued
+    # insert supersedes the line it moves, so:
+    #   * alias_entries is how many lines this replica has seen moved;
+    #   * delete_followed_alias counts the deletes that had to follow a link to reach the
+    #     copy that currently carries the content, which is exactly the delete-and-move race
+    #     occurring in the wild;
+    #   * reissue_superseded_deleted counts the moves that landed on already-deleted content
+    #     and were therefore born as tombstones, the same race in the other arrival order;
+    #   * live_duplicates_max is a witness gauge: the number of alias pairs whose two lines
+    #     are live at the same time. Retraction is part of the re-issue, so this is 0 by
+    #     construction and any other value is a bug.
+    alias_entries: 0,
+    delete_followed_alias: 0,
+    reissue_superseded_deleted: 0,
+    live_duplicates_max: 0
   )
 
   @type metadata ::
@@ -77,7 +92,11 @@ defmodule Syncordian.Metadata do
             replacement_issued_counter: integer(),
             fetch_request_sent: integer(),
             fetch_served: integer(),
-            origin_log_bytes: integer()
+            origin_log_bytes: integer(),
+            alias_entries: integer(),
+            delete_followed_alias: integer(),
+            reissue_superseded_deleted: integer(),
+            live_duplicates_max: integer()
           )
 
   defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
@@ -106,6 +125,10 @@ defmodule Syncordian.Metadata do
       "fetch_request_sent" => metadata(metadata, :fetch_request_sent),
       "fetch_served" => metadata(metadata, :fetch_served),
       "origin_log_bytes" => metadata(metadata, :origin_log_bytes),
+      "alias_entries" => metadata(metadata, :alias_entries),
+      "delete_followed_alias" => metadata(metadata, :delete_followed_alias),
+      "reissue_superseded_deleted" => metadata(metadata, :reissue_superseded_deleted),
+      "live_duplicates_max" => metadata(metadata, :live_duplicates_max),
       "byzantine_nodes" => byzantine_nodes,
       "current_commit" => current_commit,
       "timestamp" => current_date_unix
@@ -234,10 +257,23 @@ defmodule Syncordian.Metadata do
           metadata(metadata2, :replacement_issued_counter),
       fetch_request_sent:
         metadata(metadata1, :fetch_request_sent) + metadata(metadata2, :fetch_request_sent),
-      fetch_served:
-        metadata(metadata1, :fetch_served) + metadata(metadata2, :fetch_served),
+      fetch_served: metadata(metadata1, :fetch_served) + metadata(metadata2, :fetch_served),
       origin_log_bytes:
-        metadata(metadata1, :origin_log_bytes) + metadata(metadata2, :origin_log_bytes)
+        metadata(metadata1, :origin_log_bytes) + metadata(metadata2, :origin_log_bytes),
+      alias_entries: metadata(metadata1, :alias_entries) + metadata(metadata2, :alias_entries),
+      delete_followed_alias:
+        metadata(metadata1, :delete_followed_alias) +
+          metadata(metadata2, :delete_followed_alias),
+      reissue_superseded_deleted:
+        metadata(metadata1, :reissue_superseded_deleted) +
+          metadata(metadata2, :reissue_superseded_deleted),
+      # A witness that must stay 0 at every peer, so the network-wide value is the maximum
+      # rather than a sum: summing would hide which replica saw a duplicate.
+      live_duplicates_max:
+        max(
+          metadata(metadata1, :live_duplicates_max),
+          metadata(metadata2, :live_duplicates_max)
+        )
     )
   end
 
@@ -472,5 +508,43 @@ defmodule Syncordian.Metadata do
     do:
       metadata(metadata,
         replacement_issued_counter: metadata(metadata, :replacement_issued_counter) + 1
+      )
+
+  @doc """
+    Counts deletes that reached the current copy of moved content by following the alias
+    chain of a re-issued line, rather than by naming it directly. Each count is one
+    occurrence of the delete-after-move race, resolved.
+  """
+  @spec inc_delete_followed_alias(metadata()) :: metadata()
+  def inc_delete_followed_alias(metadata),
+    do:
+      metadata(metadata,
+        delete_followed_alias: metadata(metadata, :delete_followed_alias) + 1
+      )
+
+  @doc """
+    Counts re-issued lines that were born as tombstones because the line they supersede had
+    already been deleted here. Each count is one occurrence of the move-after-delete race,
+    resolved.
+  """
+  @spec inc_reissue_superseded_deleted(metadata()) :: metadata()
+  def inc_reissue_superseded_deleted(metadata),
+    do:
+      metadata(metadata,
+        reissue_superseded_deleted: metadata(metadata, :reissue_superseded_deleted) + 1
+      )
+
+  @doc """
+    Records the alias-map snapshot of a peer: how many of its lines have been superseded by
+    a move, and how many superseded/replacement pairs are live at the same time. The second
+    value is 0 by construction, since a re-issue retracts the line it replaces in the same
+    step, so it is reported as a witness of that invariant.
+  """
+  @spec set_alias_gauges(metadata(), non_neg_integer(), non_neg_integer()) :: metadata()
+  def set_alias_gauges(metadata, entries, live_duplicates),
+    do:
+      metadata(metadata,
+        alias_entries: entries,
+        live_duplicates_max: max(metadata(metadata, :live_duplicates_max), live_duplicates)
       )
 end

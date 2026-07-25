@@ -209,7 +209,30 @@ defmodule Syncordian.Byzantine do
   # explicit (injective encoding).
   @spec mac(atom(), [term()]) :: Syncordian.Basic_Types.signature()
   defp mac(domain, fields) when domain in @domains and is_list(fields) do
-    :crypto.mac(:hmac, :sha256, domain_key(domain), canonical(fields))
+    measured(domain, fn -> compute_mac(domain_key(domain), fields) end)
+  end
+
+  # The authenticator is on the hot path of every applied operation, so the harness counts
+  # every call but times only a sample of them (`Syncordian.Instrument`). Reading the clock
+  # around every call would cost more than the call. The unsampled branch is the plain
+  # computation, so the measurement does not change what is being measured except on the
+  # calls it is taken over.
+  @spec measured(atom(), (-> Syncordian.Basic_Types.signature())) ::
+          Syncordian.Basic_Types.signature()
+  defp measured(domain, computation) do
+    if Syncordian.Instrument.record_mac(domain) do
+      started_at = :erlang.monotonic_time(:nanosecond)
+      result = computation.()
+      Syncordian.Instrument.record_mac_time(:erlang.monotonic_time(:nanosecond) - started_at)
+      result
+    else
+      computation.()
+    end
+  end
+
+  @spec compute_mac(binary(), [term()]) :: Syncordian.Basic_Types.signature()
+  defp compute_mac(key, fields) do
+    :crypto.mac(:hmac, :sha256, key, canonical(fields))
     |> Base.encode16()
   end
 
@@ -224,9 +247,7 @@ defmodule Syncordian.Byzantine do
         ) :: Syncordian.Basic_Types.signature()
   defp mac_adm(boundary_secret, fields) when is_list(fields) do
     key = derive_keys(boundary_secret) |> Map.fetch!(:adm)
-
-    :crypto.mac(:hmac, :sha256, key, canonical(fields))
-    |> Base.encode16()
+    measured(:adm, fn -> compute_mac(key, fields) end)
   end
 
   # Canonical, length-prefixed encoding of a field list: each field is encoded to bytes and

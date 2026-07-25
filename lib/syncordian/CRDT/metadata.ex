@@ -22,7 +22,12 @@ defmodule Syncordian.Metadata do
   require Record
   import Syncordian.Utilities
 
-  Record.defrecord(:metadata,
+  # The field list is a module attribute rather than an inline literal because three things
+  # are derived from it: the record itself, the field-wise merge, and the JSON encoding.
+  # Deriving them removes the failure mode that a new counter is added to the record and
+  # silently dropped from one of the other two, which is a measurement that reads as a real
+  # zero.
+  @metadata_fields [
     delete_valid_counter: 0,
     delete_stash_counter: 0,
     requeue_counter: 0,
@@ -64,8 +69,98 @@ defmodule Syncordian.Metadata do
     alias_entries: 0,
     delete_followed_alias: 0,
     reissue_superseded_deleted: 0,
-    live_duplicates_max: 0
-  )
+    live_duplicates_max: 0,
+    # Transient interleaving (R7). conflict_detected_counter above counts the conflicts this
+    # peer *repaired*, so it is silent at every replica that is not the lower-priority
+    # writer. These three observe instead: every replica sees every conflict its document
+    # exhibits, whoever repairs it.
+    #   * conflicts_observed counts distinct interleavings this replica ever saw;
+    #   * concurrent_conflicts is how many are unresolved right now;
+    #   * max_concurrent_conflicts is the high-water mark over the run.
+    # A run whose conflicts_observed is 0 exhibited no interleaving to repair, which is a
+    # statement about the workload and not about the repair protocol.
+    #
+    # Note on reading conflicts_observed across a network: the same interleaving is visible
+    # at every replica that holds both blocks, so the merged value counts observations, not
+    # distinct interleavings. The two gauges below merge as maxima instead, and answer "the
+    # most any single replica was holding" now and over the run.
+    conflicts_observed: 0,
+    concurrent_conflicts: 0,
+    max_concurrent_conflicts: 0,
+    # Repair latency: for each conflict that appeared and later disappeared at this replica,
+    # how long it stood. Measured twice, because neither alone is interpretable: in applied
+    # edits, which is the logical duration and is independent of machine speed, and in
+    # milliseconds, which is what a user would wait. Samples rather than an average, so the
+    # distribution survives to the analysis.
+    repair_latency_edits: [],
+    repair_latency_ms: [],
+    # Re-placement amplification: how many lines each repair had to re-issue. One conflict
+    # costs a whole block, not one operation, and this is the multiplier.
+    reissued_lines_per_conflict: [],
+    # Network load by operation kind (R9). Acknowledgement traffic grows with the square of
+    # the peer count while operation traffic grows linearly, so a single total would misstate
+    # the comparison against the other CRDTs. Bytes are external term sizes, i.e. what the
+    # message would occupy on a link.
+    bytes_insert: 0,
+    bytes_delete: 0,
+    bytes_ack: 0,
+    bytes_fetch: 0,
+    bytes_other: 0,
+    msgs_insert: 0,
+    msgs_delete: 0,
+    msgs_ack: 0,
+    msgs_fetch: 0,
+    msgs_other: 0,
+    # Authenticator cost. One count per key domain, plus sampled timings: mac_sampled_calls
+    # is the support of mac_sampled_ns, so a mean is always reported with the number of
+    # observations behind it rather than on its own.
+    mac_calls_doc: 0,
+    mac_calls_ins: 0,
+    mac_calls_del: 0,
+    mac_calls_ack: 0,
+    mac_calls_adm: 0,
+    mac_calls_fetch: 0,
+    mac_sampled_calls: 0,
+    mac_sampled_ns: 0,
+    # The sampled timings themselves. A timing is a wall-clock delta around one call, so it
+    # includes any time the process spent descheduled during it, and under load those
+    # outliers dominate a mean. The median over the samples is what says what the
+    # computation costs; the mean is kept beside it so the gap between them is visible.
+    mac_sample_ns: [],
+    # Position-identifier depth over the document at each snapshot. The maximum is the worst
+    # case and the sum with the line count gives the mean, kept as two fields so that the
+    # network-wide mean is the mean over all lines rather than an average of per-peer means,
+    # which would weight a small replica the same as a large one.
+    pid_depth_max: 0,
+    pid_depth_sum: 0,
+    pid_depth_lines: 0
+  ]
+
+  Record.defrecord(:metadata, @metadata_fields)
+
+  @field_names Keyword.keys(@metadata_fields)
+
+  # Records are tuples tagged with the record name, so field i of the field list lives at
+  # element i + 1.
+  @field_index @field_names |> Enum.with_index(1) |> Map.new()
+
+  # Fields whose network-wide value is the largest any peer reported, not the total. A
+  # high-water mark is a property of some single replica; summing them would report a
+  # network that never existed.
+  @max_merged [
+    :live_duplicates_max,
+    :concurrent_conflicts,
+    :max_concurrent_conflicts,
+    :pid_depth_max
+  ]
+
+  # Fields holding samples. The network-wide value is every peer's samples together.
+  @list_merged [
+    :repair_latency_edits,
+    :repair_latency_ms,
+    :reissued_lines_per_conflict,
+    :mac_sample_ns
+  ]
 
   @type metadata ::
           record(:metadata,
@@ -96,43 +191,111 @@ defmodule Syncordian.Metadata do
             alias_entries: integer(),
             delete_followed_alias: integer(),
             reissue_superseded_deleted: integer(),
-            live_duplicates_max: integer()
+            live_duplicates_max: integer(),
+            conflicts_observed: integer(),
+            concurrent_conflicts: integer(),
+            max_concurrent_conflicts: integer(),
+            repair_latency_edits: [integer()],
+            repair_latency_ms: [integer()],
+            reissued_lines_per_conflict: [integer()],
+            bytes_insert: integer(),
+            bytes_delete: integer(),
+            bytes_ack: integer(),
+            bytes_fetch: integer(),
+            bytes_other: integer(),
+            msgs_insert: integer(),
+            msgs_delete: integer(),
+            msgs_ack: integer(),
+            msgs_fetch: integer(),
+            msgs_other: integer(),
+            mac_calls_doc: integer(),
+            mac_calls_ins: integer(),
+            mac_calls_del: integer(),
+            mac_calls_ack: integer(),
+            mac_calls_adm: integer(),
+            mac_calls_fetch: integer(),
+            mac_sampled_calls: integer(),
+            mac_sampled_ns: integer(),
+            mac_sample_ns: [integer()],
+            pid_depth_max: integer(),
+            pid_depth_sum: integer(),
+            pid_depth_lines: integer()
           )
 
-  defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
-    metadata_map = %{
-      "delete_valid_counter" => metadata(metadata, :delete_valid_counter),
-      "delete_stash_counter" => metadata(metadata, :delete_stash_counter),
-      "requeue_counter" => metadata(metadata, :requeue_counter),
-      "delete_requeue_limit" => metadata(metadata, :delete_requeue_limit),
-      "insert_distance_greater_than_one" => metadata(metadata, :insert_distance_greater_than_one),
-      "insert_request_counter" => metadata(metadata, :insert_request_counter),
-      "insert_request_limit_counter" => metadata(metadata, :insert_request_limit_counter),
-      "insert_stash_counter" => metadata(metadata, :insert_stash_counter),
-      "insert_valid_counter" => metadata(metadata, :insert_valid_counter),
-      "insert_stash_fail_counter" => metadata(metadata, :insert_stash_fail_counter),
-      "byzantine_insert_counter" => metadata(metadata, :byzantine_insert_counter),
-      "byzantine_delete_counter" => metadata(metadata, :byzantine_delete_counter),
-      "replay_rejected_counter" => metadata(metadata, :replay_rejected_counter),
-      "ack_rejected_counter" => metadata(metadata, :ack_rejected_counter),
-      "admission_rejected_counter" => metadata(metadata, :admission_rejected_counter),
-      "delete_rejected_counter" => metadata(metadata, :delete_rejected_counter),
-      "heap_size" => metadata(metadata, :heap_size),
-      "message_queue_length" => metadata(metadata, :message_queue_length),
-      "settle_counter" => metadata(metadata, :settle_counter),
-      "conflict_detected_counter" => metadata(metadata, :conflict_detected_counter),
-      "replacement_issued_counter" => metadata(metadata, :replacement_issued_counter),
-      "fetch_request_sent" => metadata(metadata, :fetch_request_sent),
-      "fetch_served" => metadata(metadata, :fetch_served),
-      "origin_log_bytes" => metadata(metadata, :origin_log_bytes),
-      "alias_entries" => metadata(metadata, :alias_entries),
-      "delete_followed_alias" => metadata(metadata, :delete_followed_alias),
-      "reissue_superseded_deleted" => metadata(metadata, :reissue_superseded_deleted),
-      "live_duplicates_max" => metadata(metadata, :live_duplicates_max),
-      "byzantine_nodes" => byzantine_nodes,
-      "current_commit" => current_commit,
-      "timestamp" => current_date_unix
+  @doc """
+  The record as a plain map keyed by field name, for encoding and for tests.
+
+  Every field of the record appears, so a counter added to `@metadata_fields` reaches the
+  saved artifact without a second edit here.
+  """
+  @spec to_map(metadata()) :: %{String.t() => integer() | [integer()]}
+  def to_map(metadata) do
+    Map.new(@field_names, fn name ->
+      {Atom.to_string(name), elem(metadata, Map.fetch!(@field_index, name))}
+    end)
+  end
+
+  # Quantities that are ratios of two recorded fields. They are written into the artifact
+  # rather than left to the analysis because the pair they are derived from is easy to
+  # combine wrongly: the mean position depth over a network is the mean over all its lines,
+  # not the mean of the per-peer means, and the mean authenticator time is over the sampled
+  # calls, not over all of them. A denominator of zero means the quantity was never
+  # observed, which is reported as null rather than as zero.
+  @spec derived(metadata()) :: %{String.t() => float() | nil}
+  defp derived(metadata) do
+    %{
+      "pid_depth_mean" =>
+        ratio(metadata(metadata, :pid_depth_sum), metadata(metadata, :pid_depth_lines)),
+      "mac_mean_us" =>
+        ratio(metadata(metadata, :mac_sampled_ns), metadata(metadata, :mac_sampled_calls) * 1_000),
+      "mac_median_us" => median_us(metadata(metadata, :mac_sample_ns)),
+      "bytes_per_insert" =>
+        ratio(metadata(metadata, :bytes_insert), metadata(metadata, :msgs_insert)),
+      "bytes_per_delete" =>
+        ratio(metadata(metadata, :bytes_delete), metadata(metadata, :msgs_delete)),
+      "bytes_per_ack" => ratio(metadata(metadata, :bytes_ack), metadata(metadata, :msgs_ack)),
+      "bytes_total" =>
+        metadata(metadata, :bytes_insert) + metadata(metadata, :bytes_delete) +
+          metadata(metadata, :bytes_ack) + metadata(metadata, :bytes_fetch) +
+          metadata(metadata, :bytes_other)
     }
+  end
+
+  @spec ratio(number(), number()) :: float() | nil
+  defp ratio(_numerator, 0), do: nil
+  defp ratio(numerator, denominator), do: numerator / denominator
+
+  # The median of the sampled authenticator timings, in microseconds. Reported alongside the
+  # mean because the two disagree by a large factor under load, and the median is the one
+  # that describes the computation rather than the scheduling around it.
+  @spec median_us([non_neg_integer()]) :: float() | nil
+  defp median_us([]), do: nil
+
+  defp median_us(samples) do
+    sorted = Enum.sort(samples)
+    count = length(sorted)
+    middle = div(count, 2)
+
+    nanoseconds =
+      if rem(count, 2) == 1 do
+        Enum.at(sorted, middle)
+      else
+        (Enum.at(sorted, middle - 1) + Enum.at(sorted, middle)) / 2
+      end
+
+    nanoseconds / 1_000
+  end
+
+  defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
+    metadata_map =
+      metadata
+      |> to_map()
+      |> Map.merge(derived(metadata))
+      |> Map.merge(%{
+        "byzantine_nodes" => byzantine_nodes,
+        "current_commit" => current_commit,
+        "timestamp" => current_date_unix
+      })
 
     Jason.encode!(metadata_map, pretty: true)
   end
@@ -187,94 +350,35 @@ defmodule Syncordian.Metadata do
   end
 
   @doc """
-  Field-wise sums two metadata records into one.
+  Combines two metadata records into one, field by field.
 
-  Used by the supervisor to aggregate the per-peer records collected after a
-  commit into a single network-wide snapshot. Every counter in the result is the
-  sum of the corresponding counters in `metadata1` and `metadata2`.
+  Used by the supervisor to aggregate the per-peer records collected after a commit into a
+  single network-wide snapshot. Most fields are totals and are summed. Two kinds are not,
+  and combining them wrongly would report a network that never existed:
+
+    * a high-water mark (`#{inspect(@max_merged)}`) is a property of one replica at one
+      moment, so the network-wide value is the largest any peer reported; and
+    * a sample list (`#{inspect(@list_merged)}`) is a set of observations, so the
+      network-wide value is all of them together.
+
+  The rule is applied by walking the field list the record is built from, so a field added
+  there is merged by one of these three rules rather than being silently dropped.
   """
   @spec merge_metadata(metadata(), metadata()) :: metadata()
   def merge_metadata(metadata1, metadata2) do
-    metadata(
-      delete_valid_counter:
-        metadata(metadata1, :delete_valid_counter) +
-          metadata(metadata2, :delete_valid_counter),
-      delete_stash_counter:
-        metadata(metadata1, :delete_stash_counter) +
-          metadata(metadata2, :delete_stash_counter),
-      requeue_counter:
-        metadata(metadata1, :requeue_counter) +
-          metadata(metadata2, :requeue_counter),
-      delete_requeue_limit:
-        metadata(metadata1, :delete_requeue_limit) +
-          metadata(metadata2, :delete_requeue_limit),
-      insert_distance_greater_than_one:
-        metadata(metadata1, :insert_distance_greater_than_one) +
-          metadata(metadata2, :insert_distance_greater_than_one),
-      insert_request_counter:
-        metadata(metadata1, :insert_request_counter) +
-          metadata(metadata2, :insert_request_counter),
-      insert_request_limit_counter:
-        metadata(metadata1, :insert_request_limit_counter) +
-          metadata(metadata2, :insert_request_limit_counter),
-      insert_stash_counter:
-        metadata(metadata1, :insert_stash_counter) +
-          metadata(metadata2, :insert_stash_counter),
-      insert_valid_counter:
-        metadata(metadata1, :insert_valid_counter) +
-          metadata(metadata2, :insert_valid_counter),
-      insert_stash_fail_counter:
-        metadata(metadata1, :insert_stash_fail_counter) +
-          metadata(metadata2, :insert_stash_fail_counter),
-      byzantine_insert_counter:
-        metadata(metadata1, :byzantine_insert_counter) +
-          metadata(metadata2, :byzantine_insert_counter),
-      byzantine_delete_counter:
-        metadata(metadata1, :byzantine_delete_counter) +
-          metadata(metadata2, :byzantine_delete_counter),
-      replay_rejected_counter:
-        metadata(metadata1, :replay_rejected_counter) +
-          metadata(metadata2, :replay_rejected_counter),
-      ack_rejected_counter:
-        metadata(metadata1, :ack_rejected_counter) +
-          metadata(metadata2, :ack_rejected_counter),
-      admission_rejected_counter:
-        metadata(metadata1, :admission_rejected_counter) +
-          metadata(metadata2, :admission_rejected_counter),
-      delete_rejected_counter:
-        metadata(metadata1, :delete_rejected_counter) +
-          metadata(metadata2, :delete_rejected_counter),
-      heap_size: metadata(metadata1, :heap_size) + metadata(metadata2, :heap_size),
-      message_queue_length:
-        metadata(metadata1, :message_queue_length) +
-          metadata(metadata2, :message_queue_length),
-      settle_counter: metadata(metadata1, :settle_counter) + metadata(metadata2, :settle_counter),
-      conflict_detected_counter:
-        metadata(metadata1, :conflict_detected_counter) +
-          metadata(metadata2, :conflict_detected_counter),
-      replacement_issued_counter:
-        metadata(metadata1, :replacement_issued_counter) +
-          metadata(metadata2, :replacement_issued_counter),
-      fetch_request_sent:
-        metadata(metadata1, :fetch_request_sent) + metadata(metadata2, :fetch_request_sent),
-      fetch_served: metadata(metadata1, :fetch_served) + metadata(metadata2, :fetch_served),
-      origin_log_bytes:
-        metadata(metadata1, :origin_log_bytes) + metadata(metadata2, :origin_log_bytes),
-      alias_entries: metadata(metadata1, :alias_entries) + metadata(metadata2, :alias_entries),
-      delete_followed_alias:
-        metadata(metadata1, :delete_followed_alias) +
-          metadata(metadata2, :delete_followed_alias),
-      reissue_superseded_deleted:
-        metadata(metadata1, :reissue_superseded_deleted) +
-          metadata(metadata2, :reissue_superseded_deleted),
-      # A witness that must stay 0 at every peer, so the network-wide value is the maximum
-      # rather than a sum: summing would hide which replica saw a duplicate.
-      live_duplicates_max:
-        max(
-          metadata(metadata1, :live_duplicates_max),
-          metadata(metadata2, :live_duplicates_max)
-        )
-    )
+    Enum.reduce(@field_names, metadata(), fn name, acc ->
+      index = Map.fetch!(@field_index, name)
+      put_elem(acc, index, combine(name, elem(metadata1, index), elem(metadata2, index)))
+    end)
+  end
+
+  @spec combine(atom(), term(), term()) :: term()
+  defp combine(name, value1, value2) do
+    cond do
+      name in @max_merged -> max(value1, value2)
+      name in @list_merged -> value1 ++ value2
+      true -> value1 + value2
+    end
   end
 
   @doc """
@@ -547,4 +651,128 @@ defmodule Syncordian.Metadata do
         alias_entries: entries,
         live_duplicates_max: max(metadata(metadata, :live_duplicates_max), live_duplicates)
       )
+
+  @doc """
+  Records the interleavings this replica is currently holding.
+
+  `newly_seen` is how many of them were not present at the previous observation, and
+  `current` is how many are unresolved now. Called after every applied operation, since that
+  is when the set of conflicts can change, and it is the only place a transient interleaving
+  is visible at all: an interleaving that appears and is repaired between two snapshots
+  leaves no trace in the document.
+  """
+  @spec observe_conflicts(metadata(), non_neg_integer(), non_neg_integer()) :: metadata()
+  def observe_conflicts(metadata, newly_seen, current),
+    do:
+      metadata(metadata,
+        conflicts_observed: metadata(metadata, :conflicts_observed) + newly_seen,
+        concurrent_conflicts: current,
+        max_concurrent_conflicts: max(metadata(metadata, :max_concurrent_conflicts), current)
+      )
+
+  @doc """
+  Records one repaired interleaving: how many applied edits it stood for, and how many
+  milliseconds.
+
+  One sample per conflict that appeared and later disappeared at this replica. A conflict
+  still open when the run ends contributes no sample, so the reported distribution is over
+  repairs that completed, which is what the durations mean.
+  """
+  @spec record_repair(metadata(), non_neg_integer(), non_neg_integer()) :: metadata()
+  def record_repair(metadata, edits, milliseconds),
+    do:
+      metadata(metadata,
+        repair_latency_edits: [edits | metadata(metadata, :repair_latency_edits)],
+        repair_latency_ms: [milliseconds | metadata(metadata, :repair_latency_ms)]
+      )
+
+  @doc """
+  Records how many lines one re-placement had to re-issue.
+
+  A repair costs a whole block rather than a single operation, so this is the amplification
+  factor between conflicts detected and operations produced.
+  """
+  @spec record_reissued_lines(metadata(), non_neg_integer()) :: metadata()
+  def record_reissued_lines(metadata, lines),
+    do:
+      metadata(metadata,
+        reissued_lines_per_conflict: [
+          lines | metadata(metadata, :reissued_lines_per_conflict)
+        ]
+      )
+
+  @doc """
+  Records the position-identifier depth over a replica's document: the deepest identifier,
+  the total depth, and the number of lines it was taken over.
+
+  A gauge, set at each snapshot. The sum and the count travel together so the mean over a
+  network is the mean over its lines.
+  """
+  @spec set_pid_depth(metadata(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          metadata()
+  def set_pid_depth(metadata, depth_max, depth_sum, lines),
+    do:
+      metadata(metadata,
+        pid_depth_max: max(metadata(metadata, :pid_depth_max), depth_max),
+        pid_depth_sum: depth_sum,
+        pid_depth_lines: lines
+      )
+
+  # Wire kinds and authenticator domains, paired with the fields they accumulate into. The
+  # names are the ones `Syncordian.Instrument` reports.
+  @wire_fields [
+    insert: {:bytes_insert, :msgs_insert},
+    delete: {:bytes_delete, :msgs_delete},
+    ack: {:bytes_ack, :msgs_ack},
+    fetch: {:bytes_fetch, :msgs_fetch},
+    other: {:bytes_other, :msgs_other}
+  ]
+
+  @mac_fields [
+    doc: :mac_calls_doc,
+    ins: :mac_calls_ins,
+    del: :mac_calls_del,
+    ack: :mac_calls_ack,
+    adm: :mac_calls_adm,
+    fetch: :mac_calls_fetch
+  ]
+
+  @doc """
+  Folds the process-local cost accumulators of `Syncordian.Instrument` into this record.
+
+  Bytes put on the wire and authenticator computations are paid inside functions that hold
+  no peer state, so they accumulate in the peer's process and are folded in here at each
+  snapshot.
+
+  The fields are *assigned*, not added to. Both the accumulators and this record are
+  cumulative over the life of the same peer, so they hold the same quantity and assignment
+  keeps them equal. It also makes the fold idempotent, which matters because a snapshot may
+  be taken more than once between two reports and a snapshot whose result is discarded must
+  not lose the work it described.
+  """
+  @spec absorb_instruments(metadata()) :: metadata()
+  def absorb_instruments(metadata) do
+    %{wire: wire, mac: mac, mac_time: {samples, nanoseconds, values}} =
+      Syncordian.Instrument.snapshot()
+
+    metadata =
+      Enum.reduce(@wire_fields, metadata, fn {kind, {bytes_field, count_field}}, acc ->
+        {messages, bytes} = Map.get(wire, kind, {0, 0})
+
+        acc
+        |> assign(bytes_field, bytes)
+        |> assign(count_field, messages)
+      end)
+
+    Enum.reduce(@mac_fields, metadata, fn {domain, field}, acc ->
+      assign(acc, field, Map.get(mac, domain, 0))
+    end)
+    |> assign(:mac_sampled_calls, samples)
+    |> assign(:mac_sampled_ns, nanoseconds)
+    |> assign(:mac_sample_ns, values)
+  end
+
+  @spec assign(metadata(), atom(), number()) :: metadata()
+  defp assign(metadata, field, value),
+    do: put_elem(metadata, Map.fetch!(@field_index, field), value)
 end

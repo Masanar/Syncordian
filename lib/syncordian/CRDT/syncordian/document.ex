@@ -245,10 +245,13 @@ defmodule Syncordian.Document do
     applying a burst together yields the same document as applying its members one by
     one in any order.
 
-    Returns `{document, %{applied: n, rejected: n, settled: n, absent: remaining}}`
-    where `absent` holds the entries whose target line is not present yet, keyed by
-    line id — the caller suspends each on `{:line, id}` exactly as the single path
-    does.
+    Returns `{document, %{applied: n, rejected: n, settled: n, settled_ops: [op_id],
+    absent: remaining}}` where `absent` holds the entries whose target line is not
+    present yet, keyed by line id — the caller suspends each on `{:line, id}` exactly
+    as the single path does. `settled_ops` names the lines that settled in this batch,
+    which the caller needs to time settlement (`Syncordian.OpTimes`); the identities are
+    returned rather than stamped here so this function stays a pure function of its
+    arguments.
   """
   @spec apply_acks_to_document(
           Syncordian.Basic_Types.document(),
@@ -259,13 +262,14 @@ defmodule Syncordian.Document do
              applied: non_neg_integer(),
              rejected: non_neg_integer(),
              settled: non_neg_integer(),
+             settled_ops: [Syncordian.Basic_Types.op_id()],
              absent: map()
            }}
   def apply_acks_to_document(document, acks_by_line) when map_size(acks_by_line) == 0,
-    do: {document, %{applied: 0, rejected: 0, settled: 0, absent: %{}}}
+    do: {document, %{applied: 0, rejected: 0, settled: 0, settled_ops: [], absent: %{}}}
 
   def apply_acks_to_document(document, acks_by_line) do
-    do_apply_acks(document, acks_by_line, %{applied: 0, rejected: 0, settled: 0})
+    do_apply_acks(document, acks_by_line, %{applied: 0, rejected: 0, settled: 0, settled_ops: []})
   end
 
   # Walks the document until every targeted line has been visited, then keeps the
@@ -303,11 +307,11 @@ defmodule Syncordian.Document do
           end
       end)
 
-    {line, settled} =
+    {line, settled, settled_ops} =
       if get_line_status(line) == :aura and Enum.all?(get_commit_at(line)) do
-        {set_line_status(line, :settled), 1}
+        {set_line_status(line, :settled), 1, [get_line_op_id(line) | stats.settled_ops]}
       else
-        {line, 0}
+        {line, 0, stats.settled_ops}
       end
 
     {line,
@@ -315,7 +319,8 @@ defmodule Syncordian.Document do
        stats
        | applied: stats.applied + applied,
          rejected: stats.rejected + rejected,
-         settled: stats.settled + settled
+         settled: stats.settled + settled,
+         settled_ops: settled_ops
      }}
   end
 

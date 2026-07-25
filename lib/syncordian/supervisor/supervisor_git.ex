@@ -483,6 +483,12 @@ defmodule Syncordian.Supervisor do
     Syncordian.Byzantine.generate_boundary_secret()
     |> Syncordian.Byzantine.install_boundary_secret!()
 
+    # Operation timing spans two processes, the author's and each applying replica's, so its
+    # timestamps cannot live in either peer's own state. The table is created before any peer
+    # starts, and discards whatever a previous run left, so a reported latency distribution
+    # belongs to exactly one run (Syncordian.OpTimes).
+    Syncordian.OpTimes.create()
+
     # Instance all the 30 peers independent  the number of commits in the test file
     {_, authors_list} = group_by_author(parsed_git_log)
 
@@ -615,6 +621,10 @@ defmodule Syncordian.Supervisor do
             final_settle_ms + 1_000
           )
 
+          # After the same settle window, so the samples cover operations that had actually
+          # settled by the end of the run rather than cutting the tail off mid-flight.
+          Process.send_after(self(), {:dump_operation_latency}, final_settle_ms + 1_000)
+
           # The raw dump feeds the convergence check's no-:aura assertion, so it must
           # capture the post-settle fixpoint like the document dumps above — written
           # at limit-reached time it races the final commit's in-flight acks and
@@ -682,6 +692,22 @@ defmodule Syncordian.Supervisor do
           commit_number,
           peer_str
         )
+
+        supervisor_loop(supervisor)
+
+      # Writes the run's operation-latency samples. Separate from the metadata snapshots
+      # because the samples are whole-run and per operation rather than per commit and per
+      # peer, and because pairing an issue with its applies needs the run to be over. The
+      # label carries the CRDT and the number of distrusted nodes, so a sweep leaves one
+      # artifact per point instead of overwriting a single file.
+      {:dump_operation_latency} ->
+        label =
+          "#{get_peer_module_string(supervisor)}_byz_#{supervisor(supervisor, :byzantine_nodes)}"
+
+        case Syncordian.OpTimes.dump(label) do
+          {:ok, path} -> IO.puts("Operation latency samples written to #{path}")
+          :inactive -> IO.puts("No operation timing recorded for this run")
+        end
 
         supervisor_loop(supervisor)
 

@@ -13,10 +13,18 @@
 #
 #     mix run --no-start scripts/interleaving_smoke.exs
 
+require Syncordian.Metadata
 alias Syncordian.Peer
 
 File.mkdir_p!("debug/documents/syncordian")
 File.mkdir_p!("debug/documents/syncordian/raw")
+
+# This is the only driver in the tree that reliably produces a real interleaving, so it is
+# also where the instrumentation of transient interleaving and repair is checked. The git
+# replays serialize authoring behind a per-commit barrier, so two writers there never
+# allocate into the same empty interval and every conflict counter stays at zero: a run that
+# reports no interleaving is describing its workload, not the repair protocol.
+Syncordian.OpTimes.create()
 
 # Delay cross-peer broadcasts so both peers author their full blocks concurrently, before
 # either sees the other. Re-placement traffic issued afterwards rides the same delay and
@@ -86,13 +94,91 @@ runs =
 contiguous? = length(runs) <= 2 and length(Enum.uniq(runs)) == length(runs)
 all_present? = Enum.sort(lines) == Enum.sort(apples ++ berries)
 
+# Collect what each peer measured, and merge into the network-wide view the supervisor would
+# report. Every peer answers with its own record, so a field that only one replica can see
+# (the mover's repair counters, the observer's conflict gauges) is still present in the sum.
+metadata =
+  Enum.reduce([p0, p1], Syncordian.Metadata.metadata(), fn pid, acc ->
+    send(pid, {:request_metadata, self()})
+
+    receive do
+      {:receive_metadata_from_peer, peer_metadata, _pid} ->
+        Syncordian.Metadata.merge_metadata(acc, peer_metadata)
+    after
+      2_000 -> acc
+    end
+  end)
+
+measured = Syncordian.Metadata.to_map(metadata)
+latency = Syncordian.OpTimes.samples()
+
+mean = fn
+  [] -> nil
+  values -> Float.round(Enum.sum(values) / length(values), 2)
+end
+
+IO.puts("\n=============== MEASURED ===============")
+
+IO.puts(
+  "interleavings observed        : #{measured["conflicts_observed"]} " <>
+    "(most held at once: #{measured["max_concurrent_conflicts"]}, " <>
+    "unresolved now: #{measured["concurrent_conflicts"]})"
+)
+
+IO.puts(
+  "repairs completed             : #{length(measured["repair_latency_edits"])} " <>
+    "(mean #{inspect(mean.(measured["repair_latency_edits"]))} edits, " <>
+    "#{inspect(mean.(measured["repair_latency_ms"]))} ms)"
+)
+
+IO.puts(
+  "lines re-issued per repair    : #{inspect(measured["reissued_lines_per_conflict"])} " <>
+    "(live duplicates: #{measured["live_duplicates_max"]})"
+)
+
+IO.puts(
+  "wire bytes by kind            : insert #{measured["bytes_insert"]}/#{measured["msgs_insert"]} msg, " <>
+    "delete #{measured["bytes_delete"]}/#{measured["msgs_delete"]} msg, " <>
+    "ack #{measured["bytes_ack"]}/#{measured["msgs_ack"]} msg"
+)
+
+IO.puts(
+  "authenticator calls           : doc #{measured["mac_calls_doc"]}, ins #{measured["mac_calls_ins"]}, " <>
+    "del #{measured["mac_calls_del"]}, ack #{measured["mac_calls_ack"]}, " <>
+    "adm #{measured["mac_calls_adm"]} (#{measured["mac_sampled_calls"]} timed)"
+)
+
+IO.puts(
+  "position depth               : max #{measured["pid_depth_max"]} over " <>
+    "#{measured["pid_depth_lines"]} lines"
+)
+
+IO.puts(
+  "operation latency            : #{latency.operations} issued, " <>
+    "#{latency.applies} applies (mean #{inspect(mean.(latency.apply_latency_us))} us), " <>
+    "#{latency.settles} settles (mean #{inspect(mean.(latency.settle_latency_us))} us)"
+)
+
+# The instrumentation is only worth reporting if it actually fired. This smoke forces one
+# interleaving, so a run that measures none has lost the measurement, not the anomaly.
+measured_interleaving? =
+  measured["conflicts_observed"] > 0 and measured["repair_latency_edits"] != [] and
+    measured["reissued_lines_per_conflict"] != []
+
+measured_cost? =
+  measured["bytes_insert"] > 0 and measured["bytes_ack"] > 0 and
+    measured["mac_calls_ins"] > 0 and measured["pid_depth_max"] > 0 and
+    latency.applies > 0
+
 IO.puts("\n================ RESULT ================")
 IO.puts("convergent (peer_0 == peer_1) : #{converged?}")
 IO.puts("all 8 lines present           : #{all_present?}")
 IO.puts("per-author contiguity         : #{contiguous?}  (block runs: #{inspect(runs)})")
+IO.puts("interleaving instrumented     : #{measured_interleaving?}")
+IO.puts("cost instrumented             : #{measured_cost?}")
 
-if converged? and contiguous? and all_present? do
-  IO.puts("PASS ✅  no interleaving remains; documents converged")
+if converged? and contiguous? and all_present? and measured_interleaving? and measured_cost? do
+  IO.puts("PASS ✅  no interleaving remains; documents converged; metrics recorded")
 else
   IO.puts("FAIL ❌")
   System.halt(1)

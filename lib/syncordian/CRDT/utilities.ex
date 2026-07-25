@@ -72,9 +72,18 @@ defmodule Syncordian.Utilities do
   plain `send`: `Process.send_after/3` with delay 0 has the same delivery semantics
   but pays timer bookkeeping on every message, which is pure overhead on the ack/insert
   storm paths.
+
+  Every delivery is accounted to the sending process's wire counters
+  (`Syncordian.Instrument`), one message per recipient. A broadcast to `n` peers is `n`
+  messages on the wire, so the network load a run reports is the load a real deployment
+  would carry rather than the number of times the peer called this function. The message is
+  serialized once for the measurement, not once per recipient, because every recipient
+  receives the same term.
   """
   @spec broadcast_to([pid()], any, any) :: any
   def broadcast_to(pids, message, range) do
+    account_broadcast(pids, message)
+
     case range do
       %Range{first: 0, last: 0} ->
         Enum.each(pids, fn pid -> send(pid, message) end)
@@ -82,6 +91,36 @@ defmodule Syncordian.Utilities do
       _ ->
         Enum.each(pids, fn pid -> Process.send_after(pid, message, Enum.random(range)) end)
     end
+  end
+
+  @spec account_broadcast([pid()], any) :: :ok
+  defp account_broadcast([], _message), do: :ok
+
+  defp account_broadcast(pids, message) do
+    kind = Syncordian.Instrument.wire_kind(message)
+    bytes = :erlang.external_size(message)
+    recipients = length(pids)
+
+    Syncordian.Instrument.record_message(kind, bytes * recipients, recipients)
+  end
+
+  @doc """
+  Sends one message to one process, accounting it to the sender's wire counters.
+
+  Not every message is a broadcast. A retransmission request goes to the operation's origin
+  alone, and the answer goes back to the requester alone. Those are as real a cost as a
+  broadcast, and leaving them out would understate the price of recovering a lost operation,
+  which is exactly the quantity the anti-entropy path exists to be judged on.
+  """
+  @spec send_measured(pid(), any) :: :ok
+  def send_measured(pid, message) do
+    Syncordian.Instrument.record_message(
+      Syncordian.Instrument.wire_kind(message),
+      :erlang.external_size(message)
+    )
+
+    send(pid, message)
+    :ok
   end
 
   @doc """

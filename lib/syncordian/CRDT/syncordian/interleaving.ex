@@ -145,6 +145,47 @@ defmodule Syncordian.Interleaving do
     |> Enum.map(fn {{writer, session}, lines} -> build_block(writer, session, lines) end)
   end
 
+  @typedoc """
+  The stable identity of an authored block: its writer and the interval it was authored
+  into. This is exactly the key `blocks/1` groups by, and it is immutable for the life of
+  the block. A block's lines change as the document evolves, so anything derived from them
+  (its head, its span, its parents) is not an identity that can be followed over time.
+  """
+  @type block_id :: {Syncordian.Basic_Types.peer_id(), Syncordian.Basic_Types.session() | nil}
+
+  @typedoc """
+  One unresolved interleaving, named by the two blocks that interleave, ordered by writer
+  so the pair does not depend on which block was examined first.
+  """
+  @type conflict_id :: {block_id(), block_id()}
+
+  @doc """
+  Detects every interleaving conflict in `document` and returns both the conflicts and the
+  re-placement instructions that resolve them (`sec:formal-intention`).
+
+  Replica-independent: the result is a pure function of the converged document. The peer
+  applies only those replacements whose `writer` is itself, and it uses the conflict list to
+  observe interleavings it is not the one to repair. The two are computed together because
+  every replica runs this after every applied operation, and reconstructing the blocks twice
+  was the dominant cost of doing so.
+  """
+  @spec analyze(Syncordian.Basic_Types.document()) :: %{
+          replacements: [replacement()],
+          conflicts: [conflict_id()]
+        }
+  def analyze(document) do
+    groups =
+      document
+      |> blocks()
+      |> Enum.group_by(fn b -> {b.left_anchor, b.right_anchor} end)
+
+    %{
+      replacements:
+        Enum.flat_map(groups, fn {_anchors, g} -> group_replacements(g, document) end),
+      conflicts: Enum.flat_map(groups, fn {_anchors, g} -> group_conflicts(g) end)
+    }
+  end
+
   @doc """
   Detects every interleaving conflict in `document` and returns the re-placement
   instructions that resolve them (`sec:formal-intention`). Replica-independent: the result
@@ -152,12 +193,20 @@ defmodule Syncordian.Interleaving do
   is itself.
   """
   @spec detect_replacements(Syncordian.Basic_Types.document()) :: [replacement()]
-  def detect_replacements(document) do
-    document
-    |> blocks()
-    |> Enum.group_by(fn b -> {b.left_anchor, b.right_anchor} end)
-    |> Enum.flat_map(fn {_anchors, group} -> group_replacements(group, document) end)
-  end
+  def detect_replacements(document), do: analyze(document).replacements
+
+  @doc """
+  The interleavings currently present in `document`, each named by the pair of blocks that
+  interleave.
+
+  A conflict is reported at every replica that can see it, whether or not that replica is
+  the one that repairs it, so counting them measures how much interleaving a run actually
+  exhibits rather than how much repair work one peer did. Following the same conflict across
+  successive documents is what makes it possible to say how long a repair took, which is why
+  a conflict is named by the two blocks' immutable identities and not by their current lines.
+  """
+  @spec conflicts(Syncordian.Basic_Types.document()) :: [conflict_id()]
+  def conflicts(document), do: analyze(document).conflicts
 
   @doc """
   Convenience predicate: true iff `document` contains at least one unresolved interleaving
@@ -246,6 +295,24 @@ defmodule Syncordian.Interleaving do
       end)
     end
   end
+
+  # The conflicting pairs within one parent-interval group. The same overlap test the
+  # re-placement rule uses, reported symmetrically: `group_replacements/2` emits one entry per
+  # block that has to move, collapsing all the blocks it overlaps into a single instruction,
+  # whereas an interleaving count has to name each interleaved pair once. Ordering the pair by
+  # writer makes the identity independent of the order the group was examined in, so the same
+  # conflict observed at two replicas, or at one replica across two applies, is the same value.
+  @spec group_conflicts([block()]) :: [conflict_id()]
+  defp group_conflicts(group) do
+    for a <- group,
+        b <- group,
+        a.writer < b.writer,
+        spans_overlap?(a, b),
+        do: {block_id(a), block_id(b)}
+  end
+
+  @spec block_id(block()) :: block_id()
+  defp block_id(block), do: {block.writer, {block.left_anchor, block.right_anchor}}
 
   # Two blocks' live position spans overlap iff neither lies entirely to one side of the
   # other. Both `lines` lists are position-sorted, so the span is (first, last).

@@ -93,6 +93,32 @@ defmodule Syncordian.PathId do
   def sentinel?({:path, _}), do: false
 
   @doc """
+  Returns the number of segments in a position identifier.
+
+  Depth is the space a position occupies and the work a comparison between two
+  positions costs, so it is the quantity that says whether identifiers are growing
+  under a workload. An identifier deepens by one only when a peer has to place a line
+  into an interval that the current level cannot subdivide, so the depth over a whole
+  document is a direct measurement of how much the allocation strategy is being pushed.
+  The boundary sentinels bound the document rather than holding content, so their depth
+  is zero.
+
+  ## Examples
+
+      iex> alias Syncordian.PathId, as: P
+      iex> P.depth(P.infimum())
+      0
+      iex> P.depth({:path, [{4, 1}]})
+      1
+      iex> P.depth({:path, [{4, 1}, {7, 2}]})
+      2
+  """
+  @spec depth(t) :: non_neg_integer
+  def depth(:infimum), do: 0
+  def depth(:supremum), do: 0
+  def depth({:path, segments}), do: length(segments)
+
+  @doc """
   Three-way comparison: returns `:lt`, `:eq`, or `:gt`.
 
   ## Examples

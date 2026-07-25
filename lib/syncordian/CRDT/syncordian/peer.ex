@@ -107,7 +107,14 @@ defmodule Syncordian.Peer do
     # Test-only fault injector: the number of inbound insert/delete broadcasts to silently
     # drop before processing, simulating a fair-lossy channel. Always 0 in a real run; set
     # by the recovery tests to force the loss that the fetch path then repairs.
-    drop_next_broadcasts: 0
+    drop_next_broadcasts: 0,
+    # Measurement only, no protocol role. The interleavings this replica currently sees,
+    # each mapped to when it was first seen: {edit_count, monotonic milliseconds}. A
+    # transient interleaving leaves no trace in the document once repaired, so the only way
+    # to measure how long one stood is to remember when it appeared and subtract when it
+    # goes. Entries are dropped as their conflicts are resolved, so the map holds only what
+    # is currently unresolved (see observe_conflicts/2).
+    conflict_seen: %{}
   )
 
   @type peer ::
@@ -134,7 +141,11 @@ defmodule Syncordian.Peer do
               optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.op_id()
             },
             op_log: Syncordian.OpLog.t() | nil,
-            drop_next_broadcasts: non_neg_integer()
+            drop_next_broadcasts: non_neg_integer(),
+            conflict_seen: %{
+              optional(Syncordian.Interleaving.conflict_id()) =>
+                {non_neg_integer(), non_neg_integer()}
+            }
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -386,6 +397,38 @@ defmodule Syncordian.Peer do
   # it supersedes in the same step, so this is the witness of the single-live-copy invariant
   # rather than a quantity that varies. Computed only at a metadata snapshot, over the alias
   # map, which holds one entry per moved line.
+  # Position-identifier depth over this replica's document: the deepest identifier, the total
+  # depth, and the number of lines it was taken over. Depth is how much space an identifier
+  # occupies and how much a comparison between two of them costs, so it is the quantity that
+  # says whether the allocation strategy is degrading under a workload. Taken over the whole
+  # document, tombstones included, because a tombstoned line still holds its identifier and
+  # still has to be compared against.
+  @spec pid_depth_stats(peer()) :: {non_neg_integer(), non_neg_integer(), non_neg_integer()}
+  defp pid_depth_stats(peer) do
+    get_peer_document(peer)
+    |> Enum.reduce({0, 0, 0}, fn line, {deepest, total, lines} ->
+      depth = Syncordian.PathId.depth(get_line_id(line))
+      {max(deepest, depth), total + depth, lines + 1}
+    end)
+  end
+
+  # Everything a snapshot records that is not an event counter: the memory footprint, the
+  # origin-log size, the alias witnesses, the identifier depth, and the process-local wire
+  # and authenticator accumulators. Shared by the per-edit and the per-commit snapshot so the
+  # two report the same set of fields.
+  @spec snapshot_gauges(peer(), integer()) :: Syncordian.Metadata.metadata()
+  defp snapshot_gauges(peer, document_bytes) do
+    {deepest, total_depth, lines} = pid_depth_stats(peer)
+
+    peer
+    |> get_metadata()
+    |> update_memory_info(get_peer_pid(peer), document_bytes)
+    |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
+    |> set_alias_gauges(map_size(get_aliases(peer)), count_live_duplicates(peer))
+    |> set_pid_depth(deepest, total_depth, lines)
+    |> absorb_instruments()
+  end
+
   @spec count_live_duplicates(peer()) :: non_neg_integer()
   defp count_live_duplicates(peer) do
     Enum.count(get_aliases(peer), fn {old_op_id, new_op_id} ->
@@ -461,7 +504,7 @@ defmodule Syncordian.Peer do
 
         origin_pid ->
           alpha = create_admission(get_boundary_secret(peer), :fetch, {requester_id, want})
-          send(origin_pid, {:fetch_request, requester_id, want, alpha})
+          send_measured(origin_pid, {:fetch_request, requester_id, want, alpha})
           get_metadata(peer) |> inc_fetch_request_sent |> update_metadata(peer)
       end
     end
@@ -730,17 +773,10 @@ defmodule Syncordian.Peer do
   defp do_save_peer_metadata_edit(peer) do
     file_prefix = "edit"
     folder = "syncordian/"
-    peer_pid = get_peer_pid(peer)
     current_edit = get_edit_count(peer)
     nodes_size = get_document_byte_size(peer)
 
-    peer_up =
-      peer
-      |> get_metadata()
-      |> update_memory_info(peer_pid, nodes_size)
-      |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
-      |> set_alias_gauges(map_size(get_aliases(peer)), count_live_duplicates(peer))
-      |> update_metadata(peer)
+    peer_up = snapshot_gauges(peer, nodes_size) |> update_metadata(peer)
 
     # The file write happens off the peer's critical path: this peer saves a metadata
     # snapshot on EVERY edit it applies, and a synchronous write (tens of ms on a synced
@@ -847,7 +883,8 @@ defmodule Syncordian.Peer do
       |> Enum.reverse()
       |> Enum.group_by(fn {{line_id, _acker_peer_id, _ack_tag}, _alpha} -> line_id end)
 
-    {document, %{settled: settled, rejected: tag_rejected, absent: absent}} =
+    {document,
+     %{settled: settled, settled_ops: settled_ops, rejected: tag_rejected, absent: absent}} =
       apply_acks_to_document(get_peer_document(peer), acks_by_line)
 
     peer =
@@ -856,6 +893,11 @@ defmodule Syncordian.Peer do
       |> inc_counter_times(tag_rejected, &inc_ack_rejected_counter/1)
       |> inc_counter_times(settled, &inc_settle_counter/1)
       |> update_metadata(peer)
+
+    # Settlement is the end of an operation's life: every peer has applied it and said so.
+    # Stamped here, at the replica that observes the checklist fill, which for a line's own
+    # author is where its settle latency is measured from its issue.
+    Enum.each(settled_ops, &Syncordian.OpTimes.record_settle/1)
 
     peer = update_peer_document(document, peer)
 
@@ -948,6 +990,11 @@ defmodule Syncordian.Peer do
          superseded
        ) do
     peer_id = get_peer_id(peer)
+
+    # The operation reached this replica's document. One stamp per operation per replica, so
+    # apply latency is measured everywhere the operation landed rather than at one observer
+    # (`Syncordian.OpTimes`).
+    Syncordian.OpTimes.record_apply(op_id, peer_id)
 
     # Acknowledge the insertion to the whole network, not just the author: acks are
     # broadcast so every peer unions this acknowledgement into its own copy's checklist and
@@ -1131,12 +1178,65 @@ defmodule Syncordian.Peer do
   defp apply_interleaving_replacements(peer) do
     my_id = get_peer_id(peer)
 
-    get_peer_document(peer)
-    |> Interleaving.detect_replacements()
-    |> Enum.filter(fn replacement -> replacement.writer == my_id end)
-    |> Enum.reduce(peer, fn replacement, peer_acc ->
-      reissue_replacement(peer_acc, replacement)
-    end)
+    %{replacements: replacements, conflicts: conflicts} =
+      Interleaving.analyze(get_peer_document(peer))
+
+    peer = track_conflicts(peer, conflicts)
+
+    case Enum.filter(replacements, fn replacement -> replacement.writer == my_id end) do
+      [] ->
+        peer
+
+      mine ->
+        peer =
+          Enum.reduce(mine, peer, fn replacement, acc -> reissue_replacement(acc, replacement) end)
+
+        # Observe again, because the repair just changed this replica's own document. Without
+        # this the conflicts a peer resolves itself stay recorded as open until some unrelated
+        # operation arrives, and a peer whose repair is the last thing to happen in a run
+        # reports an unresolved interleaving in a document that has none. The extra pass is
+        # paid only when this peer actually repaired something, which is rare.
+        track_conflicts(peer, Interleaving.conflicts(get_peer_document(peer)))
+    end
+  end
+
+  # Measurement of transient interleaving, with no effect on the protocol.
+  #
+  # Every replica sees every interleaving its own document exhibits, whether or not it is the
+  # replica that repairs it, so this is where the number of interleavings a run actually
+  # exhibited is observable. The repair counters cannot report it: they are bumped only by the
+  # lower-priority writer, and they say how much repair work was done rather than how much
+  # anomaly existed.
+  #
+  # Duration is the other half. An interleaving that appears and is repaired between two
+  # snapshots leaves nothing behind in the document, so it can only be measured by holding on
+  # to when each conflict was first seen and subtracting when it goes. Conflicts are named by
+  # the two blocks' immutable identities (Syncordian.Interleaving.conflict_id/0), which is what
+  # makes "the same conflict" meaningful across applies: a conflict whose blocks lose or gain
+  # lines is still that conflict, and would otherwise read as one repair and one new anomaly.
+  @spec track_conflicts(peer(), [Syncordian.Interleaving.conflict_id()]) :: peer()
+  defp track_conflicts(peer, conflicts) do
+    seen = peer(peer, :conflict_seen)
+    open = MapSet.new(conflicts)
+    now = System.monotonic_time(:millisecond)
+    edits = get_edit_count(peer)
+
+    appeared = Enum.reject(conflicts, &Map.has_key?(seen, &1))
+    {resolved, still_open} = Map.split_with(seen, fn {c, _} -> not MapSet.member?(open, c) end)
+
+    metadata =
+      resolved
+      |> Enum.reduce(get_metadata(peer), fn {_conflict, {first_edit, first_ms}}, acc ->
+        record_repair(acc, edits - first_edit, now - first_ms)
+      end)
+      |> observe_conflicts(length(appeared), MapSet.size(open))
+
+    conflict_seen =
+      Enum.reduce(appeared, still_open, fn conflict, acc ->
+        Map.put(acc, conflict, {edits, now})
+      end)
+
+    peer(update_metadata(metadata, peer), conflict_seen: conflict_seen)
   end
 
   # Re-issues the lower-priority block this peer authored as a fresh contiguous chain inside
@@ -1158,6 +1258,11 @@ defmodule Syncordian.Peer do
     peer =
       get_metadata(peer)
       |> inc_conflict_detected_counter()
+      # One repair re-issues the whole block, not one line, so the cost of resolving an
+      # interleaving is this many operations rather than one. Recorded per repair so the
+      # amplification can be reported as a distribution: a run's worst repair matters more
+      # than its average when the question is what a repair costs.
+      |> record_reissued_lines(length(moving_lines))
       |> update_metadata(peer)
 
     {peer, _last_left} =
@@ -1536,6 +1641,11 @@ defmodule Syncordian.Peer do
         alpha = create_admission(get_boundary_secret(peer), :ins, insert_payload)
         message = {:receive_insert_broadcast, insert_payload, alpha}
 
+        # The start of the operation's life, for the latency measurement: the moment its
+        # author puts it on the wire. Everything the harness reports as a latency is measured
+        # from here (`Syncordian.OpTimes`).
+        Syncordian.OpTimes.record_issue(elem(insert_payload, 5))
+
         peer
         |> record_own_op(:ins, elem(insert_payload, 5), message)
         |> perform_broadcast_peer(message)
@@ -1575,7 +1685,7 @@ defmodule Syncordian.Peer do
 
             case :global.whereis_name(requester_id) do
               :undefined -> :ok
-              requester_pid -> Enum.each(messages, &send(requester_pid, &1))
+              requester_pid -> Enum.each(messages, &send_measured(requester_pid, &1))
             end
 
             get_metadata(peer)
@@ -1850,6 +1960,15 @@ defmodule Syncordian.Peer do
         send(reply_pid, {:content_hash, ref, hash})
         loop(peer)
 
+      # Same snapshot as {:supervisor_request_metadata}, answered to an arbitrary caller
+      # rather than to the registered supervisor. Smoke tests and unit tests drive peers
+      # without a supervisor, and reading what a peer measured is the only way to check that
+      # a metric fired at all; there is no way to see it in the document afterwards.
+      {:request_metadata, reply_to} ->
+        metadata = snapshot_gauges(peer, get_document_byte_size(peer))
+        send(reply_to, {:receive_metadata_from_peer, metadata, get_peer_pid(peer)})
+        update_metadata(metadata, peer) |> loop()
+
       # ✅
       {:request_live_view_document, live_view_pid} ->
         handler_function = fn
@@ -1893,19 +2012,13 @@ defmodule Syncordian.Peer do
       # ✅
       {:supervisor_request_metadata} ->
         # THIS IS EXACTLY THE SAME AS IN FUGUE, function?
-        peer_pid = get_peer_pid(peer)
         document_size = get_document_byte_size(peer)
 
-        updated_memory_metadata =
-          peer
-          |> get_metadata()
-          |> update_memory_info(peer_pid, document_size)
-          |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
-          |> set_alias_gauges(map_size(get_aliases(peer)), count_live_duplicates(peer))
+        updated_memory_metadata = snapshot_gauges(peer, document_size)
 
         send(
           get_peer_supervisor_pid(peer),
-          {:receive_metadata_from_peer, updated_memory_metadata, peer_pid}
+          {:receive_metadata_from_peer, updated_memory_metadata, get_peer_pid(peer)}
         )
 
         update_metadata(updated_memory_metadata, peer)

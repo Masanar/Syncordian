@@ -36,10 +36,13 @@ defmodule Syncordian.AckSignatureTest do
       assert a == b
     end
 
-    test "the tag is bound to the acknowledging peer id (no impersonation)" do
+    test "a captured tag cannot be re-attributed to another peer id" do
       line = acked_line()
       tag = Byzantine.create_tag_ack(get_signature(line), get_line_op_id(line), @peer_id)
-      # A captured response cannot be replayed under a different peer's identity.
+      # This is field binding, not origin authentication. A response observed on the
+      # network cannot be replayed under a different peer's identity, but any holder of
+      # the boundary secret can mint a fresh valid tag for any peer id it likes. See
+      # Syncordian.InsiderScopeTest for that non-goal (prop:insider in the paper).
       refute Byzantine.check_tag_ack(tag, line, 9)
     end
 

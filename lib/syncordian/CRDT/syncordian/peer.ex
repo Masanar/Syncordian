@@ -17,6 +17,7 @@ defmodule Syncordian.Peer do
   import Syncordian.Line_Object
   import Syncordian.Utilities
   alias Syncordian.PendingOps
+  alias Syncordian.OpLog
   alias Syncordian.SeenOps
   alias Syncordian.Interleaving
   @delete_limit 10_000
@@ -36,6 +37,16 @@ defmodule Syncordian.Peer do
   # operation, while the live buffer stays bounded by @dependency_wait_horizon * peers.
   # This replaces the previous unjustified @max_insertion_attempts constant.
   @dependency_wait_horizon 5_000
+  # Anti-entropy soft threshold, in applied edits (Syncordian.PendingOps.sweep/3): a
+  # suspended operation whose dependency has not arrived within this many edits triggers a
+  # targeted retransmission request to the operation's origin, rather than being discarded.
+  # Sized at a fifth of the reorder scale, so an ordinary in-flight reorder is resolved by
+  # normal delivery long before a fetch is ever issued. Overridable per run so tests can
+  # exercise recovery without pumping thousands of edits.
+  @fetch_soft_threshold div(@dependency_wait_horizon, 5)
+  # Cadence of the periodic anti-entropy sweep. The soft threshold above is measured in
+  # edits (deterministic); this only sets how often the peer checks for due retransmissions.
+  @fetch_sweep_interval_ms 100
   # Local edits arriving from the supervisor reference git indices that may not be
   # materialized in this replica yet (the referenced line's insert is still in flight from
   # another peer). Such an edit is re-queued with a small delay — instead of hot-spinning
@@ -82,7 +93,15 @@ defmodule Syncordian.Peer do
     # their stored signature. It is the receiver's identity locator: an incoming insert
     # names its authored parents by op_id and a delete names its target by op_id, and
     # this map resolves each to the local line (see get_line_by_op_id/2).
-    op_index: %{}
+    op_index: %{},
+    # Origin log of this peer's own authored broadcasts (Syncordian.OpLog), keyed by op_id.
+    # It lets the peer retransmit any operation it authored, verbatim, when a replica that
+    # is missing it asks (the anti-entropy fetch path).
+    op_log: nil,
+    # Test-only fault injector: the number of inbound insert/delete broadcasts to silently
+    # drop before processing, simulating a fair-lossy channel. Always 0 in a real run; set
+    # by the recovery tests to force the loss that the fetch path then repairs.
+    drop_next_broadcasts: 0
   )
 
   @type peer ::
@@ -104,7 +123,9 @@ defmodule Syncordian.Peer do
             broadcast_pids: [pid()] | nil,
             op_index: %{
               optional(Syncordian.Basic_Types.op_id()) => Syncordian.Basic_Types.line_id()
-            }
+            },
+            op_log: Syncordian.OpLog.t() | nil,
+            drop_next_broadcasts: non_neg_integer()
           )
 
   ############################# Peer Data Structure Interface ############################
@@ -234,31 +255,18 @@ defmodule Syncordian.Peer do
   end
 
   # Suspends an undeliverable operation against the event it is waiting for, stamping it
-  # with the current edit count for staleness reclamation, then reclaims any entry that has
-  # exceeded @dependency_wait_horizon edits. Each reclaimed (abandoned) entry bumps the
-  # given metadata counter, so the evaluation plots that previously counted
-  # counter-exhausted retries now count horizon-abandoned operations instead. Returns the
+  # with the current edit count so the anti-entropy sweep can age it. A suspended operation
+  # is never discarded here: a forged operation cannot reach this path (it is rejected at
+  # admission), so every suspended entry is a genuine operation whose dependency will
+  # arrive by normal delivery or by a retransmission (run_fetch_sweep/1). Returns the
   # updated peer.
-  @spec suspend_operation(
-          peer(),
-          term(),
-          Syncordian.PendingOps.dependency(),
-          (Syncordian.Metadata.metadata() -> Syncordian.Metadata.metadata())
-        ) :: peer()
-  defp suspend_operation(peer, payload, dependency, drop_counter) do
-    edit_count = get_edit_count(peer)
-
-    {dropped, pending} =
+  @spec suspend_operation(peer(), term(), Syncordian.PendingOps.dependency()) :: peer()
+  defp suspend_operation(peer, payload, dependency) do
+    pending =
       get_pending(peer)
-      |> PendingOps.suspend(payload, dependency, edit_count)
-      |> PendingOps.gc(edit_count, @dependency_wait_horizon)
+      |> PendingOps.suspend(payload, dependency, get_edit_count(peer))
 
-    metadata =
-      Enum.reduce(1..dropped//1, get_metadata(peer), fn _, m -> drop_counter.(m) end)
-
-    peer
-    |> then(&update_metadata(metadata, &1))
-    |> then(&update_pending(pending, &1))
+    update_pending(pending, peer)
   end
 
   # Suspends an admitted insert whose clock gate passed but one authored parent is not
@@ -278,8 +286,7 @@ defmodule Syncordian.Peer do
     |> update_metadata(peer)
     |> suspend_operation(
       {:receive_insert_broadcast, insert_payload, alpha},
-      {:line, missing_parent_op_id},
-      &inc_insert_request_limit_counter/1
+      {:line, missing_parent_op_id}
     )
     |> loop
   end
@@ -321,6 +328,104 @@ defmodule Syncordian.Peer do
       line_id -> get_document_line_by_line_id(get_peer_document(peer), line_id)
     end
   end
+
+  # --- Origin log and anti-entropy fetch (Syncordian.OpLog) --------------------------
+  #
+  # Delivery under a fair-lossy network. A suspended operation is never discarded: a
+  # forged operation cannot reach the buffer (it is rejected at admission), so every
+  # suspended entry is a genuine operation whose dependency will arrive. When a dependency
+  # is delayed past the soft threshold, the waiting replica asks the *origin* of the
+  # missing operation to retransmit it. Each peer keeps an origin log of exactly the
+  # broadcasts it authored, so it can re-send any of them verbatim; a re-sent copy travels
+  # the ordinary receive path, where the replay and duplicate checks make redundancy
+  # harmless.
+
+  @spec get_op_log(peer()) :: Syncordian.OpLog.t()
+  defp get_op_log(peer), do: peer(peer, :op_log)
+
+  # Records one of this peer's own authored broadcasts in the origin log so it can be
+  # retransmitted on request. `message` is the exact broadcast tuple put on the wire.
+  @spec record_own_op(peer(), :ins | :del, Syncordian.Basic_Types.op_id(), term()) :: peer()
+  defp record_own_op(peer, kind, op_id, message),
+    do: peer(peer, op_log: OpLog.put(get_op_log(peer), kind, op_id, message))
+
+  # Periodic anti-entropy sweep. Asks Syncordian.PendingOps which suspended dependencies
+  # have waited past the soft threshold, and issues one targeted retransmission request per
+  # due dependency to the operation's origin. Runs on a self-scheduled cadence, so it fires
+  # even while the peer is only authoring (and not itself suspending) operations.
+  @spec run_fetch_sweep(peer()) :: peer()
+  defp run_fetch_sweep(peer) do
+    {due_deps, pending} =
+      PendingOps.sweep(get_pending(peer), get_edit_count(peer), fetch_soft_threshold())
+
+    Enum.reduce(due_deps, update_pending(pending, peer), &issue_fetch(&2, &1))
+  end
+
+  # Turns one due dependency into a retransmission request, addressed to the origin peer of
+  # the missing operation. A clock gap asks for the writer's inserts of the missing progress
+  # ranks; a missing line named by op_id asks for that single operation. A missing line
+  # named by position (an acknowledgement waiter) has no known origin, so it is left to
+  # normal delivery.
+  @spec issue_fetch(peer(), Syncordian.PendingOps.dependency()) :: peer()
+  defp issue_fetch(peer, {:clock, writer, needed}) do
+    lo = Enum.at(get_peer_vector_clock(peer), writer) + 1
+    if lo <= needed, do: send_fetch(peer, writer, {:ops_of, writer, lo, needed}), else: peer
+  end
+
+  defp issue_fetch(peer, {:line, {writer, seq}}) when is_integer(writer) and is_integer(seq),
+    do: send_fetch(peer, writer, {:op, {writer, seq}})
+
+  defp issue_fetch(peer, {:line, _line_id}), do: peer
+
+  # Sends one admission-authenticated fetch request to the origin `writer` (never to self),
+  # and counts it. The request is authenticated exactly like every other message, so a node
+  # without the boundary secret cannot ask an origin to retransmit.
+  @spec send_fetch(peer(), Syncordian.Basic_Types.peer_id(), term()) :: peer()
+  defp send_fetch(peer, writer, want) do
+    requester_id = get_peer_id(peer)
+
+    if writer == requester_id do
+      peer
+    else
+      case :global.whereis_name(writer) do
+        :undefined ->
+          peer
+
+        origin_pid ->
+          alpha = create_admission(get_boundary_secret(peer), :fetch, {requester_id, want})
+          send(origin_pid, {:fetch_request, requester_id, want, alpha})
+          get_metadata(peer) |> inc_fetch_request_sent |> update_metadata(peer)
+      end
+    end
+  end
+
+  # Serves a fetch request from this peer's origin log: the stored broadcasts that answer
+  # `want`. Returns the list of verbatim messages to re-send (empty when none are held).
+  @spec serve_fetch(peer(), term()) :: [term()]
+  defp serve_fetch(peer, {:op, op_id}) do
+    case OpLog.get(get_op_log(peer), op_id) do
+      nil -> []
+      message -> [message]
+    end
+  end
+
+  defp serve_fetch(peer, {:ops_of, writer, lo, hi}) do
+    # The origin only holds its own authored operations, so a well-formed range names this
+    # peer as the writer; a mismatched writer is answered with nothing.
+    if writer == get_peer_id(peer),
+      do: OpLog.range_inserts(get_op_log(peer), lo, hi),
+      else: []
+  end
+
+  # Test-only fault injector. When armed, silently drops one inbound broadcast (as a lossy
+  # channel would) and reports it, so the recovery tests can force the loss the fetch path
+  # then repairs. Always disarmed (returns false) in a real run.
+  @spec drop_broadcast?(peer()) :: boolean()
+  defp drop_broadcast?(peer), do: peer(peer, :drop_next_broadcasts) > 0
+
+  @spec drop_one_broadcast(peer()) :: peer()
+  defp drop_one_broadcast(peer),
+    do: peer(peer, drop_next_broadcasts: peer(peer, :drop_next_broadcasts) - 1)
 
   # Releases every operation whose dependency is satisfied by the given apply events and
   # re-dispatches each released payload to the peer's own mailbox. Returns the peer with the
@@ -420,6 +525,7 @@ defmodule Syncordian.Peer do
       peer_id: peer_id,
       document: initial_peer_document,
       pending: PendingOps.new(),
+      op_log: OpLog.new(),
       seen_ops: SeenOps.new(),
       # Same pair the sentinel lines above were just built from; cached so admission
       # checks never re-walk the document (see get_boundary_secret/1).
@@ -504,8 +610,22 @@ defmodule Syncordian.Peer do
     :global.register_name(peer_id, pid)
     save_peer_pid(pid, network_size, peer_id)
     Process.send_after(pid, {:register_supervisor_pid}, 50)
+    # First anti-entropy sweep, scheduled after registration so origins are addressable.
+    # The handler reschedules itself for the rest of the run.
+    Process.send_after(pid, {:fetch_sweep}, 50 + fetch_sweep_interval_ms())
     pid
   end
+
+  # Cadence of the periodic anti-entropy sweep in milliseconds; overridable per run.
+  @spec fetch_sweep_interval_ms() :: pos_integer()
+  defp fetch_sweep_interval_ms,
+    do: Application.get_env(:syncordian, :fetch_sweep_interval_ms, @fetch_sweep_interval_ms)
+
+  # Soft threshold (in applied edits) after which a suspended operation's dependency is
+  # (re-)requested from its origin; overridable per run for tests.
+  @spec fetch_soft_threshold() :: pos_integer()
+  defp fetch_soft_threshold,
+    do: Application.get_env(:syncordian, :fetch_soft_threshold, @fetch_soft_threshold)
 
   # This is a private function used to save the pid of the peer in the record.
   @spec save_peer_pid(pid, integer, integer) :: any
@@ -550,6 +670,7 @@ defmodule Syncordian.Peer do
       peer
       |> get_metadata()
       |> update_memory_info(peer_pid, nodes_size)
+      |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
       |> update_metadata(peer)
 
     # The file write happens off the peer's critical path: this peer saves a metadata
@@ -675,8 +796,7 @@ defmodule Syncordian.Peer do
         suspend_operation(
           peer_inner,
           {:receive_confirmation_line_insertion, payload, alpha},
-          {:line, line_id},
-          &inc_requeue_counter/1
+          {:line, line_id}
         )
       end)
     end)
@@ -1243,21 +1363,63 @@ defmodule Syncordian.Peer do
         |> loop()
 
       # ✅ Attaches the admission authenticator α, keyed by the boundary secret, over the
-      # full insert payload — binding every field it carries, op_id included.
+      # full insert payload — binding every field it carries, op_id included. The exact
+      # broadcast is also recorded in the origin log so this peer can retransmit it verbatim
+      # if a replica later reports it missing (op_id is the 6th payload field).
       {:send_insert_broadcast, insert_payload} ->
         alpha = create_admission(get_boundary_secret(peer), :ins, insert_payload)
+        message = {:receive_insert_broadcast, insert_payload, alpha}
 
         peer
-        |> perform_broadcast_peer({:receive_insert_broadcast, insert_payload, alpha})
+        |> record_own_op(:ins, elem(insert_payload, 5), message)
+        |> perform_broadcast_peer(message)
         |> loop()
 
-      # ✅ Same admission authenticator, under the :del kind, over the delete payload.
+      # ✅ Same admission authenticator, under the :del kind, over the delete payload, and
+      # the same origin-log recording (the delete's own op_id is the 4th payload field).
       {:send_delete_broadcast, delete_payload} ->
         alpha = create_admission(get_boundary_secret(peer), :del, delete_payload)
+        message = {:receive_delete_broadcast, delete_payload, alpha}
 
         peer
-        |> perform_broadcast_peer({:receive_delete_broadcast, delete_payload, alpha})
+        |> record_own_op(:del, elem(delete_payload, 3), message)
+        |> perform_broadcast_peer(message)
         |> loop()
+
+      # ✅ Periodic anti-entropy sweep: issues a targeted retransmission request for every
+      # suspended dependency that has waited past the soft threshold, then reschedules
+      # itself. This never discards a suspended operation; it only asks its origin to
+      # re-send it.
+      {:fetch_sweep} ->
+        Process.send_after(get_peer_pid(peer), {:fetch_sweep}, fetch_sweep_interval_ms())
+
+        peer
+        |> run_fetch_sweep()
+        |> loop()
+
+      # ✅ A retransmission request from a replica that is missing one of this peer's
+      # authored operations. Authenticated exactly like every other message: a node without
+      # the boundary secret cannot ask an origin to re-send anything. Served copies are the
+      # verbatim originals, re-sent point-to-point to the requester, where the replay and
+      # duplicate checks absorb any redundancy.
+      {:fetch_request, requester_id, want, alpha} ->
+        peer =
+          if check_admission(alpha, get_boundary_secret(peer), :fetch, {requester_id, want}) do
+            messages = serve_fetch(peer, want)
+
+            case :global.whereis_name(requester_id) do
+              :undefined -> :ok
+              requester_pid -> Enum.each(messages, &send(requester_pid, &1))
+            end
+
+            get_metadata(peer)
+            |> inc_fetch_served_times(length(messages))
+            |> update_metadata(peer)
+          else
+            get_metadata(peer) |> inc_admission_rejected_counter |> update_metadata(peer)
+          end
+
+        loop(peer)
 
       # ✅ Receipt of a delete, evaluated in the formal order: admission, replay, then the
       # intrinsic verification predicate. The delete names its target by identity
@@ -1268,6 +1430,10 @@ defmodule Syncordian.Peer do
       {:receive_delete_broadcast,
        delete_payload = {target_op_id, _target_line_id, delete_tag, op_id}, alpha} ->
         cond do
+          drop_broadcast?(peer) ->
+            # Test-only lossy channel: drop this delivery entirely (see drop_broadcast?/1).
+            drop_one_broadcast(peer) |> loop()
+
           not check_admission(alpha, get_boundary_secret(peer), :del, delete_payload) ->
             # Forged or tampered: without the boundary secret no valid authenticator can
             # be produced, so the message is dropped before any further processing —
@@ -1291,8 +1457,7 @@ defmodule Syncordian.Peer do
                 |> update_metadata(peer)
                 |> suspend_operation(
                   {:receive_delete_broadcast, delete_payload, alpha},
-                  {:line, target_op_id},
-                  &inc_delete_requeue_limit_counter/1
+                  {:line, target_op_id}
                 )
                 |> loop
 
@@ -1345,6 +1510,10 @@ defmodule Syncordian.Peer do
            {line_id, content, incoming_peer_id, insert_tag, incoming_vc, op_id, left_parent_op_id,
             right_parent_op_id}, alpha} ->
         cond do
+          drop_broadcast?(peer) ->
+            # Test-only lossy channel: drop this delivery entirely (see drop_broadcast?/1).
+            drop_one_broadcast(peer) |> loop()
+
           not check_admission(alpha, get_boundary_secret(peer), :ins, insert_payload) ->
             # Forged or tampered: without the boundary secret no valid authenticator can
             # be produced, so the message is dropped before any further processing —
@@ -1373,8 +1542,7 @@ defmodule Syncordian.Peer do
                 |> update_metadata(peer)
                 |> suspend_operation(
                   {:receive_insert_broadcast, insert_payload, alpha},
-                  {:clock, incoming_peer_id, incoming_at - 1},
-                  &inc_insert_request_limit_counter/1
+                  {:clock, incoming_peer_id, incoming_at - 1}
                 )
                 |> loop
 
@@ -1550,6 +1718,7 @@ defmodule Syncordian.Peer do
           peer
           |> get_metadata()
           |> update_memory_info(peer_pid, document_size)
+          |> set_origin_log_bytes(OpLog.byte_size(get_op_log(peer)))
 
         send(
           get_peer_supervisor_pid(peer),
@@ -1558,6 +1727,11 @@ defmodule Syncordian.Peer do
 
         update_metadata(updated_memory_metadata, peer)
         |> loop()
+
+      # Test-only: arm the lossy-channel fault injector to drop the next `n` inbound
+      # broadcasts (see drop_broadcast?/1). Used by the recovery tests.
+      {:test_drop_next_broadcasts, n} ->
+        peer(peer, drop_next_broadcasts: n) |> loop()
 
       # Diagnostic snapshot of everything that can wedge a replica: the suspended-op
       # buffer, the local-edit FIFO, and the clock. Written on demand by experiment

@@ -35,19 +35,23 @@ defmodule Syncordian.PendingOps do
   single map pop. Released payloads preserve FIFO suspension order via a monotonic sequence
   number.
 
-  ## Liveness backstop
+  ## Dependency fetch (anti-entropy)
 
-  An operation whose dependency never materializes (\\eg a forged delete from a Byzantine
-  peer that references a line that will never exist) would otherwise occupy the buffer
-  forever. `gc/3` reclaims any entry that has waited longer than a caller-supplied
-  *edit-count horizon*: the number of edits the peer has applied since the entry was
-  suspended. Under reliable eventual delivery with monotone per-sender progress vectors,
-  an honest operation's dependency is satisfied within the in-flight reorder window, so a
-  horizon at least that large never drops an honest operation, while the live buffer size
-  stays bounded by `horizon * peers`. The sweep itself is throttled: it only runs once the
-  peer's edit count has advanced since the previous sweep (entries age in applied edits,
-  so a sweep between two applies can never reclaim anything new), keeping `gc/3` O(1) on
-  the hot suspend path and amortizing the full sweep across applies.
+  A forged operation cannot reach this buffer: it is rejected at admission before delivery
+  is ever considered, so every suspended entry is a genuine operation whose dependency will
+  arrive. Under a fair-lossy network the dependency may nevertheless be delayed far past the
+  ordinary reorder window, or dropped. Rather than discard the waiting operation, which
+  would break eventual visibility, the buffer asks the origin to retransmit it. `sweep/3`
+  reports which suspended entries have waited long enough to warrant a (re-)fetch: an entry
+  is due once it has aged past a caller-supplied *soft threshold* (in applied edits) and has
+  not been fetched within that same span. `sweep/3` marks the due entries so they are not
+  re-fetched every call, and returns their dependencies for the peer to turn into fetch
+  requests. It never removes an entry: only the arrival of the dependency does, through
+  `release/2`. The buffer therefore stays bounded by genuinely outstanding work.
+
+  The sweep is throttled: it runs at most once per a small fraction of the soft threshold
+  (entries age in applied edits, so a sweep between two applies can see nothing new),
+  keeping the hot suspend path cheap and amortizing the full sweep across applies.
 
   This module is pure and side-effect-free; the peer loop owns all message sending.
   """
@@ -68,17 +72,19 @@ defmodule Syncordian.PendingOps do
           {:clock_advanced, Basic_Types.peer_id(), non_neg_integer()}
           | {:line_added, line_key()}
 
-  # Entries carry {seq, payload, <dependency data>, enqueued_edit}; seq preserves FIFO
-  # release order, enqueued_edit drives the gc horizon.
+  # Entries carry {seq, payload, <dependency data>, enqueued_edit, last_fetch_edit}; seq
+  # preserves FIFO release order, enqueued_edit is when the entry began waiting, and
+  # last_fetch_edit (nil until the first fetch) is when a retransmission was last requested
+  # for it. Both edit stamps drive sweep/3.
   @opaque t :: %__MODULE__{
             clock: %{optional(Basic_Types.peer_id()) => list()},
             line: %{optional(line_key()) => list()},
             seq: non_neg_integer(),
             size: non_neg_integer(),
-            last_gc_edit: integer()
+            last_sweep_edit: integer()
           }
 
-  defstruct clock: %{}, line: %{}, seq: 0, size: 0, last_gc_edit: -1
+  defstruct clock: %{}, line: %{}, seq: 0, size: 0, last_sweep_edit: -1
 
   @doc """
   Returns an empty buffer.
@@ -112,11 +118,11 @@ defmodule Syncordian.PendingOps do
 
     case dependency do
       {:clock, sender, needed} ->
-        entry = {seq, payload, needed, edit_count}
+        entry = {seq, payload, needed, edit_count, nil}
         %{buf | clock: Map.update(buf.clock, sender, [entry], &[entry | &1])}
 
       {:line, key} ->
-        entry = {seq, payload, edit_count}
+        entry = {seq, payload, edit_count, nil}
         %{buf | line: Map.update(buf.line, key, [entry], &[entry | &1])}
     end
   end
@@ -150,7 +156,7 @@ defmodule Syncordian.PendingOps do
 
       entries ->
         {ready, kept} =
-          Enum.split_with(entries, fn {_seq, _payload, needed, _e} -> new_value >= needed end)
+          Enum.split_with(entries, fn {_seq, _payload, needed, _e, _f} -> new_value >= needed end)
 
         clock =
           case kept do
@@ -182,59 +188,85 @@ defmodule Syncordian.PendingOps do
   end
 
   @doc """
-  Reclaims entries whose wait has exceeded `horizon` edits, \\ie those for which
-  `current_edit - enqueued_at_edit > horizon`. Returns `{dropped_count, remaining_buffer}`.
+  Reports the dependencies of the suspended entries that are due for a (re-)fetch, and
+  marks those entries as fetched at `current_edit`. Returns `{due_dependencies, buffer}`.
+  No entry is ever removed here: an entry leaves the buffer only when its dependency
+  arrives (`release/2`).
 
-  The full sweep is throttled to at most one per `horizon / 20` applied edits (entries
-  age in applied edits, so a sweep between two applies can never reclaim anything new,
-  and a reclamation delayed by a twentieth of the horizon is still comfortably inside
-  the backstop's slack). This keeps `gc/3` O(1) on the hot suspend path instead of
-  O(buffer) per suspension, which under load re-created the quadratic drain the
-  dependency index removes. The first call after `new/0` always sweeps.
+  An entry is *due* when it has waited at least `soft_threshold` applied edits and has not
+  been fetched within the last `soft_threshold` edits. For a clock dependency the reported
+  descriptor is `{:clock, sender, needed}` with `needed` the largest value any due entry of
+  that sender waits on, so one range fetch can cover a whole causal gap; for a line
+  dependency it is `{:line, key}`.
+
+  The full sweep is throttled to at most one per `soft_threshold / 20` applied edits
+  (entries age in applied edits, so a sweep between two applies can see nothing new). The
+  first call after `new/0` always sweeps.
 
   ## Examples
 
       iex> alias Syncordian.PendingOps, as: P
-      iex> buf = P.new()
-      ...>       |> P.suspend(:old, {:line, {1, 1}}, 0)
-      ...>       |> P.suspend(:new, {:line, {1, 2}}, 9)
-      iex> {dropped, buf} = P.gc(buf, 10, 5)
-      iex> {dropped, P.size(buf)}
-      {1, 1}
+      iex> buf = P.new() |> P.suspend(:msg, {:line, {1, 4}}, 0)
+      iex> {due, buf} = P.sweep(buf, 10, 5)
+      iex> {due, P.size(buf)}
+      {[line: {1, 4}], 1}
+      iex> {due_again, _} = P.sweep(buf, 12, 5)
+      iex> due_again
+      []
   """
-  @spec gc(t, non_neg_integer(), non_neg_integer()) :: {non_neg_integer(), t}
-  def gc(%__MODULE__{last_gc_edit: last} = buf, current_edit, horizon)
-      when last >= 0 and current_edit - last < max(div(horizon, 20), 1),
-      do: {0, buf}
+  @spec sweep(t, non_neg_integer(), pos_integer()) :: {[dependency()], t}
+  def sweep(%__MODULE__{last_sweep_edit: last} = buf, current_edit, soft_threshold)
+      when last >= 0 and current_edit - last < max(div(soft_threshold, 20), 1),
+      do: {[], buf}
 
-  def gc(%__MODULE__{} = buf, current_edit, horizon) do
-    stale? = fn entry ->
-      # enqueued_edit is the last tuple element of every entry shape.
-      current_edit - elem(entry, tuple_size(entry) - 1) > horizon
-    end
+  def sweep(%__MODULE__{} = buf, current_edit, soft_threshold) do
+    {clock_deps, clock} = sweep_clock(buf.clock, current_edit, soft_threshold)
+    {line_deps, line} = sweep_line(buf.line, current_edit, soft_threshold)
 
-    sweep_map = fn map ->
-      map
-      |> Enum.reduce({0, %{}}, fn {key, entries}, {dropped, acc} ->
-        {stale, kept} = Enum.split_with(entries, stale?)
+    {clock_deps ++ line_deps,
+     %{buf | clock: clock, line: line, last_sweep_edit: current_edit}}
+  end
 
-        acc = if kept == [], do: acc, else: Map.put(acc, key, kept)
-        {dropped + length(stale), acc}
-      end)
-    end
+  # An entry is due for a fetch once it has aged past the soft threshold and has not been
+  # fetched within that same span (nil means never fetched).
+  defp due?(enqueued, last_fetch, current, soft) do
+    current - enqueued >= soft and (is_nil(last_fetch) or current - last_fetch >= soft)
+  end
 
-    {dropped_clock, clock} = sweep_map.(buf.clock)
-    {dropped_line, line} = sweep_map.(buf.line)
+  # One coalesced clock dependency per sender that has at least one due entry, carrying the
+  # largest value waited on so a single range fetch covers the whole gap. Due entries are
+  # stamped with the current edit.
+  defp sweep_clock(clock_map, current, soft) do
+    Enum.reduce(clock_map, {[], %{}}, fn {sender, entries}, {deps, acc} ->
+      {new_entries, due_needed} =
+        Enum.reduce(entries, {[], []}, fn {seq, payload, needed, enq, last} = e, {es, ns} ->
+          if due?(enq, last, current, soft),
+            do: {[{seq, payload, needed, enq, current} | es], [needed | ns]},
+            else: {[e | es], ns}
+        end)
 
-    dropped = dropped_clock + dropped_line
+      deps =
+        case due_needed do
+          [] -> deps
+          _ -> [{:clock, sender, Enum.max(due_needed)} | deps]
+        end
 
-    {dropped,
-     %{
-       buf
-       | clock: clock,
-         line: line,
-         size: size(buf) - dropped,
-         last_gc_edit: current_edit
-     }}
+      {deps, Map.put(acc, sender, Enum.reverse(new_entries))}
+    end)
+  end
+
+  # One line dependency per key that has at least one due entry. Due entries are stamped.
+  defp sweep_line(line_map, current, soft) do
+    Enum.reduce(line_map, {[], %{}}, fn {key, entries}, {deps, acc} ->
+      {new_entries, any_due} =
+        Enum.reduce(entries, {[], false}, fn {seq, payload, enq, last} = e, {es, due} ->
+          if due?(enq, last, current, soft),
+            do: {[{seq, payload, enq, current} | es], true},
+            else: {[e | es], due}
+        end)
+
+      deps = if any_due, do: [{:line, key} | deps], else: deps
+      {deps, Map.put(acc, key, Enum.reverse(new_entries))}
+    end)
   end
 end

@@ -43,7 +43,13 @@ defmodule Syncordian.Metadata do
     message_queue_length: 0,
     settle_counter: 0,
     conflict_detected_counter: 0,
-    replacement_issued_counter: 0
+    replacement_issued_counter: 0,
+    # Anti-entropy (Syncordian.OpLog): retransmission requests this peer sent because a
+    # dependency was overdue; operations this peer re-sent as an origin; and the byte size
+    # of this peer's origin log.
+    fetch_request_sent: 0,
+    fetch_served: 0,
+    origin_log_bytes: 0
   )
 
   @type metadata ::
@@ -68,7 +74,10 @@ defmodule Syncordian.Metadata do
             message_queue_length: integer(),
             settle_counter: integer(),
             conflict_detected_counter: integer(),
-            replacement_issued_counter: integer()
+            replacement_issued_counter: integer(),
+            fetch_request_sent: integer(),
+            fetch_served: integer(),
+            origin_log_bytes: integer()
           )
 
   defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
@@ -94,6 +103,9 @@ defmodule Syncordian.Metadata do
       "settle_counter" => metadata(metadata, :settle_counter),
       "conflict_detected_counter" => metadata(metadata, :conflict_detected_counter),
       "replacement_issued_counter" => metadata(metadata, :replacement_issued_counter),
+      "fetch_request_sent" => metadata(metadata, :fetch_request_sent),
+      "fetch_served" => metadata(metadata, :fetch_served),
+      "origin_log_bytes" => metadata(metadata, :origin_log_bytes),
       "byzantine_nodes" => byzantine_nodes,
       "current_commit" => current_commit,
       "timestamp" => current_date_unix
@@ -219,7 +231,13 @@ defmodule Syncordian.Metadata do
           metadata(metadata2, :conflict_detected_counter),
       replacement_issued_counter:
         metadata(metadata1, :replacement_issued_counter) +
-          metadata(metadata2, :replacement_issued_counter)
+          metadata(metadata2, :replacement_issued_counter),
+      fetch_request_sent:
+        metadata(metadata1, :fetch_request_sent) + metadata(metadata2, :fetch_request_sent),
+      fetch_served:
+        metadata(metadata1, :fetch_served) + metadata(metadata2, :fetch_served),
+      origin_log_bytes:
+        metadata(metadata1, :origin_log_bytes) + metadata(metadata2, :origin_log_bytes)
     )
   end
 
@@ -260,6 +278,31 @@ defmodule Syncordian.Metadata do
       metadata(metadata,
         byzantine_insert_counter: metadata(metadata, :byzantine_insert_counter) + 1
       )
+
+  @doc """
+    Counts retransmission requests this peer sent because a suspended operation's dependency
+    was overdue (`Syncordian.OpLog`, the requester side of anti-entropy).
+  """
+  @spec inc_fetch_request_sent(metadata()) :: metadata()
+  def inc_fetch_request_sent(metadata),
+    do: metadata(metadata, fetch_request_sent: metadata(metadata, :fetch_request_sent) + 1)
+
+  @doc """
+    Adds `n` to the count of operations this peer re-sent as an origin in answer to fetch
+    requests (the origin side of anti-entropy). `n` is the number of stored broadcasts one
+    request was served.
+  """
+  @spec inc_fetch_served_times(metadata(), non_neg_integer()) :: metadata()
+  def inc_fetch_served_times(metadata, n),
+    do: metadata(metadata, fetch_served: metadata(metadata, :fetch_served) + n)
+
+  @doc """
+    Records the byte size of this peer's origin log for the run metadata (a gauge, set at
+    each snapshot).
+  """
+  @spec set_origin_log_bytes(metadata(), non_neg_integer()) :: metadata()
+  def set_origin_log_bytes(metadata, bytes),
+    do: metadata(metadata, origin_log_bytes: bytes)
 
   @doc """
     Counts operations dropped as replays: an insert/delete broadcast whose `op_id` was

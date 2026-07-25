@@ -98,33 +98,51 @@ defmodule Syncordian.PendingOpsTest do
     end
   end
 
-  describe "gc/3 — liveness backstop" do
-    test "drops entries older than the horizon, keeps the rest" do
-      buf =
-        P.new()
-        |> P.suspend(:stale, {:line, :l1}, 0)
-        |> P.suspend(:fresh, {:line, :l2}, 8)
+  describe "sweep/3 — anti-entropy, never discards" do
+    test "reports the dependency of an entry aged past the soft threshold, and keeps it" do
+      buf = P.suspend(P.new(), :msg, {:line, {1, 4}}, 0)
 
-      # At edit 10 with horizon 5: :stale waited 10 (> 5, dropped), :fresh waited 2 (kept).
-      assert {1, buf} = P.gc(buf, 10, 5)
+      # At edit 10 with soft threshold 5: the entry waited 10 (>= 5), so it is due.
+      assert {[line: {1, 4}], buf} = P.sweep(buf, 10, 5)
+      # It is NOT removed: only the dependency arriving removes it.
       assert P.size(buf) == 1
-      assert {[:fresh], _} = P.release(buf, {:line_added, :l2})
+      assert {[:msg], _} = P.release(buf, {:line_added, {1, 4}})
     end
 
-    test "an entry exactly at the horizon is retained" do
-      buf = P.suspend(P.new(), :edge, {:line, :l1}, 0)
-      assert {0, buf} = P.gc(buf, 5, 5)
+    test "an entry younger than the soft threshold is not reported" do
+      buf = P.suspend(P.new(), :young, {:line, :l1}, 8)
+      assert {[], buf} = P.sweep(buf, 10, 5)
       assert P.size(buf) == 1
     end
 
-    test "nothing is dropped when all entries are within the horizon" do
+    test "a due entry is not re-reported until the fetch cooldown passes" do
+      buf = P.suspend(P.new(), :msg, {:line, :l1}, 0)
+
+      # First sweep past the threshold reports it and marks it fetched at edit 10.
+      assert {[line: :l1], buf} = P.sweep(buf, 10, 5)
+      # A sweep within the cooldown reports nothing.
+      assert {[], buf} = P.sweep(buf, 13, 5)
+      # Once the cooldown elapses it is reported again.
+      assert {[line: :l1], _} = P.sweep(buf, 16, 5)
+    end
+
+    test "a clock gap is reported once per sender, carrying the largest value waited on" do
       buf =
         P.new()
-        |> P.suspend(:a, {:clock, 1, 2}, 9)
-        |> P.suspend(:b, {:clock, 1, 3}, 10)
+        |> P.suspend(:a, {:clock, 2, 3}, 0)
+        |> P.suspend(:b, {:clock, 2, 6}, 0)
 
-      assert {0, buf} = P.gc(buf, 10, 5)
+      assert {[{:clock, 2, 6}], buf} = P.sweep(buf, 10, 5)
       assert P.size(buf) == 2
+    end
+
+    test "the throttle skips a sweep that runs too soon after the previous one" do
+      buf = P.suspend(P.new(), :msg, {:line, :l1}, 0)
+
+      # First sweep runs (and reports). Soft threshold 100 throttles the next sweep to
+      # within 100/20 = 5 edits, so a sweep 3 edits later does nothing.
+      assert {[line: :l1], buf} = P.sweep(buf, 200, 100)
+      assert {[], _} = P.sweep(buf, 203, 100)
     end
   end
 

@@ -13,9 +13,11 @@ defmodule Syncordian.Byzantine do
     over a canonical encoding of the authenticated fields, under a key that is specific to
     the operation kind. The keys are derived once, from the document's *boundary secret*
     {κ⊥, κ⊤}, by an HKDF-SHA256 key schedule (`derive_keys/1`): one key per domain
-    `:doc | :ins | :del | :ack | :adm`, each expanded under its own label so that two
-    domains never share a key. Everything the scheme emits is therefore a pseudo-random
-    function output under a secret-derived key.
+    `:doc | :ins | :del | :ack | :adm | :fetch`, each expanded under its own label so that
+    two domains never share a key. Everything the scheme emits is therefore a pseudo-random
+    function output under a secret-derived key. The `:fetch` key authenticates dependency
+    retransmission requests (`Syncordian.OpLog`), so only an admitted peer can ask the
+    origin to re-send an operation.
 
     A line carries exactly **one** *stored signature* σ — its immutable identifier —
     computed once, under the `:doc` key, from immutable inputs and never recomputed
@@ -137,9 +139,13 @@ defmodule Syncordian.Byzantine do
     :persistent_term.get(@boundary_secret_key, @default_boundary_secret)
   end
 
-  # Operation kinds whose messages carry an admission authenticator.
-  @wire_kinds [:ins, :del, :ack]
-  # All keying domains: stored signatures, the three wire-tag kinds, and admission.
+  # Message kinds whose messages carry an admission authenticator. Besides the three
+  # per-line operations, a dependency-fetch request (:fetch) is authenticated the same way,
+  # so a node that does not hold the boundary secret cannot even ask the origin to
+  # retransmit.
+  @wire_kinds [:ins, :del, :ack, :fetch]
+  # All keying domains: stored signatures, the per-line wire tags, the fetch request, and
+  # admission. Each has its own key from the schedule below.
   @domains [:doc, :adm | @wire_kinds]
 
   ##########################################################################################
@@ -221,13 +227,13 @@ defmodule Syncordian.Byzantine do
     |> IO.iodata_to_binary()
   end
 
-  # One reserved byte per atom drawn from the fixed table (message kinds and the two
-  # position sentinels). Atoms are the only fields whose value space is not self-evidently
-  # a byte string, so the table pins each to a distinct byte.
-  @atom_table %{ins: 1, del: 2, ack: 3, infimum: 4, supremum: 5}
+  # One reserved byte per atom drawn from the fixed table (message kinds, the two position
+  # sentinels, and the two fetch-request selectors). Atoms are the only fields whose value
+  # space is not self-evidently a byte string, so the table pins each to a distinct byte.
+  @atom_table %{ins: 1, del: 2, ack: 3, infimum: 4, supremum: 5, fetch: 6, op: 7, ops_of: 8}
 
   # Encodes a single field to bytes by its runtime shape. Order matters: the tagged tuples
-  # ({:path, _}) are matched before the generic {w, s} op_id tuple.
+  # ({:path, _}, {:op, _}, {:ops_of, ...}) are matched before the generic {w, s} op_id tuple.
   @spec encode_field(term()) :: binary()
   defp encode_field(field) when is_binary(field), do: field
 
@@ -242,6 +248,19 @@ defmodule Syncordian.Byzantine do
       <<digit::signed-big-64, peer_id::signed-big-64>>
     end)
   end
+
+  # A single-operation fetch selector: {:op, op_id}. Encoded as the :op byte followed by the
+  # op_id's two signed components.
+  defp encode_field({:op, {writer, seq}}) when is_integer(writer) and is_integer(seq),
+    do: <<Map.fetch!(@atom_table, :op), writer::signed-big-64, seq::signed-big-64>>
+
+  # A range fetch selector: {:ops_of, writer, lo, hi}, the writer's inserts of progress rank
+  # lo..hi. Encoded as the :ops_of byte followed by the three components.
+  defp encode_field({:ops_of, writer, lo, hi})
+       when is_integer(writer) and is_integer(lo) and is_integer(hi),
+       do:
+         <<Map.fetch!(@atom_table, :ops_of), writer::signed-big-64, lo::unsigned-big-64,
+           hi::unsigned-big-64>>
 
   # An op_id {writer, seq}. The writer may be the -1 sentinel of the boundary identities,
   # so both components are encoded signed.
@@ -413,7 +432,7 @@ defmodule Syncordian.Byzantine do
             Syncordian.Basic_Types.signature(),
             Syncordian.Basic_Types.signature()
           },
-          kind :: :ins | :del | :ack,
+          kind :: :ins | :del | :ack | :fetch,
           payload :: tuple()
         ) :: Syncordian.Basic_Types.signature()
   def create_admission(boundary_secret, kind, payload)
@@ -432,7 +451,7 @@ defmodule Syncordian.Byzantine do
             Syncordian.Basic_Types.signature(),
             Syncordian.Basic_Types.signature()
           },
-          kind :: :ins | :del | :ack,
+          kind :: :ins | :del | :ack | :fetch,
           payload :: tuple()
         ) :: boolean()
   def check_admission(alpha, boundary_secret, kind, payload),

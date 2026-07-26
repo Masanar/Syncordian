@@ -115,8 +115,9 @@ mix test test/syncordian/path_id_test.exs:42   # one test, by line number
 | `boundary_secret_test.exs` | The shared secret that decides who is allowed in. |
 | `insider_scope_test.exs` | Writes down what the system does not protect against, on purpose. |
 | `instrumentation_test.exs` | The counters that measure cost. |
-| `run_config_test.exs` | **New.** Seeds, the delay setting, and the description of a run. |
-| `network_test.exs` | **New.** The simulated network, and what an attacker can do to a message. |
+| `run_config_test.exs` | Seeds, the delay setting, and the description of a run. |
+| `network_test.exs` | The simulated network, and what an attacker can do to a message. |
+| `workloads_test.exs` | **New.** The workload generator: that a seed fixes an execution, and that the writers really are set up to collide. |
 | `supervisor/gitparser_test.exs` | Turning a git log into edits. |
 | `supervisor/gitlog_test.exs` | Reading the git log from a real clone. |
 
@@ -132,7 +133,8 @@ mix test --include live          # the fast tests plus the live ones
 | File | What it checks |
 | ---- | -------------- |
 | `live/recovery_test.exs` | A peer that missed an edit asks for it again and gets it. |
-| `live/difficult_executions_test.exs` | **New.** The four hard situations below. |
+| `live/difficult_executions_test.exs` | The four hard situations below. |
+| `live/workloads_test.exs` | **New.** The seven controlled workloads, described further down. |
 
 The four hard situations are the interesting part, so here is what each one does.
 
@@ -288,6 +290,221 @@ document after every edit, so the plot needs a run with enough peers for that on
 to exist. A short history with only three or four peers produces no data for it,
 and the script says so instead of drawing an empty figure.
 
+## Controlled concurrent workloads
+
+Everything above replays a real git history. That is the right test of
+convergence, and it is a poor test of everything else, for one reason worth being
+clear about.
+
+The replay holds each commit until its author has built the state that commit was
+written against. Authoring is therefore serialized: two people never write to the
+same place in the document at the same moment. Only the delivery is concurrent.
+You can see this in the numbers. Over both histories we replay, the counters that
+record an interleaving and its repair stay at zero from the first commit to the
+last. The repair machinery is never asked to run, so a passing replay says nothing
+about it.
+
+The workloads in this section are the missing half. Each one puts several writers
+in the same place at the same time on purpose, and then checks what must be true
+afterwards. They are cheap, they take seconds, and they are the only place the
+repair protocol is exercised at all.
+
+### The seven workloads
+
+| Name | What it constructs | What it must show, beyond every replica holding the same text |
+| ---- | ------------------ | ------------------------------------------------------------- |
+| `same_position_inserts` | Every writer inserts one line at the same position. | Every line survives, in one order, with none left unfinished. |
+| `overlapping_blocks` | Several writers each append a block in the same place. | Each writer's lines end up together, a repair actually happened, and none is still owed. |
+| `identical_content_blocks` | The same, with every writer authoring identical text. | Every copy survives. Nine lines from three writers of three lines, not three. |
+| `delete_insert_races` | A delete aimed at a line while a repair is moving it. | The line stays deleted, and no replica ever held two copies of it. |
+| `long_offline` | One writer cut off in both directions, then reconnected. | It asks for what it missed and is answered. Nothing is resent to it. |
+| `post_gc_replay` | Real messages captured and sent again much later. | The document does not change, no line appears twice, a deleted line stays deleted. |
+| `three_way_cascade` | Writers arranged so repairing one conflict creates the next. | The chain of repairs stops, and stops within the bound the rule gives it. |
+
+Two things about that table are deliberate.
+
+The first is the phrase *a repair actually happened*. Every workload checks it
+where it applies, by looking at the counters and not at the document. Without that
+check a workload could pass while building no conflict at all, which is exactly
+the state the git replay is in, and every other property would have been checked
+over an execution that tested nothing.
+
+The second is what `long_offline` does **not** claim. A replica that returns from
+an outage recovers the edits it missed, because those are kept by their author and
+can be asked for. It does not recover the acknowledgements sent while it was away,
+because acknowledgements are not kept and there is nothing to ask for. Those lines
+stay unfinished at that one replica forever, while every other replica has them
+finished. So the text converges and the bookkeeping does not. The run reports this
+rather than asserting it away. Closing it would mean making acknowledgements
+recoverable, which is a change to the protocol.
+
+### Running them
+
+As tests, which is the short way:
+
+```bash
+mix test --include live test/syncordian/live/workloads_test.exs
+```
+
+That runs all seven at fixed seeds in about twenty seconds. There is also a fast
+test file, `test/syncordian/workloads_test.exs`, which checks the workload
+generator itself without starting any peers.
+
+As a run that writes a folder you can inspect:
+
+```bash
+# Three writers contending in one place.
+mix run --no-start scripts/synthetic_workload.exs \
+  --workload overlapping_blocks --peers 4 --seed 1 --delay uniform:5:50
+
+# The replay workload, which needs someone to do the replaying.
+mix run --no-start scripts/synthetic_workload.exs \
+  --workload post_gc_replay --peers 3 --seed 1 --delay uniform:5:50 --adversaries 1
+
+# Somewhere other than debug/.
+mix run --no-start scripts/synthetic_workload.exs \
+  --workload three_way_cascade --peers 5 --seed 2 --delay uniform:5:50 --out /tmp/one
+```
+
+Options are `--workload`, `--peers`, `--ops-per-peer`, `--conflict-rate`,
+`--seed`, `--delay`, `--scenario`, `--adversaries`, and `--out`. The script prints
+what it is about to do, then every property with `ok` or `FAIL` beside it, then
+the interleaving and traffic counters. It exits 0 only if every property held, so
+it works in a script.
+
+It writes the same folder shape as a git run: `manifest.json`, `result.json`,
+`documents/`, and `metadata/`. The one difference is `metadata/workload.json`,
+which holds the whole run's counters in one file. A git replay has commits to
+report against and a synthetic workload does not, so its numbers describe the
+whole execution rather than a series through it.
+
+Two refusals, both on purpose.
+
+- It refuses `--delay none`, for the same reason the repetition driver does: a run
+  whose numbers get reported has to apply a delay. `--allow-no-delay` if you are
+  debugging.
+- It refuses `post_gc_replay` with `--adversaries 0`. That workload is about a
+  message an attacker records and sends again, so with no attacker there is
+  nothing to record, and the run would pass every check having tested nothing.
+
+A note on the seed. A seed fixes when each writer issues each edit, so the same
+seed sets up the same collision. It does not fix the order the virtual machine
+schedules the peers in, so two runs of one seed can repair the same conflict in a
+different order and still end up in the same place. That is the point of the
+properties: they hold for every order, not for one.
+
+## The scalability sweep
+
+This is the experiment that answers what the costs do as the number of replicas
+grows. The git replay cannot answer it. A replay has as many replicas as the file
+had authors, so the number of peers is not something you can set. In the synthetic
+workload it is.
+
+**This one is expensive. Run it on a machine you are willing to give up for a
+while.** The full command is:
+
+```bash
+mix run --no-start scripts/scalability_sweep.exs \
+  --peers 8,16,32,64,128 --reps 30 --ops-per-peer 8 \
+  --delay uniform:5:50 --root debug/sweep
+```
+
+Those are also the defaults, so `mix run --no-start scripts/scalability_sweep.exs`
+does the same thing. That is 5 network sizes at 30 seeds each, 150 runs, each its
+own operating system process for the same reason repetitions are: two runs in one
+virtual machine would share the registry, the shared secret, and the timing
+tables, and would not be independent samples of anything.
+
+Before you commit a machine to it, check it works:
+
+```bash
+mix run --no-start scripts/scalability_sweep.exs --quick --root debug/sweep
+```
+
+`--quick` is two network sizes at two seeds, four short runs, about ten seconds.
+It exercises the same path end to end, so if it works the full sweep will too.
+
+### Why it costs what it costs
+
+Every insert makes each of the other replicas acknowledge it, and every
+acknowledgement is broadcast to all the others. So one insert costs about
+`(n - 1)²` acknowledgement messages, and a run of `M` inserts costs `M(n - 1)²`.
+With 8 edits per peer that is:
+
+| Replicas | Inserts | Acknowledgement messages |
+| -------- | ------- | ------------------------ |
+| 8 | 64 | about 3 thousand |
+| 16 | 128 | about 29 thousand |
+| 32 | 256 | about 246 thousand |
+| 64 | 512 | about 2 million |
+| 128 | 1024 | about 16 million |
+
+The top of that ladder is most of the cost of the sweep. That growth is not a
+quirk of the harness. It is the thing being measured, and it is the reviewer's
+concern about scalability turned into a number.
+
+Three things follow, and all three are built into the script.
+
+- **It goes smallest first.** If 128 replicas turn out to be more than the machine
+  can do, stop it. Every smaller size is already finished and there is a trend
+  through them.
+- **It can be stopped and started again.** A run that already has a `result.json`
+  is skipped, so restarting continues instead of beginning again.
+- **It says what it did not finish.** At the end it prints how many runs stand
+  behind each network size, and marks any that are short. Two runs and thirty runs
+  are not the same evidence, and a figure drawn from both without saying so invites
+  the reader to treat them as if they were.
+
+`--ops-per-peer` is the knob to turn if the sweep is too slow, since the cost is
+linear in it. `--conflict-rate` sets what fraction of the writers contend for the
+same place; it defaults to 0.5, and the sweep holds it fixed so that the only
+thing changing along the ladder is the number of replicas.
+
+Because it is long, run it detached:
+
+```bash
+nohup mix run --no-start scripts/scalability_sweep.exs \
+  --peers 8,16,32,64,128 --reps 30 --ops-per-peer 8 \
+  --delay uniform:5:50 --root debug/sweep > sweep.log 2>&1 &
+```
+
+While it runs, `debug/sweep/index.json` lists every run attempted and what
+happened to it, and each run folder keeps its own `console.log`.
+
+### Turning the sweep into figures
+
+```bash
+python3 scripts/aggregate_runs.py --runs debug/sweep --out debug/sweep-aggregate
+python3 scripts/scaling_visualization.py --aggregate debug/sweep-aggregate/summary.json
+```
+
+The first is the same aggregation the git runs use, so the averages and intervals
+are computed the same way and the run is the unit of replication here too. The
+second draws the figures into `figures/`, seven of them:
+
+| Figure | What it shows |
+| ------ | ------------- |
+| `scaling_bytes_per_operation_*` | Bytes per message, by kind. Roughly flat: the per-message cost is not where the growth is. |
+| `scaling_acknowledgement_traffic_*` | Total bytes, with acknowledgements separated from the edits they follow. This is where the growth is. |
+| `scaling_acks_per_insert_*` | Acknowledgements per insert, measured, drawn on top of the predicted `n - 1`. |
+| `scaling_settle_latency_*` | How long a line takes to be acknowledged by everyone, at the median, 95th, and 99th percentile. |
+| `scaling_memory_per_line_*` | Bytes per line at one replica. Each line carries one entry per peer, so this grows with the network. |
+| `scaling_queue_depth_*` | The deepest mailbox seen, and the deepest position identifier. |
+| `scaling_replacement_amplification_*` | How many conflicts happened and how many lines each one cost to repair. |
+
+The one to look at first is `scaling_acks_per_insert_*`. It draws the measurement
+on top of `n - 1` rather than asserting the relationship, so a reader can check it
+instead of taking it on faith. On the quick sweep the two lines already sit exactly
+on top of each other: 3 acknowledgements per insert at 4 replicas, 7 at 8.
+
+`scaling_memory_per_line_*` is worth a second look for a subtler reason. It divides
+the recorded size twice, once by the number of lines and once by the number of
+replicas. The recorded figure is a sum over all the replicas, so dividing only by
+the line count would show a per-line cost that grows with the network for the
+trivial reason that the sum has more terms in it. Divided properly, it still grows,
+and that growth is the real one: the per-line list of who has acknowledged the line
+has one entry per peer.
+
 ## Web UI (optional)
 
 The web app is not needed for anything above. It is a control panel for running
@@ -351,11 +568,15 @@ Project layout:
     shared infrastructure and the cost measurements.
   - `run.ex`, `rng.ex`, `network.ex` — the description of a run, the randomness a
     seed fixes, and the simulated network every message crosses.
+  - `workloads.ex`, `workloads/checks.ex` — the controlled concurrent workloads
+    and the properties each one has to satisfy.
   - `supervisor/` — `Syncordian.Supervisor` (hand-rolled receive loop) and the
     `Syncordian.GitParser` that turns commit logs into edits.
 - `lib/syncordian_web/` — Phoenix LiveView UI.
 - `scripts/` — one run (`run_full_experiment.exs`), many runs
-  (`run_repetitions.exs`), the post-hoc check (`verify_convergence.exs`), the
+  (`run_repetitions.exs`), one controlled workload
+  (`synthetic_workload.exs`), the peer-count sweep
+  (`scalability_sweep.exs`), the post-hoc check (`verify_convergence.exs`), the
   smoke programs, and the Python aggregation and plotting.
 
 ### Module dependency graph

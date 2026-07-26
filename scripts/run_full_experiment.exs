@@ -48,15 +48,22 @@ defmodule FullExperiment do
     configure(options)
 
     root = Application.get_env(:syncordian, :run_root, "debug")
-    out_dir = Path.join(root, "documents/syncordian")
+    crdt = options[:crdt]
+
+    # Every implementation writes under a directory named after itself, so the driver has to ask
+    # which one rather than assume. This used to be hardcoded to Syncordian, which meant a run
+    # started with --crdt fugue dumped its documents where nobody looked: the fixpoint wait then
+    # never saw a file, spun to its warning, and the convergence check compared nothing. Every
+    # baseline comparison was unreachable from the command line as a result.
+    name = Syncordian.Utilities.identify_peer_module(crdt).get_module_name()
+    out_dir = Path.join(root, "documents/#{name}")
 
     clean(out_dir, "document_peer_*")
-    clean(Path.join(root, "metadata/supervisor/syncordian"), "*.json")
-    clean(Path.join(root, "metadata/individual_peer/syncordian"), "*.json")
+    clean(Path.join(root, "metadata/supervisor/#{name}"), "*.json")
+    clean(Path.join(root, "metadata/individual_peer/#{name}"), "*.json")
 
     if options[:observer], do: start_observer()
 
-    crdt = options[:crdt]
     adversaries = options[:adversaries]
 
     IO.puts("Initializing supervisor with crdt=#{inspect(crdt)}, adversaries=#{adversaries} …")
@@ -388,7 +395,7 @@ options = [
   delay: Syncordian.Run.parse_delay(parsed[:delay] || "none"),
   scenario: parsed[:scenario] || "baseline",
   adversaries: adversaries,
-  crdt: String.to_existing_atom(parsed[:crdt] || "syncordian"),
+  crdt: Syncordian.Utilities.parse_crdt_id(parsed[:crdt] || "syncordian"),
   out: parsed[:out] || "debug",
   observer: parsed[:observer] || false
 ]

@@ -1,5 +1,5 @@
 # Python dependencies for the Syncordian visualization scripts
-# (data_visualization.py, heap_size_visualization.py).
+# (data_visualization.py, heap_size_visualization.py, scaling_visualization.py).
 #
 # Install with:  pip install -r scripts/requirements.txt
 #

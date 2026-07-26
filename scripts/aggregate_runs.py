@@ -63,7 +63,22 @@ EDIT_FILE = re.compile(r"^(?:byzantine_nodes_\d+_)?edit_(\d+)\.json$")
 
 # The configuration a run belongs to. Runs that agree on all of these and differ only in
 # their seed are repetitions of one another; anything else is a different experiment.
-CONFIG_KEYS = ("crdt", "tracked_file", "max_commits", "scenario", "adversaries", "delay")
+#
+# "workload" says which kind of experiment produced the run, a git replay or one of the named
+# synthetic workloads, and "peer_count" is the size of the network. The peer count belongs to the
+# key because the scalability sweep varies it: two points of that sweep are different experiments,
+# and averaging them would report a mean over an experiment nobody ran. It is spelled "peer_count"
+# rather than "peers" because a run-level metric already carries the latter name.
+CONFIG_KEYS = (
+    "crdt",
+    "workload",
+    "tracked_file",
+    "max_commits",
+    "peer_count",
+    "scenario",
+    "adversaries",
+    "delay",
+)
 
 PERCENTILES = (50, 95, 99)
 
@@ -142,13 +157,27 @@ def config_of(manifest: dict) -> tuple:
     workload = manifest.get("workload", {})
     adversary = manifest.get("adversary", {})
 
-    # The commit cap belongs to the key: two runs over different truncations of the same
-    # history are different workloads, and averaging them would report a mean over an
-    # experiment nobody ran.
+    # A git replay is identified by the file it tracked and the commit cap: two runs over
+    # different truncations of the same history are different experiments. A synthetic workload is
+    # identified by its name and the size of its network, and it tracks no file at all. A manifest
+    # written before this distinction existed has no "kind", and is a git replay.
+    if workload.get("kind") == "synthetic":
+        label = "synthetic:%s" % workload.get("name", "unknown")
+        tracked_file = ""
+        max_commits = 0
+        peer_count = workload.get("peers") or 0
+    else:
+        label = "git"
+        tracked_file = workload.get("tracked_file", "unknown")
+        max_commits = workload.get("max_commits") or 0
+        peer_count = workload.get("max_peers") or 0
+
     return (
         workload.get("crdt", "syncordian"),
-        workload.get("tracked_file", "unknown"),
-        workload.get("max_commits") or 0,
+        label,
+        tracked_file,
+        max_commits,
+        peer_count,
         manifest.get("scenario", "baseline"),
         adversary.get("count", 0),
         manifest.get("delay", "none"),
@@ -278,9 +307,72 @@ def read_run(directory: str) -> dict | None:
         "commits": with_deltas(read_series(directory, "metadata/supervisor", COMMIT_FILE)),
         "edits": read_series(directory, "metadata/individual_peer", EDIT_FILE),
         "latency": read_latency(directory),
+        "workload": read_workload(directory),
     }
 
     return run
+
+
+def read_workload(directory: str) -> dict:
+    """A synthetic run's own snapshot, taken once at the end rather than per commit.
+
+    A git replay reports a series, because it has commits to report against. A synthetic workload
+    has no such axis: it is one execution, and its numbers describe the whole of it. They are
+    therefore aggregated at the run level, where the peer count is a configuration column and the
+    sweep can be read straight off it.
+    """
+    path = os.path.join(directory, "metadata", "workload.json")
+    if not os.path.exists(path):
+        return {}
+
+    snapshot = read_json(path)
+    fields = numeric_fields(snapshot)
+
+    # Memory per line at one replica, which is what makes the per-line response checklist visible.
+    # Two divisions, and both are needed. The document size is a total, so the network-wide figure is
+    # the sum over the replicas and has to be divided by how many there are to describe one of them;
+    # dividing only by the line count would report a per-line cost that grows with the network for
+    # the trivial reason that the sum has more terms in it. The ratio is formed inside the run
+    # because the mean of a ratio over runs is not the ratio of the means.
+    lines = snapshot.get("live_lines") or 0
+    replicas = snapshot.get("peer_count") or 0
+
+    if lines and replicas and "heap_size" in fields:
+        fields["bytes_per_line"] = fields["heap_size"] / (lines * replicas)
+        fields["document_bytes"] = fields["heap_size"] / replicas
+
+    # How many acknowledgements each insert cost. The interesting comparison is against n - 1, and
+    # forming it here keeps the figure from having to know how the two counters relate.
+    inserts = fields.get("msgs_insert") or 0
+    if inserts:
+        fields["acks_per_insert"] = (fields.get("msgs_ack") or 0) / inserts
+
+    # The distributions the transient-interleaving results are built from. Each is a list of
+    # observations rather than a counter, so it is summarized inside the run and the interval is
+    # taken over the per-run summaries afterwards. This is the same rule the latency samples follow,
+    # and for the same reason: a run is one sample, however many observations it contains.
+    #
+    # How many lines one conflict cost to repair is the amplification, and how long a repair took is
+    # reported twice, in edits and in milliseconds, because the two answer different questions. Edits
+    # say how much work passed before the document was clean again; milliseconds say how long a
+    # reader would have seen it unclean.
+    for field, label in (
+        ("reissued_lines_per_conflict", "reissued_lines"),
+        ("repair_latency_edits", "repair_latency_edits"),
+        ("repair_latency_ms", "repair_latency_ms"),
+    ):
+        values = sorted(snapshot.get(field) or [])
+        if not values:
+            continue
+
+        fields[f"{label}_mean"] = sum(values) / len(values)
+        fields[f"{label}_max"] = values[-1]
+        fields[f"{label}_count"] = len(values)
+
+        for p in PERCENTILES:
+            fields[f"{label}_p{p}"] = percentile(values, p)
+
+    return fields
 
 
 def read_series(directory: str, relative: str, pattern: re.Pattern) -> dict:
@@ -401,6 +493,9 @@ def aggregate_run_level(config: tuple, runs: list[dict]) -> list[dict]:
 
     for run in runs:
         for metric, value in run["latency"].items():
+            values[metric].append(value)
+
+        for metric, value in run["workload"].items():
             values[metric].append(value)
 
         if run["elapsed_ms"] is not None:

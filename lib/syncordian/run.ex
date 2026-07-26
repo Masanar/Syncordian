@@ -382,17 +382,44 @@ defmodule Syncordian.Run do
 
   defp resolve_workload(nil), do: resolve_workload([])
 
+  # Two kinds of workload describe themselves differently, and the manifest has to record the
+  # one the run actually used. A git replay is described by the repository, the file, and the
+  # commit cap. A synthetic workload is described by its name and by the size of the network it
+  # constructs, and it reads no repository at all. Filling the git fields for a synthetic run
+  # would record a repository the run never opened, which is the class of defect this module
+  # exists to prevent.
   defp resolve_workload(overrides) do
-    Map.merge(
-      %{
-        crdt: :syncordian,
-        repository: Syncordian.GitLog.repo_path(),
-        tracked_file: Syncordian.GitLog.tracked_file(),
-        max_commits: Syncordian.GitLog.max_commits(),
-        max_peers: max_peers()
-      },
-      Map.new(overrides)
-    )
+    overrides = Map.new(overrides)
+
+    defaults =
+      case overrides[:kind] do
+        :synthetic -> synthetic_defaults()
+        _ -> git_defaults()
+      end
+
+    Map.merge(defaults, overrides)
+  end
+
+  defp git_defaults do
+    %{
+      kind: :git,
+      crdt: :syncordian,
+      repository: Syncordian.GitLog.repo_path(),
+      tracked_file: Syncordian.GitLog.tracked_file(),
+      max_commits: Syncordian.GitLog.max_commits(),
+      max_peers: max_peers()
+    }
+  end
+
+  defp synthetic_defaults do
+    %{
+      kind: :synthetic,
+      crdt: :syncordian,
+      name: :overlapping_blocks,
+      peers: 3,
+      ops_per_peer: 4,
+      conflict_rate: 1.0
+    }
   end
 
   defp max_peers do
@@ -422,13 +449,23 @@ defmodule Syncordian.Run do
 
     [
       to_string(workload[:crdt] || "syncordian"),
-      workload[:tracked_file] |> to_string() |> Path.basename() |> String.replace(~r/\W+/, "-"),
+      workload_label(workload),
       Atom.to_string(run.scenario),
       "adv#{run.adversary[:count] || 0}",
       "seed#{run.seed || 0}"
     ]
     |> Enum.join("_")
   end
+
+  # The part of the identifier that names the workload. A git replay is named by the file it
+  # tracked. A synthetic workload is named by itself and by the size of its network, because the
+  # peer count is the axis the scalability sweep varies, and two points of that sweep must not
+  # write into one directory.
+  defp workload_label(%{kind: :synthetic} = workload),
+    do: "#{workload[:name]}_n#{workload[:peers]}"
+
+  defp workload_label(workload),
+    do: workload[:tracked_file] |> to_string() |> Path.basename() |> String.replace(~r/\W+/, "-")
 
   defp env(name) do
     case System.get_env(name) do

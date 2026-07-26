@@ -92,7 +92,10 @@ defmodule SyncordianWeb.Supervisor do
   end
 
   def handle_event("select_crdt", %{"crdt_module" => value}, socket) do
-    crdt_module = String.to_existing_atom(value)
+    # Matched against the known implementations rather than converted, for the reason
+    # `Syncordian.Utilities.parse_crdt_id/1` records: the atom naming an implementation exists only
+    # once something has referred to that module, so converting here fails on a fresh node.
+    crdt_module = Syncordian.Utilities.parse_crdt_id(value)
     IO.puts("Selected CRDT module: #{crdt_module}")
     IO.inspect(crdt_module)
     PhoenixLiveSession.put_session(socket, "crdt_module", crdt_module)

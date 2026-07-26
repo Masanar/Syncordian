@@ -45,4 +45,6 @@ TODO.md
 debug/metadata/
 debug/documents/
 __pycache__/
+debug/
+debug/*
 

@@ -286,6 +286,8 @@ defmodule Syncordian.Utilities do
     end
   end
 
+  @crdt_ids [:syncordian, :fugue, :treedoc, :logoot]
+
   @spec identify_peer_module(Syncordian.Basic_Types.crdt_id()) :: module
   def identify_peer_module(crdt_id) do
     case crdt_id do
@@ -294,6 +296,32 @@ defmodule Syncordian.Utilities do
       :treedoc -> Syncordian.CRDT.Treedoc.Peer
       :logoot -> Syncordian.CRDT.Logoot.Peer
       _ -> Syncordian.Peer
+    end
+  end
+
+  @doc "The implementations a run may be asked for."
+  @spec crdt_ids() :: [Syncordian.Basic_Types.crdt_id()]
+  def crdt_ids, do: @crdt_ids
+
+  @doc """
+  Reads an implementation name given on a command line.
+
+  `String.to_existing_atom/1` is the wrong tool here and was the cause of a real defect: the atom
+  naming an implementation exists only once something has referred to that module, so a driver
+  started with `--crdt fugue` failed before it ran, and every baseline comparison was unreachable
+  from the command line. Matching against the known list instead both fixes that and refuses an
+  unknown name loudly, rather than falling through to Syncordian under someone else's label.
+  """
+  @spec parse_crdt_id(String.t()) :: Syncordian.Basic_Types.crdt_id()
+  def parse_crdt_id(name) when is_binary(name) do
+    case Enum.find(@crdt_ids, &(Atom.to_string(&1) == name)) do
+      nil ->
+        raise ArgumentError,
+              "unknown CRDT #{inspect(name)}, expected one of " <>
+                Enum.map_join(@crdt_ids, ", ", &Atom.to_string/1)
+
+      crdt_id ->
+        crdt_id
     end
   end
 

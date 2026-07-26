@@ -296,11 +296,21 @@ defmodule Syncordian.Metadata do
   # only readable next to the configuration it was taken under, and a file that has to be
   # matched to a configuration by its position in a directory tree will eventually be
   # matched to the wrong one.
+  @doc """
+  Everything a snapshot reports: the recorded fields together with the ratios derived from them.
+
+  `to_map/1` gives the fields as they are stored. This adds the derived quantities, and it is the
+  shape every artifact written from a snapshot has. It is public because the synthetic workloads
+  write their own artifact rather than going through the supervisor, and a second definition of
+  what "bytes per insert" means is exactly what the comment on `derived/1` warns against.
+  """
+  @spec report(metadata()) :: %{String.t() => term()}
+  def report(metadata), do: metadata |> to_map() |> Map.merge(derived(metadata))
+
   defp get_metadata_json(metadata, current_commit, current_date_unix, byzantine_nodes) do
     metadata_map =
       metadata
-      |> to_map()
-      |> Map.merge(derived(metadata))
+      |> report()
       |> Map.merge(%{
         "byzantine_nodes" => byzantine_nodes,
         "current_commit" => current_commit,

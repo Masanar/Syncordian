@@ -132,7 +132,10 @@ IO.puts(
 )
 
 IO.puts(
-  "lines re-issued per repair    : #{inspect(measured["reissued_lines_per_conflict"])} " <>
+  # `charlists: :as_lists`, because these are small integers and the default rendering turns a list
+  # of them into a string of control characters.
+  "lines re-issued per repair    : " <>
+    "#{inspect(measured["reissued_lines_per_conflict"], charlists: :as_lists)} " <>
     "(live duplicates: #{measured["live_duplicates_max"]})"
 )
 

@@ -86,11 +86,14 @@ defmodule ScalabilitySweep do
   defp one(peer_count, seed, options) do
     directory = Path.join(options[:root], run_id(peer_count, seed, options))
 
-    if File.exists?(Path.join(directory, "result.json")) do
+    if completed?(directory) do
       IO.puts("skip  n=#{peer_count} seed=#{seed} (already has a result)")
       %{"run" => directory, "peers" => peer_count, "seed" => seed, "status" => "skipped"}
     else
-      IO.puts("run   n=#{peer_count} seed=#{seed}")
+      # A directory that is there without a passing result is a run that failed or was interrupted,
+      # and saying so distinguishes a sweep that is repeating work from one that is doing it once.
+      verb = if File.exists?(directory), do: "rerun", else: "run  "
+      IO.puts("#{verb} n=#{peer_count} seed=#{seed}")
       started_at = System.monotonic_time(:millisecond)
 
       {output, exit_status} =
@@ -110,6 +113,22 @@ defmodule ScalabilitySweep do
         "elapsed_ms" => elapsed,
         "status" => if(exit_status == 0, do: "ok", else: "failed")
       }
+    end
+  end
+
+  # Whether a run is already on disk and worth keeping. A run writes its `result.json` whether it
+  # passed or failed, so the presence of the file is not the question: a sweep re-run after a fix
+  # would otherwise inherit every failure it was re-run to clear, and report them as skipped points
+  # that a reader takes for finished ones. Only a run that reported `ok` is skipped.
+  defp completed?(directory) do
+    path = Path.join(directory, "result.json")
+
+    with true <- File.exists?(path),
+         {:ok, body} <- File.read(path),
+         {:ok, %{"status" => "ok"}} <- Jason.decode(body) do
+      true
+    else
+      _incomplete_or_failed -> false
     end
   end
 
@@ -152,25 +171,55 @@ defmodule ScalabilitySweep do
   end
 
   defp write_index(results, peers, seeds, options) do
+    path = Path.join(options[:root], "index_#{options[:workload]}.json")
+    previous = read_index(path)
+
+    # Merged with whatever the root already holds, rather than replacing it. The top of a ladder is
+    # not always affordable at the same number of repetitions as the bottom, so a ladder is run in
+    # more than one invocation: the expensive point separately, and at fewer seeds. An index that
+    # described only the last invocation would report a two-point ladder over a root holding five,
+    # and the runs it omitted would be invisible rather than merely unmentioned.
+    #
+    # Runs are keyed by their directory, so re-running a point replaces its entry instead of
+    # doubling it.
+    runs =
+      (Map.get(previous, "runs", []) ++ results)
+      |> Enum.reduce(%{}, fn run, acc -> Map.put(acc, run["run"], run) end)
+      |> Map.values()
+      |> Enum.sort_by(&{&1["peers"], &1["seed"]})
+
     index = %{
       "workload" => to_string(options[:workload]),
-      "peers" => peers,
-      "seeds" => seeds,
-      "reps" => options[:reps],
+      "peers" => union(Map.get(previous, "peers", []), peers),
+      "seeds" => union(Map.get(previous, "seeds", []), seeds),
       "ops_per_peer" => options[:ops_per_peer],
       "conflict_rate" => options[:conflict_rate],
       "delay" => options[:delay],
       "adversaries" => options[:adversaries],
-      "runs" => results
+      # How many runs stand behind each point, said in the index and not only on the console. A
+      # figure drawn from a point with thirty runs and a point with five is not wrong, but a reader
+      # cannot see which is which unless the file says so.
+      "runs_by_peers" =>
+        runs
+        |> Enum.filter(&(&1["status"] in ["ok", "skipped"]))
+        |> Enum.frequencies_by(& &1["peers"]),
+      "runs" => runs
     }
 
     # Named after the workload, so that running several workloads into one root leaves an index for
     # each rather than only for whichever finished last.
-    File.write!(
-      Path.join(options[:root], "index_#{options[:workload]}.json"),
-      Jason.encode!(index, pretty: true)
-    )
+    File.write!(path, Jason.encode!(index, pretty: true))
   end
+
+  defp read_index(path) do
+    with {:ok, body} <- File.read(path), {:ok, index} <- Jason.decode(body) do
+      index
+    else
+      _absent_or_unreadable -> %{}
+    end
+  end
+
+  defp union(left, right), do: (left ++ right) |> Enum.uniq() |> Enum.sort()
 
   defp summarize(results, peers, seeds) do
     failed = Enum.filter(results, &(&1["status"] == "failed"))

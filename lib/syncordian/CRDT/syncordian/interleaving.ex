@@ -29,14 +29,15 @@ defmodule Syncordian.Interleaving do
 
   ## Conflict and re-placement (`def:intention`, `theo:nonint`)
 
-  Two blocks *conflict* iff they have distinct writers, the **same** authored parent
-  interval `(left_anchor, right_anchor)`, and their live position spans overlap. When they
-  do, the block whose writer has the **greater peer id is the lower priority** one (matching
-  the writer-priority tiebreak of the model and the peer-id ordering of
-  `sec:interleavings`), and it is the one that moves. It is re-issued as a fresh contiguous
-  chain inside `(gap_left, gap_right)` — a sub-interval of the shared parent interval chosen
-  strictly to the left of the higher-priority block and containing no other live line — so
-  the moved block can no longer lie between two lines of the block it conflicted with.
+  Two blocks *conflict* iff they have distinct writers, their live position spans overlap, and they
+  are *comparable*: either they were authored into the same interval (equal `session`), or they
+  occupy the same interval now (equal `left_anchor` / `right_anchor`, read from the authored parents
+  of the block's head). When they conflict, the block whose writer has the **greater peer id is the
+  lower priority** one (matching the writer-priority tiebreak of the model and the peer-id ordering
+  of `sec:interleavings`), and it is the one that moves. It is re-issued as a fresh contiguous chain
+  inside `(gap_left, gap_right)`, a sub-interval chosen strictly to the left of every higher-priority
+  block it overlaps and containing no other line, so the moved block can no longer lie between two
+  lines of a block it conflicted with.
 
   ## Why equal anchors is exactly concurrency
 
@@ -50,15 +51,62 @@ defmodule Syncordian.Interleaving do
   lines among its anchors, so preserving that nesting is intention preservation rather than an
   interleaving to repair.
 
-  Detection is sound in this sense, and incomplete in exactly one shape: when a writer types
-  a second concurrent block anchored on its own concurrently authored line, its anchors are
-  `(l, own_line)` rather than `(l, r)`, so two writers doing this concurrently carry different
-  anchor pairs and their overlap is not reported. Closing that case needs one immutable
-  authored field per line, the number of foreign inserts the writer had applied at authoring,
-  which tells whether one of its own lines belongs to the same authoring session and may be
-  normalized away. It is stated as future work in `sec:interleavings` rather than guessed at
-  here: a rule that merely drops the anchor test admits causally ordered pairs and moves
-  deliberate edits.
+  ## Why comparability needs both keys
+
+  A block has two intervals once it has been repaired: the one it was authored into, which is its
+  session and never changes, and the one it now occupies. Detection needs both, and each key alone
+  is demonstrably wrong. Both failures were found by the controlled workloads of
+  `Syncordian.Workloads`, and each is reproducible from a fixed seed.
+
+  **The session alone is not enough.** A re-placement preserves the session but changes where the
+  block is. A repaired block therefore has lines inside `(l, r)` while its session still says
+  `(l_0, r_0)`. Meanwhile a third writer, having applied the block in its original position, may
+  legitimately have typed into `(l, r)`; by the paragraph above that placement is its intention and
+  not an anomaly. After the repair the two occupy one interval with overlapping spans, which is the
+  conflict condition, but their sessions differ, so a session-keyed rule filed them apart and never
+  compared them. The anomaly was introduced by the repair rather than by concurrent authoring, and
+  nothing detected it: the replicas converged, agreed, and reported no repair outstanding, on a
+  document in which two writers' blocks were interleaved. `:three_way_cascade` reproduces it in
+  roughly a third of seeds.
+
+  **The current interval alone is not enough either.** It drops a block out of its group the moment
+  the block is repaired. A later mover then computes its gap against only the blocks still sharing
+  its interval and can land on top of the one that left, because "one move settles every conflict
+  this block has" holds only if every block it overlaps was in the set the gap was computed
+  against. `:overlapping_blocks` at eight writers fails this way, and badly.
+
+  Taking the union of the two keys keeps both properties. Blocks allocated into one interval stay
+  comparable however many of them have moved, and a block that has moved is additionally compared
+  against whatever shares the interval it moved into.
+
+  ## An open problem: a block stranded by somebody else's repair
+
+  Neither key sees this one, and it is not hypothetical. Both keys ask where a block was allocated.
+  A block is allocated into an interval, and then a repair moves the lines that bounded that
+  interval somewhere else. The block does not move with them: it stays where it is, which is now
+  inside whatever the departing block used to sit next to. The two blocks that end up interleaved
+  were authored into different intervals and occupy different ones, so they match on neither key
+  and the pair is never examined. Every replica agrees on the document byte for byte, this module
+  reports no repair outstanding, and two writers' blocks are interleaved in it.
+
+  `:overlapping_blocks` at sixteen writers and half of them contending produces it in almost every
+  seed, and `test/syncordian/interleaving_test.exs` holds two skipped regression tests that
+  reproduce it from a document fixture.
+
+  The obvious repair is to add a third comparability source: two blocks whose live lines are
+  interleaved right now, whatever they were authored against, which is also what `def:intention`
+  quantifies over. That was tried and reverted, because it fires on ordinary documents. A later
+  edit typed inside another writer's block is interleaved with it by that reading and is not an
+  anomaly, and exempting the pairs whose authored parents both belong to the block they sit in is
+  not enough to cover it: nesting composes, so an edit typed inside a block that is itself nested
+  inside a third has parents in the middle block and is compared against the outer one. Over the
+  ohmyzsh README the effect is measurable rather than theoretical: the replay issued twelve
+  re-placements where it should issue none, and the replicas ended up agreeing with each other on a
+  document that no longer matched git.
+
+  Closing it needs a rule that separates an interleaving created by a repair from ordinary nested
+  editing, and the git replay is the test that any candidate has to pass: over a real history the
+  repair counters have to stay at zero.
 
   ## The gap invariant, which the termination argument rests on
 
@@ -66,24 +114,49 @@ defmodule Syncordian.Interleaving do
   of the moving block, and `successor_line/3` picks the line immediately after it *in the
   document list*. So `gap_left` and `wall` are **adjacent**: the position interval they bound
   holds no line at all, live or tombstoned, foreign or own. A re-issued block therefore lands
-  where nothing else sits, disjoint from every block currently visible rather than only from
-  the one it conflicted with, and its anchors are a fresh pair. That, with the priority rule,
+  where nothing else sits *at the replica that chose the gap*, disjoint from every block visible
+  there rather than only from the one it conflicted with, and its anchors are a fresh pair.
+
+  Adjacency is a fact about the mover's document, not about the run, and it cannot be more than
+  that: the mover decides from what it holds. An insert already in flight may land inside the gap,
+  which creates a fresh overlap — and that overlap is caught because the moved block's current
+  interval is now the gap, so the arriving block is comparable with it. That, with the priority rule,
   is what makes re-placement terminate: the writer of a moving block always has a greater peer
   id than the writer whose operation triggered the move, so a chain of triggers strictly
   descends the priority order and cannot cycle, and there are finitely many writers. The
   argument is written out in `sec:interleavings` and `theo:nonint`.
+
+  Reading the arrangement off the document does not weaken that argument. It widens the set of pairs
+  a block can be in conflict with, and the mover is still the one with the greater peer id, still
+  moving strictly left of every higher-priority block it overlaps, into a gap holding nothing. What
+  it does change is how often the question is asked, which is what the settled condition above is
+  for.
   """
 
   import Syncordian.Line_Object
   alias Syncordian.PathId
 
   @typedoc """
-  A reconstructed authored block: its writer, its shared authored parent interval
-  (`left_anchor` / `right_anchor` as `op_id`s, `nil` at a boundary sentinel), and its live
-  lines in position order.
+  A reconstructed authored block.
+
+  Two intervals are recorded, and the distinction between them is what makes detection
+  complete across a repair.
+
+    * `session` is the interval the block was *authored* into. It never changes, so it is the
+      block's identity: the thing a conflict is named by and a repair's duration measured
+      against.
+    * `left_anchor` / `right_anchor` are the interval the block *currently occupies*, taken
+      from the authored parents of its head. For a block that has never moved these equal the
+      session. For a block that has been re-placed they are the fresh interval the repair put
+      it in, and the session is then a historical fact about where it used to be.
+
+  Conflict detection groups by the current interval, because that is where the block's lines
+  actually are. See the module documentation for the defect that arose from grouping by the
+  session instead.
   """
   @type block :: %{
           writer: Syncordian.Basic_Types.peer_id(),
+          session: Syncordian.Basic_Types.session() | nil,
           left_anchor: Syncordian.Basic_Types.op_id() | nil,
           right_anchor: Syncordian.Basic_Types.op_id() | nil,
           lines: [Syncordian.Line_Object.line()]
@@ -174,16 +247,58 @@ defmodule Syncordian.Interleaving do
           conflicts: [conflict_id()]
         }
   def analyze(document) do
-    groups =
-      document
-      |> blocks()
-      |> Enum.group_by(fn b -> {b.left_anchor, b.right_anchor} end)
+    blocks = blocks(document)
+    comparable = comparable_sets(blocks)
 
     %{
-      replacements:
-        Enum.flat_map(groups, fn {_anchors, g} -> group_replacements(g, document) end),
-      conflicts: Enum.flat_map(groups, fn {_anchors, g} -> group_conflicts(g) end)
+      replacements: Enum.flat_map(blocks, &block_replacement(&1, comparable, document)),
+      conflicts: blocks |> Enum.flat_map(&block_conflicts(&1, comparable)) |> Enum.uniq()
     }
+  end
+
+  # For each block, the blocks it may be in conflict with. Two blocks are comparable when they were
+  # authored into one interval, or when they occupy one interval now. Both are needed, and neither
+  # alone is enough.
+  #
+  # The session key is what keeps every block allocated into one interval comparable with the others
+  # after some of them have moved. Detection that used only the current interval would drop a block
+  # out of its group the moment it was repaired, and then a later mover would compute its gap against
+  # only the blocks still in the group and could land on top of the one that had left. That is not
+  # hypothetical: it fails the plain overlapping-block workload at eight writers.
+  #
+  # The interval key is what catches an overlap the repair itself created, where a moved block and a
+  # block placed concurrently into the gap it chose end up in one interval with different sessions.
+  #
+  # What neither key catches is a block stranded by a third party's repair; see the module doc.
+  #
+  # Both keys are cheap group_by passes, and each group is small, so this stays the O(n) traversal the
+  # peer loop runs after every applied operation.
+  @spec comparable_sets([block()]) :: %{block_id() => [block()]}
+  defp comparable_sets(blocks) do
+    by_session = Enum.group_by(blocks, & &1.session)
+    by_interval = Enum.group_by(blocks, &{&1.left_anchor, &1.right_anchor})
+
+    Map.new(blocks, fn block ->
+      id = block_id(block)
+
+      candidates =
+        Map.get(by_session, block.session, []) ++
+          Map.get(by_interval, {block.left_anchor, block.right_anchor}, [])
+
+      {id, Enum.uniq_by(candidates, &block_id/1)}
+    end)
+  end
+
+  # Every higher-priority block this one overlaps, over both comparability keys. Taking them together
+  # is what preserves "one move settles every conflict the block currently has": the gap is bounded
+  # by the least position among all of them, so afterwards each lies entirely to the block's right.
+  @spec higher_priority_overlaps(block(), %{block_id() => [block()]}) :: [block()]
+  defp higher_priority_overlaps(block, comparable) do
+    comparable
+    |> Map.get(block_id(block), [])
+    |> Enum.filter(fn other ->
+      other.writer < block.writer and spans_overlap?(other, block)
+    end)
   end
 
   @doc """
@@ -218,19 +333,36 @@ defmodule Syncordian.Interleaving do
   # ----- block reconstruction -------------------------------------------------------------
 
   # One block from a (writer, session) group. `lines` arrives in document order, which is
-  # position order, and the session pair is the block's authored interval: the anchors its
-  # writer began the run between. A line with no session (only the boundary sentinels, which
-  # live_block_line?/1 already excludes) would carry a nil pair.
+  # position order.
+  #
+  # The current interval is read from the authored parents of the block's head rather than from
+  # the session. For a block that has never moved the two are the same value, because a session
+  # *is* the head's parents at authoring time. They part company exactly when a repair moves the
+  # block: the re-issued chain names the fresh gap it was placed into, while the session still
+  # names where the block was written. Taking the interval from the head therefore says where the
+  # block's lines are now, which is what a question about overlap has to be asked of.
+  #
+  # A head with no authored parents falls back to the session. That is only reachable for a line
+  # that was never sealed, which `live_block_line?/1` does not exclude by itself, and a nil pair
+  # shared by unrelated blocks would group them together.
   @spec build_block(
           Syncordian.Basic_Types.peer_id(),
           Syncordian.Basic_Types.session() | nil,
           [Syncordian.Line_Object.line()]
         ) :: block()
   defp build_block(writer, session, lines) do
-    {left_anchor, right_anchor} = session || {nil, nil}
+    head = List.first(lines)
+    head_left = get_line_parent_left_op_id(head)
+    head_right = get_line_parent_right_op_id(head)
+
+    {left_anchor, right_anchor} =
+      if head_left == nil and head_right == nil,
+        do: session || {nil, nil},
+        else: {head_left, head_right}
 
     %{
       writer: writer,
+      session: session,
       left_anchor: left_anchor,
       right_anchor: right_anchor,
       lines: lines
@@ -257,62 +389,50 @@ defmodule Syncordian.Interleaving do
   # re-issued chain contiguous inside one disjoint gap, so interleaving-freedom
   # (def:intention: no foreign live line strictly between two block lines, authored order
   # preserved) still holds at quiescence, at the cost of a few extra re-issued lines.
-  @spec group_replacements([block()], Syncordian.Basic_Types.document()) :: [replacement()]
-  defp group_replacements(group, document) do
-    writers = group |> Enum.map(& &1.writer) |> Enum.uniq()
+  @spec block_replacement(block(), %{block_id() => [block()]}, Syncordian.Basic_Types.document()) ::
+          [replacement()]
+  defp block_replacement(block, comparable, document) do
+    case higher_priority_overlaps(block, comparable) do
+      [] ->
+        []
 
-    if length(writers) < 2 do
-      []
-    else
-      Enum.flat_map(group, fn block ->
-        higher =
-          Enum.filter(group, fn other ->
-            other.writer < block.writer and spans_overlap?(other, block)
-          end)
+      higher ->
+        gap_right = min_position_line(higher)
+        gap_left = gap_right && nearest_left_non_member(document, gap_right, block.lines)
 
-        case higher do
-          [] ->
-            []
-
-          _ ->
-            gap_right = min_position_line(higher)
-            gap_left = gap_right && nearest_left_non_member(document, gap_right, block.lines)
-
-            if gap_left == nil do
-              []
-            else
-              [
-                %{
-                  writer: block.writer,
-                  moving_lines: block.lines,
-                  gap_left: gap_left,
-                  gap_right: gap_right,
-                  wall: successor_line(document, gap_left, gap_right)
-                }
-              ]
-            end
+        if gap_left == nil do
+          []
+        else
+          [
+            %{
+              writer: block.writer,
+              moving_lines: block.lines,
+              gap_left: gap_left,
+              gap_right: gap_right,
+              wall: successor_line(document, gap_left, gap_right)
+            }
+          ]
         end
-      end)
     end
   end
 
-  # The conflicting pairs within one parent-interval group. The same overlap test the
-  # re-placement rule uses, reported symmetrically: `group_replacements/2` emits one entry per
-  # block that has to move, collapsing all the blocks it overlaps into a single instruction,
-  # whereas an interleaving count has to name each interleaved pair once. Ordering the pair by
-  # writer makes the identity independent of the order the group was examined in, so the same
-  # conflict observed at two replicas, or at one replica across two applies, is the same value.
-  @spec group_conflicts([block()]) :: [conflict_id()]
-  defp group_conflicts(group) do
-    for a <- group,
-        b <- group,
-        a.writer < b.writer,
-        spans_overlap?(a, b),
-        do: {block_id(a), block_id(b)}
+  # The conflicting pairs this block takes part in, as the lower-priority side. The same overlap test
+  # the re-placement rule uses, reported so that a pair is named once: block_replacement/3 emits one
+  # instruction per block that has to move, collapsing every block it overlaps into a single move,
+  # whereas an interleaving count has to name each interleaved pair. Ordering the pair by writer makes
+  # the identity independent of which block was examined first, so the same conflict seen at two
+  # replicas, or at one replica across two applies, is the same value.
+  @spec block_conflicts(block(), %{block_id() => [block()]}) :: [conflict_id()]
+  defp block_conflicts(block, comparable) do
+    for other <- higher_priority_overlaps(block, comparable),
+        do: {block_id(other), block_id(block)}
   end
 
+  # The identity is the authoring session, not the interval the block currently occupies. A repair
+  # changes where a block is and must not change which block it is, or the same interleaving would
+  # be counted twice and its repair latency measured from the wrong moment.
   @spec block_id(block()) :: block_id()
-  defp block_id(block), do: {block.writer, {block.left_anchor, block.right_anchor}}
+  defp block_id(block), do: {block.writer, block.session}
 
   # Two blocks' live position spans overlap iff neither lies entirely to one side of the
   # other. Both `lines` lists are position-sorted, so the span is (first, last).

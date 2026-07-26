@@ -250,9 +250,12 @@ defmodule FullExperiment do
     |> Enum.filter(&is_pid/1)
     |> Enum.map(fn pid ->
       try do
-        case Process.info(pid, :message_queue_length) do
-          {:message_queue_length, n} -> n
-          nil -> 0
+        # `:message_queue_len` is the item `:erlang.process_info/2` accepts. The longer spelling
+        # raised, and the rescue below then reported an idle network however deep the mailboxes
+        # were, so quiescence here was never actually waited for.
+        case Process.info(pid, :message_queue_len) do
+          {:message_queue_len, n} -> n
+          _ended -> 0
         end
       rescue
         ArgumentError -> 0

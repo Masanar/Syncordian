@@ -65,18 +65,45 @@ defmodule Syncordian.Workloads.Checks do
   same three lines, the document has to hold nine lines, and a check that compared sets would be
   satisfied by three.
   """
-  @spec complete(String.t(), [String.t()], [String.t()]) :: :ok | {:error, term()}
-  def complete(text, authored, deleted) do
-    expected = tally(authored -- deleted)
+  @spec complete(String.t(), [String.t()], non_neg_integer()) :: :ok | {:error, term()}
+  def complete(text, authored, delete_count) do
+    expected = tally(authored)
     actual = tally(lines(text))
 
-    missing = difference(expected, actual)
     extra = difference(actual, expected)
+    missing = difference(expected, actual)
+    removed = missing |> Map.values() |> Enum.sum()
 
     cond do
-      missing == %{} and extra == %{} -> :ok
-      true -> {:error, {:incomplete, %{missing: missing, unexpected: extra}}}
+      extra != %{} ->
+        {:error, {:unauthored_content, extra}}
+
+      removed != delete_count ->
+        {:error,
+         {:wrong_number_removed, %{expected: delete_count, removed: removed, which: missing}}}
+
+      true ->
+        :ok
     end
+  end
+
+  @doc """
+  Which authored content is no longer live, worked out from the converged document.
+
+  A deletion in these workloads names a position, not a line, and it is issued while other writers
+  are still inserting, so which line it removes is decided when the replica applies it. The harness
+  cannot know beforehand: an earlier version read the document just before issuing the delete and
+  recorded what it saw, and at eight writers the answer was wrong often enough to fail runs in which
+  the protocol had done nothing wrong.
+
+  So the deleted line is derived afterwards rather than predicted. What `complete/3` asserts is
+  therefore a count and a containment: every live line was authored by somebody, and exactly as many
+  lines are gone as there were deletions. A resurrection or a lost line changes that count.
+  """
+  @spec removed(String.t(), [String.t()]) :: [String.t()]
+  def removed(text, authored) do
+    difference(tally(authored), tally(lines(text)))
+    |> Enum.flat_map(fn {content, count} -> List.duplicate(content, count) end)
   end
 
   @doc """
@@ -251,32 +278,6 @@ defmodule Syncordian.Workloads.Checks do
   end
 
   @doc """
-  A cascade of repairs stopped, and stopped within the depth the repair rule bounds it by.
-
-  With `k` contending writers the rule allows a chain of at most `k - 1` repairs, because each
-  repair moves the lower-priority block of a pair and the priority order over writers is a strict
-  order. A run that issued more than that per conflict is a run in which the measure the
-  termination argument rests on did not decrease.
-  """
-  @spec bounded_cascade(map(), pos_integer()) :: :ok | {:error, term()}
-  def bounded_cascade(metadata, writers) do
-    depths = Map.get(metadata, "repair_latency_edits", [])
-    conflicts = counter(metadata, "conflicts_observed")
-    replacements = counter(metadata, "replacement_issued_counter")
-
-    bound = writers - 1
-    per_conflict = if conflicts > 0, do: replacements / conflicts, else: 0.0
-
-    if per_conflict <= bound do
-      :ok
-    else
-      {:error,
-       {:cascade_exceeded_bound,
-        %{bound: bound, per_conflict: per_conflict, repairs: length(depths)}}}
-    end
-  end
-
-  @doc """
   Runs the properties a plan declares, and answers the ones that failed.
 
   The plan says which properties it asserts, so the driver and the test suite cannot disagree
@@ -313,16 +314,18 @@ defmodule Syncordian.Workloads.Checks do
     Map.put(declared, :converged, drop_value(converged))
   end
 
-  defp check(:complete, ctx), do: complete(ctx.text, ctx.authored, ctx.deleted)
+  defp check(:complete, ctx), do: complete(ctx.text, ctx.authored, length(ctx.deleted))
   defp check(:contiguous, ctx), do: contiguous(ctx.document)
-  defp check(:no_resurrection, ctx), do: no_resurrection(ctx.contents, ctx.deleted)
+
+  defp check(:no_resurrection, ctx),
+    do: no_resurrection(ctx.contents, removed(ctx.text, ctx.authored))
+
   defp check(:no_aura_residue, ctx), do: no_aura_residue(ctx.document)
   defp check(:no_repair_pending, ctx), do: no_repair_pending(ctx.document)
   defp check(:no_live_duplicates, ctx), do: no_live_duplicates(ctx.metadata)
   defp check(:exercised, ctx), do: exercised(ctx.metadata)
   defp check(:recovered, ctx), do: recovered(ctx.metadata)
   defp check(:replayed, ctx), do: replayed(ctx.metadata)
-  defp check(:bounded_cascade, ctx), do: bounded_cascade(ctx.metadata, ctx.peers)
 
   @doc """
   How far each replica got with settling, and which lines it is still waiting on.

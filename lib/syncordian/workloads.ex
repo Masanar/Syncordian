@@ -71,7 +71,9 @@ defmodule Syncordian.Workloads do
   @type step ::
           {:insert, peer_id :: non_neg_integer(), content :: String.t(),
            test_index :: pos_integer()}
-          | {:append, peer_id :: non_neg_integer(), content :: String.t()}
+          | {:append_block, peer_id :: non_neg_integer(), contents :: [String.t()]}
+          | {:append_after, peer_id :: non_neg_integer(), contents :: [String.t()],
+             await_lines :: non_neg_integer()}
           | {:delete, peer_id :: non_neg_integer(), test_index :: pos_integer()}
           | {:partition, peer_id :: non_neg_integer(), boolean()}
           | :calm
@@ -105,10 +107,21 @@ defmodule Syncordian.Workloads do
   # finished authoring and the two blocks will no longer share an authored interval.
   @author_window_ms 3
 
-  # When a writer outside the contending fraction issues its lines. It has to be later than the
-  # largest message delay, so that the contending writers' lines have arrived and the append lands
-  # past all of them rather than into the interval they are fighting over.
-  @late_author_ms 120
+  # How often a writer outside the contending fraction looks at its replica while waiting for the
+  # lines it has to append past. How long it will wait is not fixed here: it is half the budget the
+  # whole drive is given, so the writer gives up before the driver does and the run reports its
+  # properties rather than dying (`drive/3`).
+  #
+  # This replaced a fixed 120 millisecond delay, which was a constant standing in for "by now the
+  # lines before mine have arrived". That is true at eight writers and false at sixteen, where the
+  # contending traffic is four times larger and still in flight at 120ms, so the tail writer read a
+  # document that was still moving and appended into the middle of somebody's block.
+  @tail_sample_ms 100
+
+  # How long a replica is given to answer a request for its document. A peer answers from its
+  # message loop, so a peer working through a deep mailbox answers late, and at the top of a
+  # scalability ladder the mailboxes are very deep indeed.
+  @document_timeout_ms 60_000
 
   # How long a peer is given to process the messages that its own start sends it, before any
   # edit is issued. A peer's first message installs its identity, its progress vector, and its
@@ -245,8 +258,15 @@ defmodule Syncordian.Workloads do
   def asserts(:long_offline), do: [:complete, :recovered]
   def asserts(:post_gc_replay), do: [:complete, :no_resurrection, :no_aura_residue, :replayed]
 
+  # Termination is asserted as a fixed point rather than as a bound on a ratio. An earlier version
+  # of this compared re-placements issued against interleavings observed and required the quotient to
+  # stay under the number of writers, which measured nothing: the two counters are summed over the
+  # replicas on different bases, since every replica observes the same interleaving while only the
+  # losing writer re-issues. `:no_repair_pending` is the honest statement, because the detector is a
+  # pure function of the document and an empty result means there is no repair left to make. The
+  # amplification is reported as a distribution instead of being bounded by an invented rule.
   def asserts(:three_way_cascade),
-    do: [:complete, :contiguous, :exercised, :no_repair_pending, :bounded_cascade]
+    do: [:complete, :contiguous, :exercised, :no_repair_pending]
 
   ##########################################################################################
   # The seven workloads
@@ -289,7 +309,16 @@ defmodule Syncordian.Workloads do
         if peer < contending do
           {block(peer, state.ops, offset), state}
         else
-          {tail_block(peer, state.ops, @late_author_ms + offset), state}
+          # Every line authored by a writer before this one: the contending blocks, and the tail
+          # blocks of the writers ahead of it in the tail. Waiting for its own predecessors is what
+          # keeps the tail writers out of each other's way, which is the second half of "contends
+          # with nobody" and the half that is easy to miss. Waiting only for the contending lines
+          # leaves sixteen tail writers appending past the same end of the same document at the same
+          # moment, and a writer that holds five lines of another tail block appends into the middle
+          # of it. That reads afterwards as a deliberate nested edit, because its authored parents
+          # are two adjacent lines of that block, and a deliberate nested edit is precisely what the
+          # repair rule is required not to touch.
+          {tail_block(peer, state.ops, offset, peer * state.ops), state}
         end
       end)
 
@@ -364,7 +393,7 @@ defmodule Syncordian.Workloads do
     after_outage =
       for peer <- 0..(state.peers - 1),
           {tag, delay} <- [{:reveal, 60}, {:nudge_a, 160}, {:nudge_b, 260}],
-          do: {offline_ms + delay, {:append, peer, label(peer, tag)}}
+          do: {offline_ms + delay, {:append_block, peer, [label(peer, tag)]}}
 
     {control ++ inserts ++ after_outage, offline_ms + 900}
   end
@@ -397,14 +426,35 @@ defmodule Syncordian.Workloads do
   defp build(:three_way_cascade, state) do
     stagger = Map.get(state.params, :stagger_ms, 80)
 
+    # Exactly three writers, whatever the size of the network. The remaining peers are replicas
+    # that receive the traffic and acknowledge it but author nothing.
+    #
+    # Holding the number of writers fixed is what keeps the workload's name true. An earlier
+    # version staggered every peer by its own index, which at three peers was a cascade and at
+    # eight was something else entirely: writers three upwards each arrived long after the others,
+    # anchored on whatever they had already received, and contended with nobody. The workload then
+    # measured a different execution at every network size while reporting one name.
     {steps, _state} =
       each_writer(state, fn peer, state ->
         {offset, state} = jitter(state)
-        start = if peer < 2, do: offset, else: offset + (peer - 1) * stagger
-        {block(peer, state.ops, start), state}
+
+        cond do
+          # The first two contend inside the authoring window, so neither has heard from the other.
+          peer < 2 ->
+            {block(peer, state.ops, offset), state}
+
+          # The third arrives a stagger later, wider than the largest message delay, so its block
+          # lands while the first repair is still in flight. That is what turns one repair into
+          # two.
+          peer == 2 ->
+            {block(peer, state.ops, offset + stagger), state}
+
+          true ->
+            {[], state}
+        end
       end)
 
-    {steps, state.peers * stagger}
+    {steps, 3 * stagger}
   end
 
   # A block of `ops` lines by one writer, its head anchored on the interval every other
@@ -417,13 +467,28 @@ defmodule Syncordian.Workloads do
         do: {offset, {:insert, peer, label(peer, index), index + 1}}
   end
 
-  # A block appended past every line the writer can see. Where `block/3` names a fixed position
-  # and therefore contends, this one names the end of the document as it stands when the line is
-  # issued, so it contends with nobody. The position is resolved by the writer at the moment of
-  # the edit, because how many lines are live by then is a fact about the run.
-  defp tail_block(peer, ops, offset) do
-    for index <- 0..(ops - 1),
-        do: {offset, {:append, peer, label(peer, index)}}
+  # A block appended past every line the writer can see. Where `block/3` names a fixed position and
+  # therefore contends, this one names the end of the document as it stands when the block begins, so
+  # it contends with nobody.
+  #
+  # The whole block is one step, and the tail is resolved once for it rather than once per line. That
+  # matters: resolving per line meant a foreign line arriving mid-block moved the target, so the
+  # writer's later lines were authored after that foreign line and its own lines were genuinely no
+  # longer one authored block. Contiguity then failed for a reason that was a property of the
+  # workload rather than of the protocol.
+  #
+  # Resolving the tail once is necessary and it is not sufficient. It fixes the target while the
+  # block is being issued and says nothing about the document the target was read from, and reading
+  # it too early is the same defect one step earlier: a writer that appends "past everything" while
+  # the contending lines are still arriving appends past what it happens to hold, which is the middle
+  # of the document a moment later. So the step carries what the writer is waiting for, `await`, the
+  # number of live lines every writer before it will have produced, and the writer reads its tail
+  # only once it holds them and the repairs they caused have finished. That is what the workload
+  # meant by "waits until the shared lines have reached it": a condition on the replica, not an
+  # interval on a clock, which is the only form of it that survives a change in the size of the
+  # network.
+  defp tail_block(peer, ops, offset, await) do
+    [{offset, {:append_after, peer, Enum.map(0..(ops - 1), &label(peer, &1)), await}}]
   end
 
   defp label(peer, index), do: "p#{peer}-#{index}"
@@ -607,14 +672,17 @@ defmodule Syncordian.Workloads do
   """
   @spec drive(plan(), [{non_neg_integer(), pid()}], keyword()) :: {[String.t()], [String.t()]}
   def drive(plan, pids, opts \\ []) do
-    timeout = Keyword.get(opts, :drive_timeout_ms, 60_000)
+    # Scaled with the network for the same reason the settle budget is: a writer that waits on its
+    # replica waits as long as the traffic takes, and the traffic grows with the cube of the network.
+    timeout = Keyword.get(opts, :drive_timeout_ms, settle_budget(plan.peers))
+    tail_deadline = div(timeout, 2)
     by_peer = Map.new(pids)
     parent = self()
 
     writers =
       for {peer, steps} <- writer_steps(plan), steps != [] do
         pid = Map.fetch!(by_peer, peer)
-        spawn_link(fn -> writer(parent, peer, pid, steps) end)
+        spawn_link(fn -> writer(parent, peer, pid, steps, tail_deadline) end)
       end
 
     controller = spawn_link(fn -> controller(parent, control_steps(plan)) end)
@@ -637,7 +705,7 @@ defmodule Syncordian.Workloads do
   @spec observe([{non_neg_integer(), pid()}], keyword()) :: map()
   def observe(pids, opts \\ []) do
     floor_ms = Keyword.get(opts, :floor_ms, 0)
-    timeout = Keyword.get(opts, :settle_timeout_ms, 120_000)
+    timeout = Keyword.get(opts, :settle_timeout_ms, settle_budget(length(pids)))
 
     if floor_ms > 0, do: Process.sleep(floor_ms)
 
@@ -651,6 +719,24 @@ defmodule Syncordian.Workloads do
       latency: OpTimes.samples()
     }
   end
+
+  # How long a run is given to go quiet, scaled to the traffic it generates. Every insert is
+  # acknowledged by every replica and every acknowledgement is broadcast to every replica, so the
+  # messages a run exchanges grow with the cube of the network. A fixed budget is therefore generous
+  # at the bottom of a scalability ladder and wrong at the top, and what it produces there is not a
+  # slow run but a run reported as diverged, because the replicas are read while they are still
+  # exchanging.
+  #
+  # The factor is set from measurement rather than from the message count, because the repair is what
+  # the traffic is made of once enough writers contend and the repair is not in the message count. At
+  # sixty-four writers with half of them contending, a run exchanges 15.7 million messages and goes
+  # quiet after 898 seconds. The cube alone allows 262, which fails it; eight times the cube allows
+  # 2097, which is the same run reported correctly.
+  #
+  # This is a deadline and not a wait. A run that goes quiet returns immediately, so the margin costs
+  # nothing except the time a genuinely stuck run takes to admit it.
+  @spec settle_budget(pos_integer()) :: pos_integer()
+  def settle_budget(peers), do: max(120_000, 8 * peers * peers * peers)
 
   @doc """
   Ends every peer of the run, and releases the names they registered.
@@ -676,15 +762,38 @@ defmodule Syncordian.Workloads do
   @spec content(pid()) :: String.t()
   def content(pid), do: pid |> document() |> Info.string_document_content()
 
-  @doc "One replica's document, as line records, tombstones and boundary lines included."
+  @doc """
+  One replica's document, as line records, tombstones and boundary lines included.
+
+  Raises if the replica does not answer. It used to return an empty list, which is not a document
+  a replica can hold: every document has its two boundary lines. The empty list was then read as
+  the replica's contents, and at sixty-four writers, where a busy peer needs longer than the old
+  five second limit to answer, the run died inside the function that strips the boundary lines
+  rather than saying which replica had not replied.
+
+  Stale answers to an earlier request are drained first, for the same reason `hash/1` drains them:
+  a reply that arrives after its caller stopped waiting is still in the mailbox, and reading it as
+  this request's answer would report one moment's document as another's.
+  """
   @spec document(pid()) :: list()
   def document(pid) do
+    drain_documents()
     send(pid, {:request_live_view_document, self()})
 
     receive do
       {:receive_live_view_document, document, _handler} -> document
     after
-      5_000 -> []
+      @document_timeout_ms ->
+        raise "replica #{inspect(pid)} did not answer a document request in " <>
+                "#{@document_timeout_ms}ms"
+    end
+  end
+
+  defp drain_documents do
+    receive do
+      {:receive_live_view_document, _document, _handler} -> drain_documents()
+    after
+      0 -> :ok
     end
   end
 
@@ -742,15 +851,22 @@ defmodule Syncordian.Workloads do
   end
 
   # The summed mailbox depth of every registered process. A name whose process has already ended
-  # raises rather than answering, and that is not a backlog.
+  # answers `:undefined` rather than a count, and that is not a backlog.
+  #
+  # The item is `:message_queue_len`. It was `:message_queue_length` until the sweep at sixteen
+  # writers made the difference visible: that name is not an item `:erlang.process_info/2` accepts,
+  # so every call raised, the rescue below turned the whole sum into zero, and `await_quiet/2` read
+  # an idle network on its first two samples whatever the mailboxes held. Quiescence was then decided
+  # by the fixpoint check alone, which is the condition the module doc says is not sufficient by
+  # itself: a replica can hold the same text twice in a row while operations are still in flight.
   defp backlog do
     :global.registered_names()
     |> Enum.map(&:global.whereis_name/1)
     |> Enum.filter(&is_pid/1)
     |> Enum.map(fn pid ->
-      case Process.info(pid, :message_queue_length) do
-        {:message_queue_length, length} -> length
-        nil -> 0
+      case Process.info(pid, :message_queue_len) do
+        {:message_queue_len, length} -> length
+        _ended -> 0
       end
     end)
     |> Enum.sum()
@@ -809,7 +925,8 @@ defmodule Syncordian.Workloads do
     plan.steps
     |> Enum.flat_map(fn
       {offset, {:insert, peer, _content, _index} = step} -> [{peer, {offset, step}}]
-      {offset, {:append, peer, _content} = step} -> [{peer, {offset, step}}]
+      {offset, {:append_block, peer, _contents} = step} -> [{peer, {offset, step}}]
+      {offset, {:append_after, peer, _contents, _await} = step} -> [{peer, {offset, step}}]
       {offset, {:delete, peer, _index} = step} -> [{peer, {offset, step}}]
       _control -> []
     end)
@@ -824,7 +941,7 @@ defmodule Syncordian.Workloads do
     end)
   end
 
-  defp writer(parent, peer, pid, steps) do
+  defp writer(parent, peer, pid, steps, tail_deadline) do
     start = await_go()
 
     {authored, deleted} =
@@ -836,9 +953,12 @@ defmodule Syncordian.Workloads do
             Peer.insert(pid, content, 0, index, 0, 0)
             {[content | authored], deleted}
 
-          {:append, ^peer, content} ->
-            Peer.insert(pid, content, 0, live_count(pid) + 1, 0, 0)
-            {[content | authored], deleted}
+          {:append_block, ^peer, contents} ->
+            {append(pid, contents, authored), deleted}
+
+          {:append_after, ^peer, contents, await} ->
+            await_tail(pid, await, tail_deadline)
+            {append(pid, contents, authored), deleted}
 
           {:delete, ^peer, index} ->
             target = live_content_at(pid, index)
@@ -876,6 +996,48 @@ defmodule Syncordian.Workloads do
   defp sleep_until(start, offset) do
     remaining = start + offset - System.monotonic_time(:millisecond)
     if remaining > 0, do: Process.sleep(remaining)
+  end
+
+  # Issues a block past the end of the document. The tail is read once, and the block chains from
+  # it, so the writer's lines form one authored block whatever arrives while it is being issued.
+  defp append(pid, contents, authored) do
+    base = live_count(pid)
+
+    contents
+    |> Enum.with_index()
+    |> Enum.each(fn {content, index} -> Peer.insert(pid, content, 0, base + index + 1, 0, 0) end)
+
+    Enum.reverse(contents) ++ authored
+  end
+
+  # Waits until this replica holds the lines the workload said to wait for and owes no repair, so
+  # that the tail read next is the tail of a document that has stopped moving.
+  #
+  # Two conditions, and each answers a different way of appending into the middle of somebody's
+  # block. The count is what says the contending writers' lines have arrived: append before it and
+  # the end of the document is wherever those lines have got to so far. The outstanding-repair check
+  # is what says they have stopped moving: a re-placement retracts a block and re-issues it
+  # elsewhere, so a tail read while one is in flight can be anchored on a line that is about to
+  # become a tombstone, and the block lands wherever that line used to be.
+  #
+  # The deadline is a backstop, not a schedule. Returning on it rather than raising keeps a run that
+  # missed the condition observable: it will fail its properties and say so, which is more use than
+  # a writer that died.
+  defp await_tail(pid, expected, budget_ms) do
+    await_tail_until(pid, expected, System.monotonic_time(:millisecond) + budget_ms)
+  end
+
+  defp await_tail_until(pid, expected, deadline) do
+    document = document(pid)
+
+    ready? =
+      Enum.count(document, &Checks.live?/1) >= expected and
+        Syncordian.Interleaving.detect_replacements(document) == []
+
+    unless ready? or System.monotonic_time(:millisecond) > deadline do
+      Process.sleep(@tail_sample_ms)
+      await_tail_until(pid, expected, deadline)
+    end
   end
 
   # The content a delete is about to remove. A delete names the position of a live line, counting

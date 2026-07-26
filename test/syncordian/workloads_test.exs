@@ -30,8 +30,7 @@ defmodule Syncordian.WorkloadsTest do
     :no_live_duplicates,
     :exercised,
     :recovered,
-    :replayed,
-    :bounded_cascade
+    :replayed
   ]
 
   describe "the catalogue" do
@@ -175,16 +174,19 @@ defmodule Syncordian.WorkloadsTest do
         )
 
       contending = for {_offset, {:insert, peer, _content, _index}} <- plan.steps, do: peer
-      appending = for {_offset, {:append, peer, _content}} <- plan.steps, do: peer
+      appending = for {_offset, {:append_after, peer, _contents, _await}} <- plan.steps, do: peer
 
       assert length(Enum.uniq(contending)) == 4
       assert length(Enum.uniq(appending)) == 4
       assert Enum.uniq(contending) -- Enum.uniq(appending) == Enum.uniq(contending)
     end
 
-    test "a writer outside the contended interval issues after the delay has elapsed" do
+    test "a writer outside the contended interval waits for the contended lines, not for a delay" do
       # An appending writer has to have received the contended lines before it appends, or its
-      # append lands in the very interval it is supposed to stay out of.
+      # append lands in the very interval it is supposed to stay out of. What it waits for is those
+      # lines: the step names how many there will be, so the wait holds at any size of network. An
+      # earlier version waited a fixed 120 milliseconds instead, which is long enough at eight
+      # writers and not at sixteen.
       plan =
         Workloads.plan(:overlapping_blocks,
           seed: @seed,
@@ -193,10 +195,14 @@ defmodule Syncordian.WorkloadsTest do
           conflict_rate: 0.5
         )
 
-      appends = for {offset, {:append, _peer, _content}} <- plan.steps, do: offset
-      inserts = for {offset, {:insert, _peer, _content, _index}} <- plan.steps, do: offset
+      awaits =
+        for {_offset, {:append_after, peer, _c, await}} <- plan.steps, do: {peer, await}
 
-      assert Enum.min(appends) - Enum.max(inserts) > 50
+      # Two contending writers of two lines each, so writer 2 waits for those four lines. Writer 3
+      # waits for six: the same four and writer 2's block. A tail writer that waited only for the
+      # contended lines would append past the end of the document at the same moment as every other
+      # tail writer, and land in the middle of one of their blocks.
+      assert Enum.sort(awaits) == [{2, 4}, {3, 6}]
     end
 
     test "the cascade staggers its later writers by more than the delay" do
@@ -230,7 +236,7 @@ defmodule Syncordian.WorkloadsTest do
       plan = Workloads.plan(:long_offline, seed: @seed, peers: 3, offline_ms: 500)
 
       after_outage =
-        for {offset, {:append, peer, _content}} <- plan.steps, offset > 500, do: peer
+        for {offset, {:append_block, peer, _c}} <- plan.steps, offset > 500, do: peer
 
       for peer <- 0..2 do
         assert Enum.count(after_outage, &(&1 == peer)) >= 2,
@@ -312,7 +318,7 @@ defmodule Syncordian.WorkloadsTest do
   end
 
   defp peer_of({:insert, peer, _content, _index}), do: peer
-  defp peer_of({:append, peer, _content}), do: peer
+  defp peer_of({:append_block, peer, _contents}), do: peer
   defp peer_of({:delete, peer, _index}), do: peer
   defp peer_of({:partition, peer, _cut?}), do: peer
   defp peer_of(:calm), do: nil

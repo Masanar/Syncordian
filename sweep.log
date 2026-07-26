@@ -1,0 +1,201 @@
+    warning: unused alias Bst
+    │
+ 23 │   alias Syncordian.CRDT.Treedoc.Bst
+    │   ~
+    │
+    └─ lib/syncordian/CRDT/treedoc/peer.ex:23:3
+
+    warning: unused import Syncordian.Metadata
+    │
+ 22 │   import Syncordian.Metadata
+    │   ~
+    │
+    └─ lib/syncordian/CRDT/treedoc/peer.ex:22:3
+
+Scalability sweep
+  workload      overlapping_blocks
+  peers         8, 16, 32
+  repetitions   30 (seeds 1..30)
+  ops per peer  8
+  conflict rate 0.5
+  delay         uniform:5:50
+  root          debug/sweep
+  runs          90
+
+Expected acknowledgement traffic per run, which is what the cost is
+
+      n=   8  3136 messages
+      n=  16  28800 messages
+      n=  32  246016 messages
+
+run   n=8 seed=1
+      exit 0 after 3s
+run   n=8 seed=2
+      exit 0 after 3s
+run   n=8 seed=3
+      exit 0 after 3s
+run   n=8 seed=4
+      exit 0 after 3s
+run   n=8 seed=5
+      exit 0 after 3s
+run   n=8 seed=6
+      exit 0 after 3s
+run   n=8 seed=7
+      exit 0 after 3s
+run   n=8 seed=8
+      exit 0 after 3s
+run   n=8 seed=9
+      exit 0 after 3s
+run   n=8 seed=10
+      exit 0 after 3s
+run   n=8 seed=11
+      exit 0 after 3s
+run   n=8 seed=12
+      exit 0 after 3s
+run   n=8 seed=13
+      exit 0 after 3s
+run   n=8 seed=14
+      exit 0 after 3s
+run   n=8 seed=15
+      exit 0 after 3s
+run   n=8 seed=16
+      exit 0 after 3s
+run   n=8 seed=17
+      exit 0 after 3s
+run   n=8 seed=18
+      exit 0 after 3s
+run   n=8 seed=19
+      exit 0 after 3s
+run   n=8 seed=20
+      exit 0 after 3s
+run   n=8 seed=21
+      exit 0 after 3s
+run   n=8 seed=22
+      exit 0 after 3s
+run   n=8 seed=23
+      exit 0 after 3s
+run   n=8 seed=24
+      exit 0 after 3s
+run   n=8 seed=25
+      exit 0 after 3s
+run   n=8 seed=26
+      exit 0 after 3s
+run   n=8 seed=27
+      exit 0 after 3s
+run   n=8 seed=28
+      exit 0 after 3s
+run   n=8 seed=29
+      exit 0 after 3s
+run   n=8 seed=30
+      exit 0 after 3s
+run   n=16 seed=1
+      exit 0 after 4s
+run   n=16 seed=2
+      exit 0 after 4s
+run   n=16 seed=3
+      exit 0 after 4s
+run   n=16 seed=4
+      exit 0 after 4s
+run   n=16 seed=5
+      exit 0 after 4s
+run   n=16 seed=6
+      exit 0 after 4s
+run   n=16 seed=7
+      exit 0 after 4s
+run   n=16 seed=8
+      exit 0 after 4s
+run   n=16 seed=9
+      exit 0 after 5s
+run   n=16 seed=10
+      exit 0 after 4s
+run   n=16 seed=11
+      exit 0 after 4s
+run   n=16 seed=12
+      exit 0 after 4s
+run   n=16 seed=13
+      exit 0 after 4s
+run   n=16 seed=14
+      exit 0 after 4s
+run   n=16 seed=15
+      exit 0 after 4s
+run   n=16 seed=16
+      exit 0 after 4s
+run   n=16 seed=17
+      exit 0 after 4s
+run   n=16 seed=18
+      exit 0 after 4s
+run   n=16 seed=19
+      exit 0 after 4s
+run   n=16 seed=20
+      exit 0 after 4s
+run   n=16 seed=21
+      exit 0 after 4s
+run   n=16 seed=22
+      exit 0 after 4s
+run   n=16 seed=23
+      exit 0 after 4s
+run   n=16 seed=24
+      exit 0 after 4s
+run   n=16 seed=25
+      exit 0 after 4s
+run   n=16 seed=26
+      exit 0 after 4s
+run   n=16 seed=27
+      exit 0 after 4s
+run   n=16 seed=28
+      exit 0 after 3s
+run   n=16 seed=29
+      exit 0 after 4s
+run   n=16 seed=30
+      exit 0 after 4s
+run   n=32 seed=1
+      exit 0 after 31s
+run   n=32 seed=2
+      exit 0 after 20s
+run   n=32 seed=3
+      exit 0 after 49s
+run   n=32 seed=4
+      exit 0 after 30s
+run   n=32 seed=5
+      exit 0 after 15s
+run   n=32 seed=6
+      exit 0 after 33s
+run   n=32 seed=7
+      exit 0 after 18s
+run   n=32 seed=8
+      exit 0 after 78s
+run   n=32 seed=9
+      exit 0 after 58s
+run   n=32 seed=10
+      exit 0 after 45s
+run   n=32 seed=11
+      exit 0 after 28s
+run   n=32 seed=12
+      exit 0 after 13s
+run   n=32 seed=13
+      exit 0 after 17s
+run   n=32 seed=14
+      exit 0 after 14s
+run   n=32 seed=15
+      exit 0 after 66s
+run   n=32 seed=16
+      exit 0 after 12s
+run   n=32 seed=17
+      exit 0 after 22s
+run   n=32 seed=18
+      exit 0 after 27s
+run   n=32 seed=19
+      exit 0 after 15s
+run   n=32 seed=20
+      exit 0 after 14s
+run   n=32 seed=21
+      exit 0 after 32s
+run   n=32 seed=22
+      exit 0 after 20s
+run   n=32 seed=23
+      exit 0 after 16s
+run   n=32 seed=24
+      exit 0 after 29s
+run   n=32 seed=25
+      exit 0 after 47s
+run   n=32 seed=26

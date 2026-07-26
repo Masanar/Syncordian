@@ -36,12 +36,15 @@ defmodule SyntheticWorkload do
     started = System.monotonic_time(:millisecond)
 
     observation =
-      Workloads.run(plan,
-        seed: options[:seed],
-        delay: options[:delay],
-        scenario: options[:scenario],
-        root: options[:out],
-        adversary: adversary_profile(options)
+      Workloads.run(
+        plan,
+        [
+          seed: options[:seed],
+          delay: options[:delay],
+          scenario: options[:scenario],
+          root: options[:out],
+          adversary: adversary_profile(options)
+        ] ++ maybe(:settle_timeout_ms, options[:settle_timeout_ms])
       )
 
     elapsed = System.monotonic_time(:millisecond) - started
@@ -108,6 +111,12 @@ defmodule SyntheticWorkload do
   # acknowledgement traffic grows as the square of the network. That growth is the subject of the
   # scalability question, and it is also what decides whether a point of the sweep is affordable, so
   # it is worth knowing before the run rather than after.
+  #
+  # It is a floor and not an estimate, and at the top of a ladder it is a long way below what the run
+  # does. It counts the inserts the workload authors, and a repair re-issues a whole block as fresh
+  # inserts that draw their own acknowledgements. Measured at sixty-four writers: 512 authored lines,
+  # 3432 re-placements, and 15.4 million acknowledgements against the 2.0 million this line predicts.
+  # The repair, not the authoring, is what the traffic is made of once enough writers contend.
   defp announce(plan, options) do
     inserts = plan.peers * plan.params[:ops_per_peer]
     acks = inserts * (plan.peers - 1) * (plan.peers - 1)
@@ -124,9 +133,9 @@ defmodule SyntheticWorkload do
       out           #{options[:out]}
       asserts       #{Enum.join([:converged | plan.asserts], ", ")}
 
-    Expected traffic
+    Expected traffic, counting the authored inserts only
       inserts       #{inserts}
-      acknowledgements about #{acks}   (inserts * (n-1)^2)
+      acknowledgements at least #{acks}   (inserts * (n-1)^2, before any repair re-issues)
     """)
   end
 
@@ -147,7 +156,7 @@ defmodule SyntheticWorkload do
     Interleaving
       conflicts observed      #{metadata["conflicts_observed"]}
       replacements issued     #{metadata["replacement_issued_counter"]}
-      lines re-issued         #{inspect(metadata["reissued_lines_per_conflict"])}
+      lines re-issued         #{distribution(metadata["reissued_lines_per_conflict"])}
       live duplicates, most   #{metadata["live_duplicates_max"]}
 
     Traffic
@@ -275,6 +284,21 @@ defmodule SyntheticWorkload do
     end
   end
 
+  # How many lines each repair re-issued, said as a distribution. The samples are small integers, so
+  # a run with a few hundred repairs printed a list that Elixir renders as a charlist of control
+  # characters, which reads as corruption rather than as the measurement it is. The whole list is
+  # kept in the metadata for the aggregation; what belongs on a console is its shape.
+  defp distribution(nil), do: "none"
+  defp distribution([]), do: "none"
+
+  defp distribution(samples) do
+    sorted = Enum.sort(samples)
+    count = length(sorted)
+    median = Enum.at(sorted, div(count, 2))
+
+    "#{count} repairs, #{List.first(sorted)}..#{List.last(sorted)} lines, median #{median}"
+  end
+
   defp reference_document(observation) do
     observation.documents |> Enum.sort() |> hd() |> elem(1)
   end
@@ -300,6 +324,7 @@ end
       scenario: :string,
       adversaries: :integer,
       out: :string,
+      settle_timeout_ms: :integer,
       allow_no_delay: :boolean
     ],
     aliases: [s: :seed, w: :workload, n: :peers]
@@ -332,5 +357,6 @@ SyntheticWorkload.run(
   scenario: parsed[:scenario],
   adversaries: parsed[:adversaries] || default_adversaries,
   out: parsed[:out] || "debug",
+  settle_timeout_ms: parsed[:settle_timeout_ms],
   allow_no_delay: parsed[:allow_no_delay] || false
 )

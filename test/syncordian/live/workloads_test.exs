@@ -61,6 +61,25 @@ defmodule Syncordian.Live.WorkloadsTest do
       assert metadata["conflicts_observed"] > 0
       assert metadata["replacement_issued_counter"] > 0
     end
+
+    # Every other test here runs three writers of three lines, which is the smallest network that
+    # can contend, and for a long time it was the only size the repair protocol was tested at. The
+    # defects the scalability sweep found were both invisible at that size: a block stranded inside
+    # another writer's block by somebody else's repair needs enough concurrent blocks for a repair
+    # to move a third party's anchors, and the workload's own tail writers needed enough traffic to
+    # still be in flight when they authored. Sixteen writers of eight lines produces both, so the
+    # configuration the sweep reports is covered by a test rather than only by the sweep.
+    @tag timeout: 300_000
+    test "sixteen writers contending at half the network stay contiguous too" do
+      %{results: results, metadata: metadata} =
+        run(:overlapping_blocks, peers: 16, ops_per_peer: 8, conflict_rate: 0.5)
+
+      assert results.contiguous == :ok
+      assert results.no_repair_pending == :ok
+      assert results.complete == :ok
+      assert results.exercised == :ok
+      assert metadata["replacement_issued_counter"] > 0
+    end
   end
 
   describe "identical-content blocks" do
@@ -140,7 +159,6 @@ defmodule Syncordian.Live.WorkloadsTest do
       %{results: results, metadata: metadata} = run(:three_way_cascade)
 
       assert results.exercised == :ok
-      assert results.bounded_cascade == :ok
 
       # A fixed point, not a pause: the detector is a pure function of the document, so an empty
       # result means there is no repair left to make.

@@ -44,11 +44,17 @@ defmodule Syncordian.InterleavingTest do
     end)
   end
 
-  # Anchors L and R shared by the concurrently-authored blocks in most scenarios.
+  # Anchors L and R shared by the concurrently-authored blocks in most scenarios. They are two
+  # unrelated lines that were already in the document, so each is its own singleton block: they
+  # carry the parents they were authored against, and therefore distinct sessions. Giving them
+  # no parents at all would group them under one session and reconstruct them as a single block
+  # spanning the whole document, which is not a document any run can produce.
   @l_op {0, 1}
   @r_op {0, 2}
-  defp anchor_l, do: mk_line(5, 0, @l_op, nil, nil)
-  defp anchor_r, do: mk_line(50, 0, @r_op, nil, nil)
+  @infimum_op {-1, 0}
+  @supremum_op {-1, 1}
+  defp anchor_l, do: mk_line(5, 0, @l_op, @infimum_op, @supremum_op)
+  defp anchor_r, do: mk_line(50, 0, @r_op, @l_op, @supremum_op)
 
   # A line continuing the run its writer started in the (L, R) interval.
   defp mk_lr_line(digit, peer, op_id, parent_left, parent_right, status \\ :settled),
@@ -202,6 +208,91 @@ defmodule Syncordian.InterleavingTest do
       a2 = mk_lr_line(30, 1, {1, 2}, {1, 1}, @r_op)
       b1 = mk_line(20, 2, {2, 1}, {1, 1}, {1, 2})
       refute Interleaving.interleaved?(doc([anchor_l(), anchor_r(), a1, a2, b1]))
+    end
+
+    test "a nested edit by a higher-priority writer does not make the block it sits in move" do
+      # The same deliberate nesting, with the priorities the other way round. Writer 1 typed
+      # inside writer 2's block, so writer 2's block is the lower-priority side of the pair and
+      # would be the one to move if the nesting were read as a conflict. It is not one: the
+      # exemption is a property of the pair and does not depend on which side has the smaller
+      # identifier.
+      a1 = mk_line(10, 2, {2, 1}, @l_op, @r_op)
+      a2 = mk_lr_line(30, 2, {2, 2}, {2, 1}, @r_op)
+      b1 = mk_line(20, 1, {1, 1}, {2, 1}, {2, 2})
+      refute Interleaving.interleaved?(doc([anchor_l(), anchor_r(), a1, a2, b1]))
+    end
+  end
+
+  describe "a block stranded by someone else's repair (def:intention)" do
+    # KNOWN DEFECT, and these two are skipped rather than deleted because they reproduce it.
+    #
+    # The execution they come from: `:overlapping_blocks` at sixteen writers, where a block
+    # authored into one interval is left sitting inside another writer's block because the
+    # repair moved its anchors away. Both blocks are then interleaved at quiescence while
+    # sharing neither an authoring session nor a current interval, so the rule never compares
+    # them. Every replica agrees on the document, `no_repair_pending` reports clean, and the
+    # document is interleaved.
+    #
+    # The fix that suggests itself, comparing any two blocks whose live lines are interleaved
+    # now, was implemented and reverted: it fires on ordinary documents, because a later edit
+    # typed inside another writer's block is interleaved with it by that reading and is not an
+    # anomaly. Exempting pairs whose authored parents both belong to the block they sit in does
+    # not cover it, since nesting composes. Over the ohmyzsh README the replay then issued
+    # twelve re-placements where it must issue none, and the replicas agreed on a document that
+    # no longer matched git.
+    #
+    # Whatever closes this has to keep the git replay at zero re-placements. Un-skip these two
+    # when it does; the module doc carries the argument.
+    @describetag :skip
+
+    # A block authored between two lines that are later superseded, so its anchors name
+    # tombstones of a writer that has moved on. `t_left` and `t_right` are those anchors.
+    defp stranding_document do
+      a1 = mk_line(10, 1, {1, 1}, @l_op, @r_op)
+      a2 = mk_lr_line(40, 1, {1, 2}, {1, 1}, @r_op)
+
+      t_left = mk_line(15, 3, {3, 1}, @l_op, @r_op, :tombstone)
+      t_right = mk_line(35, 3, {3, 2}, {3, 1}, @r_op, :tombstone, {@l_op, @r_op})
+
+      b1 = mk_line(20, 2, {2, 1}, {3, 1}, {3, 2}, :settled, {{3, 1}, {3, 2}})
+      b2 = mk_line(30, 2, {2, 2}, {2, 1}, {3, 2}, :settled, {{3, 1}, {3, 2}})
+
+      {doc([anchor_l(), anchor_r(), a1, a2, t_left, t_right, b1, b2]), a1, [b1, b2]}
+    end
+
+    test "is detected even though the two blocks share neither session nor interval" do
+      {document, a1, [b1, b2]} = stranding_document()
+
+      replacements = Interleaving.detect_replacements(document)
+
+      assert length(replacements) == 1
+      [r] = replacements
+      # Writer 2 is the lower priority of the pair, so its block is the one that moves.
+      assert r.writer == 2
+      assert Enum.map(r.moving_lines, &get_line_id/1) == Enum.map([b1, b2], &get_line_id/1)
+      # It re-packs left of writer 1's first line, as it would for any other conflict.
+      assert get_line_id(r.gap_right) == get_line_id(a1)
+      assert_clean_gap(document, r)
+    end
+
+    test "repairing it leaves every writer contiguous and nothing further to repair" do
+      {document, _a1, _moving} = stranding_document()
+      {final, rounds} = settle(document, 0)
+
+      assert rounds <= 4, "re-placement did not settle: #{rounds} rounds"
+      refute Interleaving.interleaved?(final)
+
+      live =
+        final
+        |> Enum.filter(&Interleaving.live_block_line?/1)
+        |> Enum.map(&get_line_peer_id/1)
+
+      # Writers 1 and 2 are the two blocks; writer 0 holds the two unrelated anchor lines, one at
+      # each end of the document, and they are two blocks rather than one.
+      Enum.each([1, 2], fn writer ->
+        runs = live |> Enum.chunk_by(& &1) |> Enum.filter(&(hd(&1) == writer))
+        assert length(runs) == 1, "writer #{writer} is not contiguous: #{inspect(live)}"
+      end)
     end
   end
 

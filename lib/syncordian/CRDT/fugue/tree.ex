@@ -271,34 +271,43 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   """
   @spec traverse(tree(), Node.node_ID(), boolean()) :: [node_fugue()]
   def traverse(tree, id, include_tombstones \\ false) do
-    traverse_acc_reduce = fn id, acc ->
-      traverse(tree, id, include_tombstones) ++ acc
-    end
+    traverse_onto(tree, id, include_tombstones, [])
+  end
 
-    recursion = fn node_id_list ->
-      Enum.reduce(node_id_list, [], traverse_acc_reduce)
-    end
-
+  # The traversal of `id`, prepended onto `tail`.
+  #
+  # This is the same walk in the same order as before, built once instead of concatenated at every
+  # level. The version it replaces appended with `++` twice per node, once to join a child's result
+  # onto its siblings' and once to join the left subtree, the node and the right subtree, which is
+  # quadratic in the size of the tree. That is paid far more often than it looks: the supervisor's
+  # per-commit barrier asks each author to materialize and hash its whole document every fifty
+  # milliseconds, and translating a git index into a tree position walks the tree too. Over the
+  # first sixteen commits of the ohmyzsh README it cost about four seconds per commit, against a
+  # flat sixteen seconds for the whole Syncordian replay.
+  #
+  # Building onto a tail means visiting the pieces in reverse: the right subtree first, so the left
+  # ends up in front of it. Children are still folded in list order and still land reversed, which
+  # is what the previous `traverse(child) ++ acc` did and what the document order depends on.
+  @spec traverse_onto(tree(), Node.node_ID(), boolean(), [node_fugue()]) :: [node_fugue()]
+  defp traverse_onto(tree, id, include_tombstones, tail) do
     root_node = Node.root()
 
     case get_full_node(tree, id) do
       # TODO: This patter should be mactched else the function will never halt!!!!
       # SUPER IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
       {^root_node, [], []} ->
-        if include_tombstones,
-          do: [root_node],
-          else: []
+        if include_tombstones, do: [root_node | tail], else: tail
 
       {node, left, right} ->
-        left_values = recursion.(left)
+        after_right =
+          Enum.reduce(right, tail, &traverse_onto(tree, &1, include_tombstones, &2))
 
-        node_value =
+        with_node =
           if not Node.is_tombstone?(node) or include_tombstones,
-            do: [node],
-            else: []
+            do: [node | after_right],
+            else: after_right
 
-        right_values = recursion.(right)
-        left_values ++ node_value ++ right_values
+        Enum.reduce(left, with_node, &traverse_onto(tree, &1, include_tombstones, &2))
     end
   end
 

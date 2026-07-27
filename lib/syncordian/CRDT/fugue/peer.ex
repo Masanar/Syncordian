@@ -18,6 +18,11 @@ defmodule Syncordian.CRDT.Fugue.Peer do
 
   @peer_metadata_id 7
 
+  # How long an operation waits before being reconsidered, when its sender is ahead of what this
+  # replica has seen. Smaller than the smallest message delay the evaluation reports, so it never
+  # becomes the thing a run is waiting on.
+  @requeue_delay_ms 2
+
   defstruct peer_id: nil,
             document: Syncordian.CRDT.Fugue.Tree.new(),
             pid: nil,
@@ -424,7 +429,14 @@ defmodule Syncordian.CRDT.Fugue.Peer do
 
           loop(new_node_peer_new_metadata)
         else
-          send(peer_pid, {:receive_insert_broadcast, insert_node})
+          # An operation whose sender is ahead of what this replica has seen waits for the gap to
+          # be filled. It waits on a timer rather than being re-sent immediately: an immediate
+          # re-send is a hot loop, since the message goes to the back of a mailbox this peer is
+          # draining as fast as it can, and the replica then spends its processor re-examining an
+          # operation it cannot apply instead of applying the ones that would make it applicable.
+          # The delay is well under the smallest message delay the evaluation uses, so nothing waits
+          # on it that would not have waited on the network anyway.
+          Process.send_after(peer_pid, {:receive_insert_broadcast, insert_node}, @requeue_delay_ms)
 
           get_metadata(peer)
           |> inc_requeue_counter
@@ -446,6 +458,25 @@ defmodule Syncordian.CRDT.Fugue.Peer do
         peer_id = get_peer_id(peer)
         document = get_peer_document(peer)
         Info.save_tree_content(document, peer_id)
+        loop(peer)
+
+      # The per-commit barrier. The supervisor holds the next commit until this author's replica
+      # byte-matches the state the commit was written against, and it asks by this message
+      # (`supervisor_git.ex:288`), giving each poll one second. An implementation that does not
+      # answer is not merely quiet: every poll waits out its full second and the replay crawls,
+      # which is what a baseline replay used to do. The digest is over the same materialized text
+      # the dump holds, so the two cannot disagree about what this replica shows.
+      {:request_content_hash, reply_pid, ref} ->
+        hash = :erlang.md5(Info.string_tree_content(get_peer_document(peer)))
+        send(reply_pid, {:content_hash, ref, hash})
+        loop(peer)
+
+      # Asked for on the way to a final dump, and by the supervisor when an author is late. Fugue
+      # writes the same file either way, so this is `:save_content` under the name the supervisor
+      # uses. Without the clause it fell through to the catch-all and was reported as a wrong
+      # message on a run that was behaving perfectly well.
+      {:write_pending_dump} ->
+        Info.save_tree_content(get_peer_document(peer), get_peer_id(peer))
         loop(peer)
 
       {:request_live_view_document, live_view_pid} ->

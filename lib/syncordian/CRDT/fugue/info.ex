@@ -20,9 +20,15 @@ defmodule Syncordian.CRDT.Fugue.Info do
   ## Returns
     - :ok if the file is written successfully.
   """
+  # `document_peer_<id>`, which is the name every driver looks for. It used to be
+  # `tree_peer_<id>`, after the structure rather than after the thing the file holds, and the
+  # consequence was not a wrong name but a replay that never finished: the driver waits for two
+  # consecutive identical dumps under `document_peer_*`, that glob matched nothing however many
+  # times the peers wrote, and the wait spun until it was killed. The dumps were on disk the whole
+  # time.
   @spec save_tree_content(Tree.tree(), Syncordian.Basic_Types.peer_id()) :: :ok
   def save_tree_content(tree, peer_id) do
-    path = Syncordian.Run.path("documents/fugue/tree_peer_#{peer_id}")
+    path = Syncordian.Run.path("documents/fugue/document_peer_#{peer_id}")
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, string_tree_content(tree))
   end

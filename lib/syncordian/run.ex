@@ -438,8 +438,46 @@ defmodule Syncordian.Run do
       otp: System.otp_release(),
       schedulers: System.schedulers_online(),
       host: to_string(hostname),
-      started_at: DateTime.utc_now() |> DateTime.to_iso8601()
+      started_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+      code: code_fingerprint()
     }
+  end
+
+  @doc """
+  A short digest of the code that produced a run.
+
+  Runs are resumable, and a driver decides a run is finished by reading its result. Neither can
+  tell that a finished run came from code that has since changed, so a root can hold runs from two
+  versions and the aggregation will average them into one interval without saying so. During the
+  scalability work that happened twice, and the only thing that caught it was somebody remembering
+  when the code changed. This is what makes it checkable instead.
+
+  It digests the loaded modules of the application rather than a revision, because the tree is not
+  under version control and a revision would be unavailable exactly when it is most needed, on a
+  working copy with uncommitted edits. Each module carries the digest the compiler gave it, so two
+  runs agree here if and only if they ran the same compiled code, whatever the source looked like.
+  A module that cannot be loaded is recorded as absent rather than skipped, so a build that failed
+  to produce one does not read as the build that has it.
+
+  Twelve hex characters. This is an equality check between runs, not a defence against anyone
+  choosing a collision.
+  """
+  @spec code_fingerprint() :: String.t()
+  def code_fingerprint do
+    {:ok, modules} = :application.get_key(:syncordian, :modules)
+
+    modules
+    |> Enum.sort()
+    |> Enum.map(fn module ->
+      case Code.ensure_loaded(module) do
+        {:module, ^module} -> {module, module.module_info(:md5)}
+        _unavailable -> {module, :absent}
+      end
+    end)
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 12)
   end
 
   # The identifier a repetition writes under. Everything that distinguishes one run of a

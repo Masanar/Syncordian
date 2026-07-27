@@ -10,8 +10,12 @@ defmodule Syncordian.CRDT.Logoot.Info do
   alias Syncordian.CRDT.Logoot.Sequence
 
   @doc """
-  Writes `sequence`'s materialized text to `debug/documents/logoot/document_<peer_id>`,
+  Writes `sequence`'s materialized text to `debug/documents/logoot/document_peer_<peer_id>`,
   creating the directory if needed.
+
+  `document_peer_<id>` is the name every driver globs when it waits for a run to reach a fixpoint.
+  It used to be `document_<id>`, which matched nothing, so the wait spun until it was killed with
+  the dumps on disk the whole time. Fugue had the same defect under a different name.
   """
   @spec save_tree_content(Sequence.t(), Syncordian.Basic_Types.peer_id()) :: :ok
   def save_tree_content(sequence, peer_id) do
@@ -23,7 +27,7 @@ defmodule Syncordian.CRDT.Logoot.Info do
     end
 
     # Write the file
-    File.write!(file_path <> "document_#{peer_id}", sequence_to_string(sequence))
+    File.write!(file_path <> "document_peer_#{peer_id}", sequence_to_string(sequence))
   end
 
   @doc "Joins a sequence's atom values into a single newline-separated document string."

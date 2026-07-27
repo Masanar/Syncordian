@@ -378,6 +378,23 @@ defmodule Syncordian.CRDT.Logoot.Peer do
         Info.save_tree_content(document, peer_id)
         loop(peer)
 
+      # The per-commit barrier. The supervisor holds the next commit until this author's replica
+      # byte-matches the state the commit was written against, and asks by this message
+      # (`supervisor_git.ex:288`). An implementation that does not answer is paced by a fixed four
+      # second sleep per commit instead, which is most of what a baseline replay costs. The digest
+      # is over the same materialized text the dump holds, so the two cannot disagree.
+      {:request_content_hash, reply_pid, ref} ->
+        hash = :erlang.md5(Info.sequence_to_string(get_peer_sequence(peer)))
+        send(reply_pid, {:content_hash, ref, hash})
+        loop(peer)
+
+      # Asked for on the way to a final dump, and when the supervisor finds an author late. It is
+      # `:save_content` under the name the supervisor uses. Without the clause the message stayed in
+      # the mailbox forever, since this loop has no catch-all.
+      {:write_pending_dump} ->
+        Info.save_tree_content(get_peer_sequence(peer), get_peer_id(peer))
+        loop(peer)
+
       {:write_raw_document} ->
         document = get_peer_sequence(peer)
 

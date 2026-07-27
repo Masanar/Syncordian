@@ -175,14 +175,20 @@ def transient(rows: list[dict]) -> None:
     print("\n  A row of zeros is a result, not a gap. The commit replay serializes the authoring,")
     print("  so it constructs no interleaving at all; the controlled workloads are what do.\n")
 
-    for (crdt, workload, tracked_file, scenario), group_rows in sorted(
-        group(rows, ("crdt", "workload", "tracked_file", "scenario")).items()
+    # The adversary count is in the key. Without it the six counts of one scenario merged into one
+    # group, and `at_end` takes the row at the highest commit, which several configurations tie on.
+    # It then reported one of them, chosen by iteration order, under a label naming only the
+    # scenario. Every counter here is a deterministic zero on the histories, so nothing printed was
+    # wrong, but the number reported was not the one the label named.
+    for (crdt, workload, tracked_file, scenario, adversaries), group_rows in sorted(
+        group(rows, ("crdt", "workload", "tracked_file", "scenario", "adversaries")).items()
     ):
         if crdt != "syncordian":
             continue
 
         conflicts = total(group_rows, "conflicts_observed")
-        print(f"\n  {label_of(workload, tracked_file)}  ({scenario})")
+        distrusted = f", {adversaries} distrusted" if adversaries else ""
+        print(f"\n  {label_of(workload, tracked_file)}  ({scenario}{distrusted})")
         print(f"      {'interleavings seen':<26} {fmt(conflicts)}")
         print(f"      {'most at once':<26} {fmt(total(group_rows, 'max_concurrent_conflicts'))}")
         print(f"      {'re-placements issued':<26} {fmt(total(group_rows, 'replacement_issued_counter'))}")

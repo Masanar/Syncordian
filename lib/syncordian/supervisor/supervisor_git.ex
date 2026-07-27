@@ -201,19 +201,69 @@ defmodule Syncordian.Supervisor do
     # (`git show <parent>:<file>`); the replay then paces itself to real network latency
     # instead of a fixed sleep. The other CRDTs have no barrier probe, so they keep the
     # legacy fixed delay (after dispatch, as before).
-    if peer_module == Syncordian.Peer and parent_hash != nil do
-      await_author_materialization(peer_pid, parent_hash, author_id)
-    end
+    # Whether this implementation can be paced by the barrier is asked of the implementation, not
+    # assumed from its name. It used to read `peer_module == Syncordian.Peer`, and every other
+    # implementation fell to the fixed four second sleep below, which is most of what a baseline
+    # replay cost: over the first sixteen commits of the ohmyzsh README, Fugue took eighty seconds
+    # against a flat sixteen for Syncordian, and four of every 4.2 seconds per commit were that
+    # sleep. Fugue answers the probe now, so it is paced by real latency like the reference
+    # implementation and the comparison measures the protocols rather than a constant.
+    barrier? =
+      parent_hash != nil and barrier_capable?(peer_module, peer_pid) and barrier_worth_trying?()
+
+    if barrier?,
+      do: record_barrier_outcome(await_author_materialization(peer_pid, parent_hash, author_id))
 
     parse_edits(position_changes, peer_pid, peer_module)
 
-    if peer_module == Syncordian.Peer do
-      Process.sleep(commit_dispatch_delay_ms())
-    else
-      Process.sleep(4000)
-    end
+    # An implementation with no barrier has nothing telling the supervisor its author has caught
+    # up, so it still gets the fixed sleep. It is pacing rather than correctness, and it is why an
+    # implementation that cannot answer the probe is slow to replay rather than wrong.
+    Process.sleep(if barrier?, do: commit_dispatch_delay_ms(), else: 4000)
 
     author_id
+  end
+
+  # Whether an implementation answers `{:request_content_hash, pid, ref}`, asked once per run and
+  # remembered. One implementation either answers or does not, so asking again on every commit
+  # would only pay the timeout again for the ones that do not.
+  @spec barrier_capable?(module(), pid()) :: boolean()
+  defp barrier_capable?(peer_module, peer_pid) do
+    case Process.get({:barrier_capable, peer_module}) do
+      nil ->
+        capable = probe_content_hash(peer_pid)
+
+        IO.puts(
+          "  #{inspect(peer_module)} " <>
+            if(capable,
+              do: "answers the materialization probe: commits are paced by it",
+              else:
+                "does not answer the materialization probe: commits fall back to a fixed delay"
+            )
+        )
+
+        Process.put({:barrier_capable, peer_module}, capable)
+        capable
+
+      known ->
+        known
+    end
+  end
+
+  @spec probe_content_hash(pid()) :: boolean()
+  defp probe_content_hash(peer_pid) do
+    ref = make_ref()
+    send(peer_pid, {:request_content_hash, self(), ref})
+
+    receive do
+      {:content_hash, ^ref, _hash} -> true
+    after
+      2_000 ->
+        # An answer that arrives after the probe gave up would otherwise be read as the answer to
+        # the first real poll.
+        flush_stale_content_hashes()
+        false
+    end
   end
 
   # Optional extra pacing on top of the materialization barrier (room for Byzantine
@@ -279,11 +329,59 @@ defmodule Syncordian.Supervisor do
 
     expected = :erlang.md5(content)
     warn_at = System.monotonic_time(:millisecond) + 60_000
-    poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, 0)
+    outcome = poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, 0)
     flush_stale_content_hashes()
+    outcome
   end
 
+  # Whether the barrier is still worth attempting on this run.
+  #
+  # A barrier that has already given up twice is not pacing the replay, it is delaying it. The
+  # replica has drifted from the state the commits were written against, nothing in a replay repairs
+  # a divergence, and every later commit will therefore wait out the whole budget for something that
+  # cannot happen. Measured on a Logoot replay of the README history: it gave up on 78 of 86 commits,
+  # which at the default budget is close to four hours of waiting, and the run was killed before it
+  # could report the mismatch it had already established. Stopping after the second gives the same
+  # verdict in minutes.
+  #
+  # The count is per run, kept in the supervisor's own dictionary, and the reference implementation
+  # has never reached it.
+  @barrier_give_up_limit 2
+
+  defp barrier_worth_trying? do
+    Process.get(:barrier_give_ups, 0) < @barrier_give_up_limit
+  end
+
+  defp record_barrier_outcome(:gave_up) do
+    give_ups = Process.get(:barrier_give_ups, 0) + 1
+    Process.put(:barrier_give_ups, give_ups)
+
+    if give_ups == @barrier_give_up_limit do
+      IO.puts(
+        "  the barrier has given up #{give_ups} times, so it is switched off for the rest of this " <>
+          "run: this replica has drifted and later commits would each wait out the full budget. " <>
+          "The ground-truth check at the end is the verdict."
+      )
+    end
+
+    :gave_up
+  end
+
+  defp record_barrier_outcome(other), do: other
+
   defp poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, misses) do
+    poll_author_hash(
+      peer_pid,
+      commit_hash,
+      author_id,
+      expected,
+      warn_at,
+      misses,
+      System.monotonic_time(:millisecond) + barrier_budget_ms()
+    )
+  end
+
+  defp poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, misses, give_up_at) do
     ref = make_ref()
     send(peer_pid, {:request_content_hash, self(), ref})
 
@@ -297,6 +395,30 @@ defmodule Syncordian.Supervisor do
     cond do
       got == expected ->
         :ok
+
+      # The barrier gives up rather than waiting forever. A replica that has drifted from the state
+      # the commit was written against will never reach it, since nothing in the replay repairs a
+      # divergence, so waiting is waiting for something that cannot happen. It used to wait anyway,
+      # which turned a replay that should have finished and reported a mismatch into a process that
+      # had to be killed, and killed runs produce no result at all. This is what a baseline replay
+      # did: Logoot never materialized even the eighth commit, and there was nothing to read
+      # afterwards.
+      #
+      # Dispatching anyway is not pretending it is fine. The commit's git indices are meaningless
+      # against a document that does not match, so the replay is no longer faithful from here on,
+      # and the run says so loudly and carries on to the ground-truth check, which is the honest
+      # verdict. A reference-implementation run has never reached this: every seed and the whole
+      # README history materialize every commit.
+      System.monotonic_time(:millisecond) > give_up_at ->
+        IO.puts(
+          "GIVING UP on the materialization barrier: author #{author_id} never reached commit " <>
+            "#{String.slice(commit_hash, 0, 10)} within #{div(barrier_budget_ms(), 1000)}s. " <>
+            "The replay is no longer faithful from this commit on, and the ground-truth check at " <>
+            "the end is what to believe. Raise SYNCORDIAN_BARRIER_BUDGET_MS to wait longer."
+        )
+
+        if pending_dumps_enabled?(), do: send(peer_pid, {:write_pending_dump})
+        :gave_up
 
       System.monotonic_time(:millisecond) > warn_at ->
         IO.puts(
@@ -316,7 +438,8 @@ defmodule Syncordian.Supervisor do
           author_id,
           expected,
           System.monotonic_time(:millisecond) + 60_000,
-          misses + 1
+          misses + 1,
+          give_up_at
         )
 
       true ->
@@ -324,9 +447,24 @@ defmodule Syncordian.Supervisor do
         # so back off once the wait is clearly not sub-second: keeps the author's CPU
         # for actual replication work during long catch-ups.
         Process.sleep(if misses < 20, do: 50, else: 250)
-        poll_author_hash(peer_pid, commit_hash, author_id, expected, warn_at, misses + 1)
+
+        poll_author_hash(
+          peer_pid,
+          commit_hash,
+          author_id,
+          expected,
+          warn_at,
+          misses + 1,
+          give_up_at
+        )
     end
   end
+
+  # How long the barrier waits for an author before giving up on it. Generous, because a slow
+  # catch-up under a heavy network is normal and a drift is not, and the two look the same for the
+  # first few seconds.
+  defp barrier_budget_ms,
+    do: env_int("SYNCORDIAN_BARRIER_BUDGET_MS", 180_000)
 
   # A probe that timed out (mailbox backlog at the author) still gets answered later;
   # those stale {:content_hash, ref, _} replies carry dead refs and would otherwise sit

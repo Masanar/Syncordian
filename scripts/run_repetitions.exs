@@ -66,14 +66,37 @@ defmodule Repetitions do
     summarize(results)
   end
 
+  # Whether a repetition is already on disk and worth keeping. A run writes its `result.json`
+  # whatever happened, so the presence of the file is not the question. `run_full_experiment.exs`
+  # reports `ok`, `diverged`, or `error`, and only the first of those is a finished repetition: a
+  # replay whose replicas agreed with each other but not with git is a failure, and inheriting it
+  # would report it as a completed sample.
+  #
+  # This matters most after a change to the code. A sweep re-run to clear failures used to keep
+  # every one of them, because the only question asked was whether the file existed.
+  defp completed?(directory) do
+    path = Path.join(directory, "result.json")
+
+    with true <- File.exists?(path),
+         {:ok, body} <- File.read(path),
+         {:ok, %{"status" => "ok"}} <- Jason.decode(body) do
+      true
+    else
+      _incomplete_or_failed -> false
+    end
+  end
+
   defp one(scenario, seed, options) do
     directory = Path.join(options[:root], run_id(scenario, seed, options))
 
-    if File.exists?(Path.join(directory, "result.json")) do
+    if completed?(directory) do
       IO.puts("skip  #{directory} (already has a result)")
       %{"run" => directory, "status" => "skipped"}
     else
-      IO.puts("run   #{directory}")
+      # A directory that is there without a passing result is a repetition that failed, diverged,
+      # or was interrupted. Saying which distinguishes a sweep repeating work from one doing it once.
+      verb = if File.exists?(directory), do: "rerun", else: "run  "
+      IO.puts("#{verb} #{directory}")
       started_at = System.monotonic_time(:millisecond)
 
       {output, exit_status} =

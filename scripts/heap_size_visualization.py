@@ -1,7 +1,9 @@
 """Document growth per implementation, drawn from the aggregate of repeated runs.
 
-Shows how a replica's document grows as it applies edits, for each implementation that was
-replayed, as a mean over the runs of that implementation with a 95% confidence interval.
+Shows how a replica's document grows as it applies edits, one curve per implementation and
+history, as a mean over the runs of that configuration with the range those runs covered. It reads
+the honest-network runs only, `baseline` at zero distrusted nodes, because a forged operation is
+rejected at admission and never enters a document.
 
 Reads the long-format summary that ``aggregate_runs.py`` writes. The earlier version of this
 script also read a file of per-commit source sizes that no code in the project produces,
@@ -43,25 +45,47 @@ def load(path: str) -> list[dict]:
         return json.load(handle)
 
 
-def growth_series(rows: list[dict]) -> dict[str, list[dict]]:
-    """The per-edit heap size of each implementation, ordered by edit number."""
-    by_implementation = defaultdict(list)
+def growth_series(rows: list[dict]) -> dict[tuple[str, str], list[dict]]:
+    """The per-edit heap size of one implementation on one history, ordered by edit number.
+
+    The history belongs in the key, and so does the filter below. An earlier version bucketed on
+    the implementation alone, and with two histories in the aggregate it handed ``fill_between``
+    the README document and the git plugin document interleaved at every edit number. The band it
+    drew was the distance between two different documents, presented as a confidence interval over
+    runs, and it spanned the whole figure. It also ended abruptly where the shorter history ran
+    out, which is the visible symptom of the same thing.
+
+    A distrusted node inserts nothing that any replica keeps, so its runs would only add
+    configurations that duplicate the honest ones. The figure is about how a document grows on an
+    honest network, so it is drawn from those runs and says so.
+    """
+    by_series = defaultdict(list)
 
     for row in rows:
-        if row["axis"] == "edit" and row["metric"] == "heap_size":
-            by_implementation[row["crdt"]].append(row)
+        if row["axis"] != "edit" or row["metric"] != "heap_size":
+            continue
+
+        if row["scenario"] != "baseline" or row["adversaries"] != 0:
+            continue
+
+        by_series[(row["crdt"], row["tracked_file"])].append(row)
 
     return {
-        implementation: sorted(points, key=lambda row: row["point"])
-        for implementation, points in by_implementation.items()
+        series: sorted(points, key=lambda row: row["point"])
+        for series, points in by_series.items()
     }
 
 
-def plot(series: dict[str, list[dict]], output: str) -> None:
+def plot(series: dict[tuple[str, str], list[dict]], output: str) -> None:
     figure, axes = plt.subplots(figsize=(8, 6))
     repetitions = 0
 
-    for implementation, points in sorted(series.items()):
+    # Colour says which implementation, and the line style says which history, because the same
+    # implementation is replayed over both and two curves in one colour cannot be told apart.
+    histories = sorted({tracked_file for _crdt, tracked_file in series})
+    styles = ("-", "--", "-.", ":")
+
+    for (implementation, tracked_file), points in sorted(series.items()):
         if not points:
             continue
 
@@ -74,17 +98,22 @@ def plot(series: dict[str, list[dict]], output: str) -> None:
         axes.plot(
             x,
             [row["mean"] for row in points],
-            label=properties["name"],
+            label=f"{properties['name']}, {os.path.basename(tracked_file)}",
             color=properties["color"],
+            linestyle=styles[histories.index(tracked_file) % len(styles)],
             linewidth=1.6,
         )
 
-        # No band where the size does not vary across runs.
+        # No band where the size does not vary across runs. The band is the range the runs
+        # covered, matching `data_visualization.py`, so that an identically styled band means the
+        # same thing in every figure of the paper. At three repetitions the Student t interval is
+        # about two and a half times the observed range, and on the per-commit counts it reaches
+        # below zero; the interval is what a quoted number carries, not what a band shows.
         if any(not row["deterministic"] for row in points):
             axes.fill_between(
                 x,
-                [row["ci_low"] for row in points],
-                [row["ci_high"] for row in points],
+                [row["min"] for row in points],
+                [row["max"] for row in points],
                 color=properties["color"],
                 alpha=0.18,
                 linewidth=0,
@@ -100,7 +129,7 @@ def plot(series: dict[str, list[dict]], output: str) -> None:
     axes.legend(loc="upper left")
     axes.grid(True)
     axes.set_title(
-        f"mean of {repetitions} runs, shaded 95% confidence interval", fontsize=9, loc="right"
+        f"mean of {repetitions} runs, shaded range across runs", fontsize=9, loc="right"
     )
 
     plt.tight_layout()

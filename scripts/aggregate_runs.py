@@ -347,6 +347,16 @@ def read_workload(directory: str) -> dict:
     if inserts:
         fields["acks_per_insert"] = (fields.get("msgs_ack") or 0) / inserts
 
+    # How much more insert traffic the protocol sent than a formula over authored inserts predicts.
+    #
+    # A prediction of the traffic counts the lines the workload authors, and each of them is
+    # broadcast to the other n - 1 replicas. What that misses is the repair: a re-placement re-issues
+    # a whole block as fresh inserts, and those draw their own acknowledgements. So the ratio below
+    # is 1 exactly when no repair ran, and above 1 by however much the repair added. It is the reason
+    # the paper reports the prediction as a floor rather than as an estimate.
+    if lines and replicas > 1 and inserts:
+        fields["insert_amplification"] = inserts / (lines * (replicas - 1))
+
     # The distributions the transient-interleaving results are built from. Each is a list of
     # observations rather than a counter, so it is summarized inside the run and the interval is
     # taken over the per-run summaries afterwards. This is the same rule the latency samples follow,
@@ -550,6 +560,43 @@ def write_outputs(rows: list[dict], runs: list[dict], out_dir: str) -> None:
             )
 
 
+def report_provenance(runs: list[dict]) -> None:
+    """Says whether every run came from the same code, and names them when they did not.
+
+    A root is meant to hold one experiment. Both drivers are resumable and skip a run that
+    already reported success, so a root re-used across a change to ``lib/`` ends up holding runs
+    from two versions of the protocol. Averaging those is not a wide interval, it is a wrong one,
+    and nothing else in this pipeline can see it: the counters look ordinary either way.
+
+    ``Syncordian.Run`` records a digest of the compiled modules in every manifest, so this is an
+    equality check. Runs written before that field existed report no digest, and they are named as
+    unknown rather than assumed to match, because the whole point is to stop assuming.
+
+    Reported and not refused. A mixed root is sometimes what you meant, when a change touched
+    nothing the numbers depend on, and only the person who made the change can say so.
+    """
+    by_digest: dict[str, list[str]] = {}
+    for run in runs:
+        digest = run["manifest"].get("environment", {}).get("code") or "unknown"
+        by_digest.setdefault(digest, []).append(os.path.basename(run["directory"]))
+
+    if len(by_digest) == 1:
+        digest = next(iter(by_digest))
+        if digest == "unknown":
+            print("  code: every run predates the build digest, so provenance is unverifiable")
+        else:
+            print(f"  code: every run came from build {digest}")
+        return
+
+    print(f"  WARNING: this root holds runs from {len(by_digest)} different builds.")
+    print("  Numbers averaged across them are not comparable. Re-run, or aggregate separately.")
+
+    for digest, names in sorted(by_digest.items(), key=lambda item: -len(item[1])):
+        shown = ", ".join(sorted(names)[:3])
+        more = f", and {len(names) - 3} more" if len(names) > 3 else ""
+        print(f"    {digest:12s}  {len(names):4d} run(s)  {shown}{more}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", default="debug/runs", help="directory holding the runs")
@@ -573,6 +620,7 @@ def main() -> None:
         raise SystemExit(f"no run with a manifest under {arguments.runs}")
 
     print(f"Read {len(runs)} run(s) from {arguments.runs}")
+    report_provenance(runs)
 
     rows = aggregate(runs)
     write_outputs(rows, runs, arguments.out)

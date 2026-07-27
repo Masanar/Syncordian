@@ -199,3 +199,19 @@ run   n=32 seed=24
 run   n=32 seed=25
       exit 0 after 47s
 run   n=32 seed=26
+      exit 0 after 12s
+run   n=32 seed=27
+      exit 0 after 21s
+run   n=32 seed=28
+      exit 0 after 19s
+run   n=32 seed=29
+      exit 0 after 49s
+run   n=32 seed=30
+      exit 0 after 99s
+
+90 ok, 0 skipped, 0 failed
+
+Runs behind each point
+      n=   8  30
+      n=  16  30
+      n=  32  30

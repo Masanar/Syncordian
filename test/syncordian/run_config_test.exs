@@ -60,6 +60,23 @@ defmodule Syncordian.RunConfigTest do
       end
     end
 
+    test "says which build produced the run, so two roots can be told apart" do
+      Run.install!(seed: 1, delay: :none, root: "debug")
+
+      digest = Run.to_map()["environment"]["code"]
+
+      # Twelve hex characters, and the same answer twice: it is an equality check between runs,
+      # so a value that moved on its own would report every root as mixed.
+      assert digest =~ ~r/^[0-9a-f]{12}$/
+      assert digest == Syncordian.Run.code_fingerprint()
+
+      # It has to survive a reinstall, because a sweep installs a run per repetition and every
+      # repetition of one sweep has to agree.
+      Run.reset!()
+      Run.install!(seed: 2, delay: {:uniform, 5, 50}, root: "debug")
+      assert Run.to_map()["environment"]["code"] == digest
+    end
+
     test "an unseeded run says its secret came from the system generator" do
       Run.install!(delay: :none, root: "debug")
 

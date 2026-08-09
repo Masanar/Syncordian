@@ -46,9 +46,6 @@ builds and runs **fully offline** — no `mix deps.get` or network access requir
 ## Installation & setup
 
 ```bash
-git clone git@github.com:Masanar/Syncordian.git
-cd Syncordian/code
-
 # First time only: fetch deps and build the JS/CSS assets.
 mix setup            # = deps.get + assets.setup + assets.build
 

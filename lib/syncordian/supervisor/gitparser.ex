@@ -344,17 +344,6 @@ defmodule Syncordian.GitParser do
   end
 
   @doc """
-  Convenience wrapper over `parse_lines/1` that reads a checked-in fixture under
-  `test/git_log/`. The live experiment uses `parse_lines/1` on `Syncordian.GitLog` output
-  instead; this remains for ad-hoc use against the fixtures.
-  """
-  def parser_git_log(file_name) do
-    Path.join([File.cwd!(), "test/git_log", file_name])
-    |> File.stream!()
-    |> parse_lines()
-  end
-
-  @doc """
   Returns the commit hashes from an enumerable of git-log lines, oldest first, as a list.
   """
   def commits_from_lines(lines) do
@@ -363,17 +352,6 @@ defmodule Syncordian.GitParser do
     |> Stream.map(&find_commit_hash/1)
     |> Enum.to_list()
     |> Enum.reverse()
-  end
-
-  @doc """
-  Convenience wrapper over `commits_from_lines/1` that reads a checked-in fixture under
-  `test/git_log/`. The live experiment uses `commits_from_lines/1` on `Syncordian.GitLog`
-  output instead; this remains for ad-hoc use against the fixtures.
-  """
-  def get_list_of_commits(file_name) do
-    Path.join([File.cwd!(), "test/git_log", file_name])
-    |> File.stream!()
-    |> commits_from_lines()
   end
 
   @doc """

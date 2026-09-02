@@ -14,11 +14,6 @@ defmodule Syncordian.Utilities do
           commit_at: Basic_Types.commit_list()
         }
 
-  @input_json_path "debug/README_versions/commit_info.json"
-  @output_json_path "debug/README_versions/commit_sizes_with_edits.json"
-  @readme_directory "debug/README_versions/"
-  @metadata_directory "debug/metadata/supervisor/fugue"
-
   @spec debug_print(String.t(), any()) :: any
   def debug_print(message, content) do
     case @debug do
@@ -123,36 +118,6 @@ defmodule Syncordian.Utilities do
     recipients = length(pids)
 
     Syncordian.Instrument.record_message(kind, bytes * recipients, recipients)
-  end
-
-  @doc """
-  Sends one message to one process, accounting it to the sender's wire counters.
-
-  Not every message is a broadcast. A retransmission request goes to the operation's origin
-  alone, and the answer goes back to the requester alone. Those are as real a cost as a
-  broadcast, and leaving them out would understate the price of recovering a lost operation,
-  which is exactly the quantity the anti-entropy path exists to be judged on.
-  """
-  @spec send_measured(pid(), any) :: :ok
-  def send_measured(pid, message) do
-    Syncordian.Instrument.record_message(
-      Syncordian.Instrument.wire_kind(message),
-      :erlang.external_size(message)
-    )
-
-    send(pid, message)
-    :ok
-  end
-
-  @doc """
-    Generates a random string of a given length, is length is not provided, it defaults to
-    10.
-  """
-  @spec generate_string(integer()) :: String.t()
-  def generate_string(length \\ 10) do
-    :crypto.strong_rand_bytes(length)
-    |> Base.encode16()
-    |> binary_part(0, length)
   end
 
   @spec update_list_value([any()], integer, any) :: [any()]
@@ -352,64 +317,5 @@ defmodule Syncordian.Utilities do
       insertion_attempts: insertion_attempts,
       commit_at: commit_at
     }
-  end
-
-  @spec calculate_commit_data() :: :ok
-  def calculate_commit_data do
-    # Ensure the output directory exists
-    File.mkdir_p!(Path.dirname(@output_json_path))
-
-    # Read the commit info JSON file
-    commit_info = File.read!(@input_json_path) |> Jason.decode!()
-    # Process each commit to calculate byte size and edit number
-    updated_commit_data =
-      Enum.map(commit_info, fn %{"index" => index, "commit" => commit} ->
-        index = index + 1
-        # Calculate byte size
-        readme_file = Path.join(@readme_directory, "README_#{commit}.md")
-
-        byte_size =
-          if File.exists?(readme_file) do
-            File.read!(readme_file)
-            # Remove non-printable characters
-            |> String.replace(~r/[\x00-\x1F\x7F]/, "")
-            |> byte_size()
-          else
-            # If the file doesn't exist, set byte size to 0
-            8900
-          end
-
-        # Find all corresponding JSON files for the commit
-        json_files =
-          Path.wildcard(Path.join(@metadata_directory, "commit_#{index}.json"))
-
-        # Calculate the total insert_valid_counter and delete_valid_counter
-        {insert_valid_counter, delete_valid_counter} =
-          Enum.reduce(json_files, {0, 0}, fn file, {insert_acc, delete_acc} ->
-            file_data = File.read!(file) |> Jason.decode!()
-
-            {
-              insert_acc + Map.get(file_data, "insert_valid_counter", 0),
-              delete_acc + Map.get(file_data, "delete_valid_counter", 0)
-            }
-          end)
-
-        # Calculate the edit number as an integer
-        edit_number = div(insert_valid_counter + delete_valid_counter, 30)
-
-        # Add the byte size and edit number to the commit data
-        %{
-          index: index,
-          commit: commit,
-          heap_size: byte_size,
-          edit_number: edit_number
-        }
-      end)
-
-    # Save the updated commit data as a JSON file
-    File.write!(@output_json_path, Jason.encode!(updated_commit_data, pretty: true))
-
-    IO.puts("Commit data saved to #{@output_json_path}")
-    :ok
   end
 end

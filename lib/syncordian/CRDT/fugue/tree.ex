@@ -11,19 +11,16 @@ defmodule Syncordian.CRDT.Fugue.Tree do
 
   ## Types
   - `node_fugue`: Represents a node in the tree (`Syncordian.CRDT.Fugue.Node.t()`).
-  - `node_value_list`: A list of node values.
   - `node_id_list`: A list of node IDs.
   - `node_entry`: A tuple `{node_fugue, node_id_list, node_id_list}` representing a node and its children.
   - `tree`: The struct representing the tree.
   """
   # import Syncordian.Utilities, only: [debug_print: 2]
   alias Syncordian.CRDT.Fugue.Node
-  alias Syncordian.Utilities
 
   defstruct nodes: %{}
 
   @type node_fugue :: Node.t()
-  @type node_value_list :: [Node.node_value()]
   @type node_id_list :: [Node.node_ID()]
   @type node_entry :: {node_fugue(), node_id_list(), node_id_list()}
   @type t :: %__MODULE__{
@@ -78,41 +75,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   """
   @spec get_tree_nodes(tree()) :: %{Node.node_ID() => node_entry}
   def get_tree_nodes(tree), do: tree.nodes
-
-  @doc """
-  Retrieves the root node of the tree.
-
-  ## Parameters
-  - `tree`: The tree to retrieve the root node from.
-
-  ## Returns
-  The root node if it exists, otherwise `nil`.
-  """
-  @spec get_root(tree()) :: node_fugue() | nil
-  def get_root(tree) do
-    case Map.get(get_tree_nodes(tree), Node.get_null_id()) do
-      {node, _left, _right} -> node
-      nil -> nil
-    end
-  end
-
-  @doc """
-  Retrieves a node from the tree by its ID.
-
-  ## Parameters
-  - `tree`: The tree to retrieve the node from.
-  - `id`: The ID of the node to retrieve.
-
-  ## Returns
-  The node if it exists, otherwise the root node.
-  """
-  @spec get_node(tree(), Node.node_ID()) :: node_fugue()
-  def get_node(tree, id) do
-    case Map.get(get_tree_nodes(tree), id) do
-      {node, _left, _right} -> node
-      nil -> Node.root()
-    end
-  end
 
   @doc """
   Retrieves a full node entry from the tree by its ID.
@@ -201,35 +163,6 @@ defmodule Syncordian.CRDT.Fugue.Tree do
   @spec full_traverse(tree()) :: [node_fugue()]
   def full_traverse(tree) do
     traverse(tree, Node.get_null_id(), true)
-  end
-
-  @doc """
-  Translates a Git index into the corresponding Fugue tree index,
-  accounting for tombstone (i.e. logically deleted) nodes.
-
-  Parameters:
-    - full_traverse: A list of Fugue nodes representing the full traversal of the tree.
-    - target: The number of non-tombstone nodes to skip (the Git index position).
-    - tombstones: The count of tombstones encountered so far (used for adjustment).
-    - index: The current traversal index.
-
-  Returns:
-    The corresponding Fugue tree index, or -1 if no valid position is found.
-  """
-  @spec translate_git_index_to_fugue_index(
-          [node_fugue()],
-          integer(),
-          integer(),
-          integer()
-        ) :: integer()
-  def translate_git_index_to_fugue_index(list, target, tombstones, index) do
-    Utilities.do_translate_index(
-      list,
-      target,
-      tombstones,
-      index,
-      &Node.is_tombstone_ignoring_root?/1
-    )
   end
 
   ########################### CRDT Functions ##################################

@@ -79,9 +79,6 @@ defmodule Syncordian.CRDT.Logoot.Peer do
   @spec get_peer_id(peer_logoot) :: Syncordian.Basic_Types.peer_id()
   def get_peer_id(peer), do: Agent.get_id(get_peer_agent(peer))
 
-  @spec get_peer_clock(peer_logoot) :: non_neg_integer()
-  def get_peer_clock(peer), do: Agent.get_clock(get_peer_agent(peer))
-
   @spec get_peer_sequence(peer_logoot) :: Sequence.t()
   def get_peer_sequence(peer), do: Agent.get_sequence(get_peer_agent(peer))
 

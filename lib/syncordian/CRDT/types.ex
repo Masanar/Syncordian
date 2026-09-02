@@ -18,7 +18,7 @@ defmodule Syncordian.Basic_Types do
             Lines superseded during an interleaving re-placement are retracted with an
             ordinary delete, i.e. they become tombstones too (`Syncordian.Interleaving`).
   """
-  @type status :: :tombstone | :aura | :settled | nil
+  @type status :: :tombstone | :aura | :settled
 
   @typedoc """
       Type that represents the content of a Syncordian document line

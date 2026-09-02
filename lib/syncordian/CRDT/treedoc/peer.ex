@@ -20,7 +20,6 @@ defmodule Syncordian.CRDT.Treedoc.Peer do
   and broadcasts through `Syncordian.Utilities.perform_broadcast/3`.
   """
   import Syncordian.Metadata
-  alias Syncordian.CRDT.Treedoc.Bst
 
   defstruct peer_id: nil,
             document: nil,

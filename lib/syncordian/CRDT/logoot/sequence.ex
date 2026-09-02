@@ -64,11 +64,6 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
       get_atom_ident_vc_str(get_sequence_atom_ident(sequence_atom))
   end
 
-  @spec get_sequence_atom_vc_str(sequence_atom) :: String.t()
-  def get_sequence_atom_vc_str(sequence_atom) do
-    get_atom_ident_vc_str(get_sequence_atom_ident(sequence_atom))
-  end
-
   @typedoc """
   A sequence of `sequence_atoms` used to represent an ordered set.
 
@@ -138,17 +133,6 @@ defmodule Syncordian.CRDT.Logoot.Sequence do
   """
   @spec max :: abs_max_atom_ident
   def max, do: @abs_max_atom_ident
-
-  @doc """
-  Compare two atom identifiers.
-
-  Returns `:gt` if first is greater than second, `:lt` if it is less, and `:eq`
-  if they are equal.
-  """
-  @spec compare_atom_idents(atom_ident, atom_ident) :: comparison
-  def compare_atom_idents(atom_ident_a, atom_ident_b) do
-    compare_positions(elem(atom_ident_a, 0), elem(atom_ident_b, 0))
-  end
 
   @doc """
   Delete the given atom from the sequence.

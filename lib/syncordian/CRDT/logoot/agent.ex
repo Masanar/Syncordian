@@ -22,12 +22,6 @@ defmodule Syncordian.CRDT.Logoot.Agent do
   # Getters
 
   @doc """
-  Get the current state of the agent.
-  """
-  @spec get_state(t()) :: t()
-  def get_state(agent), do: agent
-
-  @doc """
   Get the current clock value of the agent.
   """
   @spec get_clock(t()) :: non_neg_integer()

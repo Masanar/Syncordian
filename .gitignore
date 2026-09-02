@@ -44,5 +44,3 @@ syncordian-*.tar
 TODO.md
 __pycache__/
 debug/
-debug/*
-/debug/

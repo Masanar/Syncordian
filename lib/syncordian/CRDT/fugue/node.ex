@@ -147,14 +147,8 @@ defmodule Syncordian.CRDT.Fugue.Node do
   def get_id_str(%__MODULE__{id: {peer_id, number}}),
     do: "#Peer ID:#{peer_id}  Message Number: #{number}"
 
-  @spec get_number_id(node_ID) :: integer()
-  def get_number_id({_, id}), do: id
-
   @spec get_peer_id(t) :: Syncordian.Basic_Types.peer_id()
   def get_peer_id(%__MODULE__{id: {peer_id, _}}), do: peer_id
-
-  @spec get_index_id(t) :: integer()
-  def get_index_id(%__MODULE__{id: {_, id}}), do: id
 
   @doc """
   Retrieves the value of the given node.
@@ -207,19 +201,6 @@ defmodule Syncordian.CRDT.Fugue.Node do
   # Setters
 
   @doc """
-  Updates the ID of the given node.
-
-  ## Parameters
-  - `node`: The node to update.
-  - `id`: The new ID.
-
-  ## Returns
-  A new node with the updated ID.
-  """
-  @spec set_id(t, node_ID) :: t
-  def set_id(%__MODULE__{} = node, id), do: %__MODULE__{node | id: id}
-
-  @doc """
   Updates the value of the given node.
 
   ## Parameters
@@ -231,32 +212,6 @@ defmodule Syncordian.CRDT.Fugue.Node do
   """
   @spec set_value(t, node_value) :: t
   def set_value(%__MODULE__{} = node, value), do: %__MODULE__{node | value: value}
-
-  @doc """
-  Updates the parent ID of the given node.
-
-  ## Parameters
-  - `node`: The node to update.
-  - `parent`: The new parent ID.
-
-  ## Returns
-  A new node with the updated parent ID.
-  """
-  @spec set_parent(t, node_ID) :: t
-  def set_parent(%__MODULE__{} = node, parent), do: %__MODULE__{node | parent: parent}
-
-  @doc """
-  Updates the side of the given node.
-
-  ## Parameters
-  - `node`: The node to update.
-  - `side`: The new side (`:left` or `:right`).
-
-  ## Returns
-  A new node with the updated side.
-  """
-  @spec set_side(t, tree_side) :: t
-  def set_side(%__MODULE__{} = node, side), do: %__MODULE__{node | side: side}
 
   @doc """
   Compares two node IDs to determine if the first is less than the second.

@@ -65,7 +65,8 @@ defmodule Syncordian.PathId do
   alias Syncordian.Basic_Types
 
   @type peer_id :: Basic_Types.peer_id()
-  @type segment :: {non_neg_integer(), peer_id()}
+  @type digit :: non_neg_integer()
+  @type segment :: {digit(), peer_id()}
   @type t :: :infimum | :supremum | {:path, [segment(), ...]}
 
   @base 65_536
@@ -73,8 +74,6 @@ defmodule Syncordian.PathId do
   def base, do: @base
 
   @step 32
-  @doc "Maximum boundary-allocation step: a fresh digit lands within `step()` of the bound it hugs."
-  def step, do: @step
 
   @doc "Returns the bottom sentinel."
   @spec infimum() :: t

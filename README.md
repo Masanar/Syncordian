@@ -17,27 +17,15 @@ execution, demonstrating its usability in real world scenarios.
 
 ## Prerequisites
 
-The project pins Elixir `~> 1.18.3` in `mix.exs`. The verified, working
-toolchain is:
+The toolchain is pinned in `.tool-versions` (Erlang/OTP 28, Elixir
+1.18.4-otp-28). With `asdf` or `mise`, install it from the repo root:
 
-- **Erlang/OTP 28** (e.g. `28.5`)
-- **Elixir 1.18.4** (built for OTP 28, i.e. `1.18.4-otp-28`)
+```bash
+asdf install
+```
 
->
-> A newer default Elixir (e.g. 1.19.x) does **not** satisfy the `~> 1.18.3`
-> constraint and `mix` will refuse to compile. If your machine defaults to a
-> newer version (or you manage versions with `asdf`/`mise`), switch your
-> default rather than prefixing every command, e.g.:
->
-> ```bash
-> asdf local elixir 1.18.4-otp-28 erlang 28.5
-> # or: mise use elixir@1.18.4-otp-28 erlang@28.5
-> ```
->
-> Check what you have with `elixir --version`. There is no `.tool-versions` file
-> in the repo, so the version is governed solely by the `mix.exs` constraint.
-> The commands throughout this README assume `elixir`/`mix` on `PATH` already
-> resolve to the pinned toolchain.
+`mix.exs` additionally requires Elixir `~> 1.18.3`, so a newer default (1.19.x)
+refuses to compile. Check yours with `elixir --version`.
 
 All Elixir dependencies are vendored in `deps/` and pre-compiled in `_build/`,
 and the esbuild/tailwind binaries are cached under `_build/`, so the project

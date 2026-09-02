@@ -823,34 +823,6 @@ defmodule Syncordian.Peer do
     end
   end
 
-  @doc """
-    Sends the insertion response (acknowledgement) back to the line's author so it can mark
-    the line's response checklist (\ie its \iex{commit_at} projection) for the acknowledging
-    peer. The author is located through the global registry by its peer id.
-
-    Like every message, the response carries an admission authenticator keyed by the
-    boundary secret, plus a response tag binding the acknowledged line's stored signature
-    and the acknowledging peer id (`Syncordian.Byzantine.create_tag_ack/3`). The author
-    rejects any response that fails either check, so a distrusted node cannot forge a
-    response on behalf of a trusted peer. Responses carry no op_id: their effect is
-    idempotent, so a replayed response is harmless by construction.
-  """
-  @spec send_confirmation_line_insertion(
-          author_peer_id :: Syncordian.Basic_Types.peer_id(),
-          ack_payload ::
-            {Syncordian.Basic_Types.line_id(), Syncordian.Basic_Types.peer_id(),
-             Syncordian.Basic_Types.signature()},
-          alpha :: Syncordian.Basic_Types.signature()
-        ) :: any
-  def send_confirmation_line_insertion(author_peer_id, ack_payload, alpha) do
-    author_peer_pid = :global.whereis_name(author_peer_id)
-
-    send(
-      author_peer_pid,
-      {:receive_confirmation_line_insertion, ack_payload, alpha}
-    )
-  end
-
   # Pulls every {:receive_confirmation_line_insertion, ...} message already queued in
   # the mailbox (up to `budget`), returning the batch in arrival order. The selective
   # receive leaves every other message untouched and in its original relative order.

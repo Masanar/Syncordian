@@ -287,15 +287,6 @@ defmodule Syncordian.Line_Object do
     commit_at = update_list_value(get_commit_at(line), received_peer_id, true)
     line(line, commit_at: commit_at)
   end
-
-  @spec get_empty_line() :: Syncordian.Line_Object.line()
-  def get_empty_line() do
-    line()
-  end
-
-  def is_empty_line(line) do
-    get_line_peer_id(line) == 9_999_999
-  end
 end
 
 defmodule Syncordian.Line do
@@ -451,17 +442,5 @@ defmodule Syncordian.Line do
       op_id1 < op_id2 -> -1
       true -> 1
     end
-  end
-
-  @spec line_to_string(Syncordian.Line_Object.line()) :: String.t()
-  # This is just for debugging purposes
-  def line_to_string(line) do
-    PathId.to_string(get_line_id(line)) <>
-      ", " <>
-      Integer.to_string(get_line_peer_id(line)) <>
-      ", " <>
-      get_content(line) <>
-      ", " <>
-      get_signature(line) <> ", " <> "#{get_line_status(line)}"
   end
 end

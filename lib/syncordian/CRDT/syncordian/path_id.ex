@@ -73,8 +73,6 @@ defmodule Syncordian.PathId do
   def base, do: @base
 
   @step 32
-  @doc "Maximum boundary-allocation step: a fresh digit lands within `step()` of the bound it hugs."
-  def step, do: @step
 
   @doc "Returns the bottom sentinel."
   @spec infimum() :: t

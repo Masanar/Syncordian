@@ -65,7 +65,8 @@ defmodule Syncordian.PathId do
   alias Syncordian.Basic_Types
 
   @type peer_id :: Basic_Types.peer_id()
-  @type segment :: {non_neg_integer(), peer_id()}
+  @type digit :: non_neg_integer()
+  @type segment :: {digit(), peer_id()}
   @type t :: :infimum | :supremum | {:path, [segment(), ...]}
 
   @base 65_536
